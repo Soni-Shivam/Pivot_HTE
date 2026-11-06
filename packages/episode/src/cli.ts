@@ -1,10 +1,11 @@
-// npm run faultline -- publish <dir> | verify <publicRoot> [--sealed <root> --key <hex>] [--out file]
+// npm run faultline -- publish <dir> | verify <publicRoot> [--sealed <root> --key <hex>] [--out file] | sigs <jsonl>
 // Env from .env: RPC_URL, STORAGE_INDEXER, PRIVATE_KEY, FAULTLINE_TENANT_KEY. Values are never printed.
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { config } from 'dotenv'
 import { publish } from './publish.ts'
-import { verify } from './verify.ts'
+import { makeProcessResponse, verify } from './verify.ts'
+import { jsonlSignatures } from './sigs.ts'
 import { commit, finalize } from './anchor.ts'
 
 config({ path: fileURLToPath(new URL('../../../.env', import.meta.url)), quiet: true })
@@ -25,8 +26,12 @@ if (cmd === 'publish' && target) {
   const out = flag(rest, '--out')
   if (out) writeFileSync(out, JSON.stringify(v, null, 2) + '\n')
   console.log(JSON.stringify(v, null, 2))
+} else if (cmd === 'sigs' && target) {
+  const r = await jsonlSignatures(readFileSync(target, 'utf8'), await makeProcessResponse())
+  writeFileSync(`${target}.sigs.json`, JSON.stringify(r, null, 2) + '\n')
+  console.log(JSON.stringify({ total: r.total, verified: r.verified, out: `${target}.sigs.json` }))
 } else {
-  console.error('usage: faultline commit|publish|finalize <dir> | verify <publicRoot> [--sealed <root> --key <hex|env>] [--out file]')
+  console.error('usage: faultline commit|publish|finalize <dir> | verify <publicRoot> [--sealed <root> --key <hex|env>] [--out file] | sigs <jsonl>')
   process.exit(2)
 }
 process.exit(0)

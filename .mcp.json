@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "arkiv": { "type": "http", "url": "https://hub.arkiv.network/mcp" }
+  }
+}

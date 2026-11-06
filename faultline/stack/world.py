@@ -87,7 +87,7 @@ class SimClockRecorder:
             for i, (t, text) in enumerate(self.cues):
                 f.write(f"{i + 1}\n{ts(t - 0.05)} --> {ts(t)}\n{text}\n\n")
         subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(self.out / "chase_raw.mp4"), "-vf",
-                        f"subtitles={self.out / 'hud.srt'}:force_style='FontSize=11,Alignment=7'", "-c:v", "libx264",
+                        f"subtitles={self.out / 'hud.srt'}:force_style='FontSize=9,Alignment=7'", "-c:v", "libx264",
                         "-preset", "veryfast", "-pix_fmt", "yuv420p", str(self.out / "screen.mp4")], check=False)
 
 

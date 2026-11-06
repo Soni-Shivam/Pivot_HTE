@@ -74,7 +74,7 @@ def run_one(stack_spec: str, site: dict, decider, out: Path, seed: int, record: 
     mm["stack"] = {"name": spec["name"], "digest": s.stack_digest, "steps": len(lat),
                    "p50_ms": round(lat[len(lat) // 2] * 1e3, 2) if lat else None,
                    "max_ms": round(lat[-1] * 1e3, 2) if lat else None, "invalid_controls": w.invalid_controls,
-                   "timeouts": getattr(stack, "timeouts", 0)}
+                   "timeouts": getattr(stack, "timeouts", 0), "ego": w._ego_static}
     (out / "mission.json").write_text(json.dumps(mm, indent=1, sort_keys=True) + "\n")
     met = json.loads((out / "metrics.json").read_text())
     gt, ext = met.get("ground_truth", {}), met.get("extended", {})

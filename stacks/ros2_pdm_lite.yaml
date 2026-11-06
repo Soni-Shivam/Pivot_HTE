@@ -1,0 +1,15 @@
+# ROS 2 adapter example: Faultline publishes sensors/odom/route, the stack (faultline/stack/ros_node.py here,
+# Autoware/SeDriCa in real use) answers on /faultline/stack/control. Source viz/env.sh in both terminals.
+name: ros2-pdm-lite
+adapter: ros2
+control: ackermann          # ackermann (ackermann_msgs/AckermannDriveStamped) | twist (geometry_msgs/Twist)
+latency_budget_s: 0.2       # no control within this wall time -> full brake for that step, logged as a timeout
+sensors:
+  - {id: LIDAR, type: lidar, x: 1.5, z: 1.9, rate_hz: 20,
+     params: {channels: "64", range: "80", points_per_second: "1200000", rotation_frequency: "20",
+              upper_fov: "2", lower_fov: "-15"}}
+files:
+  - faultline/stack/ros_node.py
+  - faultline/stack/reference.py
+  - faultline/ego/pdm_lite.py
+  - faultline/ego/lidar_tracker.py

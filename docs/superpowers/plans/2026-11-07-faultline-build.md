@@ -63,7 +63,7 @@ pytest==8.3.3
 **Interfaces:**
 - Produces: `ttc_1d(gap, v_rel, clip_max=60.0) -> np.ndarray`, `thw(gap, v_ego, clip_max=10.0) -> np.ndarray`, `drac(gap, v_rel, clip_max=20.0) -> np.ndarray` (copied verbatim from `~/shivam/mbrdi-development/sedrica_experiments/criticality_metrics/utils/kinematics.py`, transform helpers dropped); `score(drac, ttc2d, thw) -> CriticalityBreakdown`, `score_episode(dracs, ttc2ds, thws) -> dict`, `badge(ccs) -> str`, `Thresholds` (copied verbatim from `metrics/composite_scorer_v2.py`). We pass the 1-D TTC in the `ttc2d` slot; the breakdown keeps the key name `ttc2d` so numbers stay comparable with MBRDI reports.
 
-- [ ] **Step 1:** Write `tests/python/test_metrics.py`:
+- [x] **Step 1:** Write `tests/python/test_metrics.py`:
 ```python
 import math, numpy as np
 from faultline.metrics.kinematics import ttc_1d, thw, drac
@@ -87,10 +87,10 @@ def test_episode_is_max_over_steps_and_badge():
     ep = score_episode([0.5, 6.0, 0.5], [10.0, 1.2, 10.0], [3.0, 0.8, 3.0])
     assert ep["peak_step"] == 1 and badge(ep["ccs"]) == "red" and Thresholds().ttc2d_k == 4.0
 ```
-- [ ] **Step 2:** Run `.venv/bin/python -m pytest tests/python/test_metrics.py -q`. Expected: FAIL, `ModuleNotFoundError: faultline.metrics`.
-- [ ] **Step 3:** Copy the two source files (keep their docstrings and the `VERSION` constant; remove e2e_core-related imports/comments at the top of `kinematics.py` and the `get_xyyaw_from_transform`, `longitudinal_velocity_from_dynamics`, `gap_from_transforms_1d` helpers). Write `ATTRIBUTION.md`: "Vendored from SeDriCa/MBRDI-Development @ 030e5df, `sedrica_experiments/criticality_metrics/` (MIT). Unmodified except for removed e2e_core helpers."
-- [ ] **Step 4:** Run the test. Expected: PASS (3 tests).
-- [ ] **Step 5:** Commit: `git commit -m "faultline: vendor MIT criticality metrics (TTC, THW, DRAC, CCS v2)"`.
+- [x] **Step 2:** Run `.venv/bin/python -m pytest tests/python/test_metrics.py -q`. Expected: FAIL, `ModuleNotFoundError: faultline.metrics`.
+- [x] **Step 3:** Copy the two source files (keep their docstrings and the `VERSION` constant; remove e2e_core-related imports/comments at the top of `kinematics.py` and the `get_xyyaw_from_transform`, `longitudinal_velocity_from_dynamics`, `gap_from_transforms_1d` helpers). Write `ATTRIBUTION.md`: "Vendored from SeDriCa/MBRDI-Development @ 030e5df, `sedrica_experiments/criticality_metrics/` (MIT). Unmodified except for removed e2e_core helpers."
+- [x] **Step 4:** Run the test. Expected: PASS (3 tests).
+- [x] **Step 5:** Commit: `git commit -m "faultline: vendor MIT criticality metrics (TTC, THW, DRAC, CCS v2)"`.
 
 ### Task 2: Action policy, prompt and scenario config
 

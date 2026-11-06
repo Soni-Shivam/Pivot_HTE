@@ -22,13 +22,23 @@ HORIZON_S, STOPPED_HOLD_S = 30.0, 1.0
 V0_FACTOR = 2.0  # IDM desired speed = 2x the start speed, so an equilibrium gap exists at the start speed
 
 
-def idm_for(p: dict) -> IdmParams:
+CTRL0 = {"min_gap_m": 2.0, "comfort_decel_mps2": 3.0, "max_accel_mps2": 1.5, "min_time_headway_s": 0.0}
+# Frozen bounds for a controller fix (faultline/research.py); CTRL0 is the controller under test.
+CTRL_BOUNDS = {"min_gap_m": (1.0, 5.0), "comfort_decel_mps2": (1.0, 6.0), "max_accel_mps2": (0.5, 3.0),
+               "min_time_headway_s": (0.0, 3.0)}
+
+
+def idm_for(p: dict, ctrl: dict | None = None) -> IdmParams:
     """The ego follows at `initial_gap_m` like an ACC time-gap setting: the IDM headway is chosen so its equilibrium
     gap at the start speed equals the initial gap. Deviation from the brief (desired speed = ego speed): with that,
-    the IDM re-chooses its own gap during the run-up and the initial gap stops mattering (see faultline-hunt.md)."""
-    v, base = float(p["ego_speed_mps"]), IdmParams()
+    the IDM re-chooses its own gap during the run-up and the initial gap stops mattering (see faultline-hunt.md).
+    `ctrl` (keys of CTRL0) changes the controller: min_time_headway_s floors the ACC headway."""
+    c = {**CTRL0, **(ctrl or {})}
+    v = float(p["ego_speed_mps"])
     k = math.sqrt(1 - (1 / V0_FACTOR) ** 4)  # s_eq = s*(v) / sqrt(1 - (v/v0)^4) with dv = 0
-    return IdmParams(desired_speed_mps=V0_FACTOR * v, time_headway_s=max((float(p["initial_gap_m"]) * k - base.min_gap_m) / v, 0.0),
+    hw = max((float(p["initial_gap_m"]) * k - c["min_gap_m"]) / v, 0.0, c["min_time_headway_s"])
+    return IdmParams(desired_speed_mps=V0_FACTOR * v, time_headway_s=hw, min_gap_m=c["min_gap_m"],
+                     max_accel_mps2=c["max_accel_mps2"], comfort_decel_mps2=c["comfort_decel_mps2"],
                      reaction_delay_s=float(p["reaction_delay_s"]))
 
 
@@ -48,8 +58,9 @@ def validate(p) -> str | None:
     return None
 
 
-def run_experiment(p: dict, world=None, seed: int = 0) -> dict:
-    """Run a validated experiment. `world` defaults to KinematicWorld; CARLA confirmation passes a CarlaWorld."""
+def run_experiment(p: dict, world=None, seed: int = 0, ctrl: dict | None = None, keep_rows: bool = False) -> dict:
+    """Run a validated experiment. `world` defaults to KinematicWorld; CARLA confirmation passes a CarlaWorld.
+    `ctrl` changes the ego controller (idm_for); `keep_rows` adds the per-tick trajectory as `rows`."""
     assert validate(p) is None, validate(p)
     p = {k: float(p[k]) for k in SPACE}
     v = p["ego_speed_mps"]
@@ -57,7 +68,7 @@ def run_experiment(p: dict, world=None, seed: int = 0) -> dict:
                  initial_gap_m=p["initial_gap_m"], friction_mu=p["friction_mu"], lead_max_brake_mps2=p["lead_decel_mps2"],
                  horizon_s=HORIZON_S)
     if world is None:
-        world = KinematicWorld(idm=idm_for(p))
+        world = KinematicWorld(idm=idm_for(p, ctrl))
     applied = min(p["lead_decel_mps2"], 0.8 * G * p["friction_mu"])
     dt = s.dt_s
     onset_n, horizon_n = round(p["brake_onset_s"] / dt), round(HORIZON_S / dt)
@@ -96,4 +107,5 @@ def run_experiment(p: dict, world=None, seed: int = 0) -> dict:
             "measured_reaction_s": reaction, "gap_at_onset_m": round(gap_at_onset, 4) if gap_at_onset is not None else None,
             "lead_decel_applied_mps2": round(applied, 4), "lead_decel_clamped": applied < p["lead_decel_mps2"],
             "end_t_s": rows[-1]["t"], "safe": (not collision) and min_gap >= SAFE_GAP_M,
+            **({"rows": rows, "onset_t_s": round(onset_n * dt, 6)} if keep_rows else {}),
             **({"lidar_min_gap_m": round(lidar_min, 4)} if lidar_min is not None and world.__class__ is not KinematicWorld else {})}

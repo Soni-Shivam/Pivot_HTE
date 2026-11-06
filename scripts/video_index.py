@@ -35,6 +35,15 @@ def describe(run: Path) -> str:
 rows = []
 for p in sorted((ROOT / "runs").glob("*/screen.mp4")):
     rows.append((p, f"{p.parent.name}__chase.mp4", describe(p.parent)))
+for kind in ("stitched", "director"):  # swarm runs: sim-time mosaic, and the mosaic + RViz/HMI desktop crops
+    for p in sorted((ROOT / "runs").glob(f"*/{kind}.mp4")):
+        rows.append((p, f"{p.parent.name}__{kind}.mp4", describe(p.parent) + " · not anchored"))
+for p in sorted((ROOT / "runs").glob("*/carla-*/screen.mp4")):  # hunt / research CARLA pairs (scripted executions)
+    try:
+        lab = json.loads((p.parent / "experiment.json").read_text()).get("label", "scripted execution")
+    except (OSError, ValueError):
+        lab = "scripted execution"
+    rows.append((p, f"{p.parent.parent.name}__{p.parent.name}.mp4", lab))
 for p in sorted((ROOT / "runs" / "screenrec").glob("desk-*.mp4")):
     rows.append((p, f"desktop__{p.stem[5:]}.mp4", "full :2 desktop recording (5-min segment)"))
 for p in sorted((ROOT / "docs" / "evidence" / "media").glob("*.mp4")):

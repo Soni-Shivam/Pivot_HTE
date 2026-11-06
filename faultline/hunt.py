@@ -251,10 +251,11 @@ def score(res: dict, gt: dict) -> dict:
 BENIGN = {"friction_mu": 0.8, "reaction_delay_s": 0.6, "lead_decel_mps2": 3.0, "initial_gap_m": 40.0, "ego_speed_mps": 15.0}
 
 
-def minimize(p: dict, run=run_experiment, steps=5) -> dict:
+def minimize(p: dict, run=run_experiment, steps=5, benign: dict | None = None) -> dict:
     """Delta-debug an unsafe case toward BENIGN, one parameter at a time: restore it fully if still unsafe, else
     bisect toward the benign value and keep the closest still-unsafe value. A factor is necessary when restoring it
     alone (in the minimized case) makes the run safe; that counterfactual run is the evidence."""
+    benign = BENIGN if benign is None else benign  # research.py drops the keys a goal fixes
     runs = []
 
     def unsafe(q):
@@ -266,7 +267,7 @@ def minimize(p: dict, run=run_experiment, steps=5) -> dict:
     assert unsafe(cur), "minimize needs an unsafe start"
     for _ in range(3):  # passes until no parameter can be fully restored
         restored = False
-        for k, b in BENIGN.items():
+        for k, b in benign.items():
             if cur[k] == b:
                 continue
             if unsafe({**cur, k: b}):
@@ -280,14 +281,14 @@ def minimize(p: dict, run=run_experiment, steps=5) -> dict:
         if not restored:
             break
     necessary = []
-    for k, b in BENIGN.items():
+    for k, b in benign.items():
         if cur[k] != b:
             q = {**cur, k: b}
             o = run(q)
             necessary.append({"factor": k, "failing_value": cur[k], "benign_value": b, "counterfactual_params": q,
                               "counterfactual_safe": o["safe"], "counterfactual_min_gap_m": o.get("min_gap_m")})
     return {"start": p, "minimal_failing_case": cur, "minimal_outcome": run(cur), "necessary": necessary,
-            "restored": [k for k in BENIGN if cur[k] == BENIGN[k] and float(p[k]) != BENIGN[k]],
+            "restored": [k for k in benign if cur[k] == benign[k] and float(p[k]) != benign[k]],
             "runs": len(runs), "trace": runs}
 
 

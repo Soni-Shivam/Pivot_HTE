@@ -92,3 +92,8 @@ TTC 1.10–2.49 s. The swarm made it brake hard, it did not beat it.
 Reproduce: `source viz/env.sh && .venv/bin/python -m faultline.carla_swarm --out runs/<new> --ros [--avoid "A,B"]`
 (takes the CARLA flock; viz from `viz/launch_viz.sh start`); kinematic: `.venv/bin/python -m faultline.swarm --plan
 --lookahead --out runs/<new>`; re-stitch: `.venv/bin/python -m faultline.stitch runs/<id>`.
+
+## Signature check (2026-11-06T22:39:54Z)
+`npm run faultline -- sigs runs/swarm-carla-<id>/decisions.jsonl`, run about 2 min after the episodes (inside the provider cache window; these runs were not published, so the signatures are not archived):
+- swarm-carla-010: 10/10 processResponse true
+- swarm-carla-008: 10/10 processResponse true

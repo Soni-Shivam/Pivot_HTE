@@ -64,7 +64,8 @@ FINAL_PROMPT = (
     '{"boundary": [{"reaction_delay_s": <number>, "min_safe_gap_m": <number or null if no tested gap was safe>}], '
     '"claims": [{"text": "<claim>", "type": "outcome|effect|general", "runs": [<experiment numbers>], '
     '"asserts": "safe|unsafe|collision|no_collision (outcome only)", "param": "<parameter changed (effect only)>", '
-    '"change": "increase|decrease (effect only)", "metric": "min_gap_m|min_ttc_s (effect only)", '
+    '"change": "increase|decrease (effect only)", "metric": "min_gap_m|min_ttc_s (effect only: the measured per-run '
+    'minimum gap or TTC, not the safe-gap boundary; cite runs that differ only in param)", '
     '"direction": "increase|decrease (effect only: how the metric moved)"}], '
     '"explanation": "<=100 words: why the controller fails", "minimal_reproduction": "<=40 words", '
     '"uncertainty": ["..."], "next_tests": ["..."]}. '
@@ -82,21 +83,27 @@ TOOLS = {
                         "safe_side": "'lo' or 'hi': the end you expect to be safe", "steps": "1-8 runs",
                         "fixed": "{parameter: value} for the others"},
                "does": "bisection on param in [lo, hi] assuming one boundary; starts from the tightest bracket already "
-                       "measured in that slice"},
+                       "measured in that slice",
+               "example": {"param": "initial_gap_m", "lo": 5, "hi": 80, "safe_side": "hi", "steps": 4,
+                           "fixed": {"reaction_delay_s": 0.9}}},
     "grid": {"args": {"param": "parameter", "values": "1-8 numbers", "fixed": "{parameter: value}"},
-             "does": "one run per value"},
-    "probe": {"args": {"experiment": "{parameter: value}"}, "does": "one run"},
+             "does": "one run per value",
+             "example": {"param": "friction_mu", "values": [0.3, 0.5, 0.7], "fixed": {"ego_speed_mps": 20}}},
+    "probe": {"args": {"experiment": "{parameter: value}"}, "does": "one run",
+              "example": {"experiment": {"ego_speed_mps": 25, "initial_gap_m": 20}}},
     "sweep_delay": {"args": {"delays": "1-6 reaction delays", "gap_range": "[lo, hi] initial gap",
                              "steps_per_delay": "1-6", "fixed": "{parameter: value}"},
                     "does": "bisection on initial_gap_m at each delay, round robin (larger gap assumed safer); "
-                            "costs len(delays)*steps_per_delay runs"},
+                            "costs len(delays)*steps_per_delay runs",
+                    "example": {"delays": [0.3, 0.9, 1.5], "gap_range": [5, 80], "steps_per_delay": 3, "fixed": {}}},
     "minimize": {"args": {"case_id": "number of an unsafe experiment"},
                  "does": "delta-debugs the case toward reference_values while it fails the same way (a collision "
                          "stays a collision); reports the minimal case and which factors are necessary (each with a "
-                         "counterfactual run). Costs up to ~20 runs"},
+                         "counterfactual run). Costs up to ~20 runs", "example": {"case_id": 3}},
     "counterfactual": {"args": {"case_id": "experiment number", "change": "{parameter: delta added to the case} (1-3)"},
-                       "does": "re-runs the case with the change and reports the outcome delta"},
-    "stop": {"args": {}, "does": "end the search early (unused budget is kept unused)"},
+                       "does": "re-runs the case with the change and reports the outcome delta",
+                       "example": {"case_id": 3, "change": {"reaction_delay_s": -0.2}}},
+    "stop": {"args": {}, "does": "end the search early (unused budget is kept unused)", "example": {}},
 }
 TURN_KEYS = {"hypothesis", "tool", "args", "why"}
 FINAL_KEYS = {"boundary", "claims", "explanation", "minimal_reproduction", "uncertainty", "next_tests"}
@@ -297,7 +304,8 @@ def _brief(e) -> dict:
 
 def _check_fixed(lab, fixed, param=None):
     if not isinstance(fixed, dict) or any(k not in SPACE or not _num(v) for k, v in fixed.items()):
-        return "fixed must map parameter names to numbers"
+        return (f"must be a JSON object mapping scenario parameters {sorted(SPACE)} to numbers"
+                + (" (got a string)" if isinstance(fixed, str) else ""))
     if param is not None and param in fixed:
         return f"{param} is both bisected and fixed"
     return None
@@ -310,7 +318,7 @@ def t_bisect(lab, turn, a, tool="bisect", steps_key="steps") -> dict:
         return {"error": f"param must be a free parameter, got {param!r}"}
     err = _check_fixed(lab, fixed, param)
     if err or not (_num(lo) and _num(hi) and lo < hi) or side not in ("lo", "hi") or not _int_in(steps, 1, 8):
-        return {"error": err or "need numbers lo < hi, safe_side 'lo'|'hi', steps 1-8"}
+        return {"error": (f"fixed {err}" if err else "need numbers lo < hi, safe_side 'lo'|'hi', steps 1-8")}
     base = lab.point(fixed, {param: lo})
     runs = []
     for _ in range(steps):
@@ -331,7 +339,7 @@ def t_grid(lab, turn, a) -> dict:
         return {"error": "need a parameter and 1-8 numeric values"}
     err = _check_fixed(lab, fixed, param)
     if err:
-        return {"error": err}
+        return {"error": f"fixed {err}"}
     runs = [lab.run(lab.point(fixed, {param: v}), turn, "grid") for v in values[:lab.remaining]]
     return {"param": param, "runs": [_brief(e) for e in runs]}
 
@@ -339,7 +347,7 @@ def t_grid(lab, turn, a) -> dict:
 def t_probe(lab, turn, a) -> dict:
     x = a.get("experiment")
     if _check_fixed(lab, x):
-        return {"error": "experiment must map parameter names to numbers"}
+        return {"error": "experiment " + _check_fixed(lab, x)}
     return {"runs": [_brief(lab.run(lab.point(x), turn, "probe"))]}
 
 
@@ -352,7 +360,7 @@ def t_sweep(lab, turn, a) -> dict:
         return {"error": "the goal fixes reaction_delay_s"}
     err = _check_fixed(lab, fixed, "initial_gap_m")
     if err or "reaction_delay_s" in fixed:
-        return {"error": err or "reaction_delay_s is swept, not fixed"}
+        return {"error": (f"fixed {err}" if err else None) or "reaction_delay_s is swept, not fixed"}
     out = {}
     for _ in range(steps):
         for d in delays:
@@ -412,7 +420,9 @@ def t_counterfactual(lab, turn, a, tool="counterfactual") -> dict:
     if not case or case["status"] != "ran":
         return {"error": "case_id must be an experiment that ran"}
     if not isinstance(ch, dict) or not 1 <= len(ch) <= 3 or any(k not in SPACE or not _num(v) for k, v in ch.items()):
-        return {"error": "change must map 1-3 parameter names to numeric deltas"}
+        bad = sorted(k for k in ch if k not in SPACE) if isinstance(ch, dict) else []
+        return {"error": f"change must map 1-3 of the six scenario parameters {sorted(SPACE)} to numeric deltas"
+                         + (f"; {bad} are not scenario parameters (measured outcomes cannot be changed)" if bad else "")}
     q = {**case["params"], **{k: round(case["params"][k] + v, 4) for k, v in ch.items()}}
     e = lab.run(q, turn, tool)
     res = {"case_id": case["n"], "change": ch, "run": e["n"], "base": _brief(case), "new": _brief(e)}
@@ -515,7 +525,9 @@ def user_msg(lab: Lab, lib_summary: list, tool_log: list) -> dict:
     return {"goal": g["text"], "parameter_space": {k: list(v) for k, v in SPACE.items()}, "fixed_by_goal": g["fixed"],
             "goal_ranges": {k: list(v) for k, v in g["ranges"].items()}, "reference_values": REFERENCE,
             "safety_definition": SAFETY_DEFINITION, "world": hunt.WORLD_NOTE, "tools": TOOLS,
-            "tool_note": "Parameters a call leaves out take reference_values; the goal's fixed values override those.",
+            "tool_note": "args is a JSON object shaped like the tool's example (numbers as numbers, objects as objects, never "
+                         "strings holding JSON). Parameters a call leaves out take reference_values; the goal's fixed "
+                         "values override those.",
             "failure_library": lib_summary, "experiments": [_row(e) for e in lab.hist],
             "tool_log": [{k: t[k] for k in ("turn", "tool", "args", "status", "J", "result")} for t in tool_log],
             "remaining_budget": lab.remaining}

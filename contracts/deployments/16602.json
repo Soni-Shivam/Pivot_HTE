@@ -4,5 +4,6 @@
   "setup": "0x04b02d9D9096394e04F5e31951375D721576A9e6",
   "chainId": 16602,
   "episodeRegistry": "0x23edb2e37F9a2a2b1DAaF0514b58E278f2FFF46A",
-  "episodeRegistryV2": "0xeE2260cE4835059F0e0f1FB9C9948Ca5a7d4b5A4"
+  "episodeRegistryV2": "0xeE2260cE4835059F0e0f1FB9C9948Ca5a7d4b5A4",
+  "agentMemoryRegistry": "0x7a8676D267f1aa17d6B55cF5BfcD2A9509b963e3"
 }

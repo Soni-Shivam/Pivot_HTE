@@ -1,0 +1,384 @@
+{
+ "agent_id": 579,
+ "claims": [
+  {
+   "agent_id": 579,
+   "artifact_digest": "56592f0463f1a04af3e339c1349cfd3aa7132eaafc8042493e61eb2b6ab79d8c",
+   "category": "low_friction",
+   "ci95": [
+    0.206549,
+    1.0
+   ],
+   "mean_speed_mps": 12.2066,
+   "model_id": "idm-follower",
+   "n_collisions": 1,
+   "n_tests": 1,
+   "n_unsafe": 1,
+   "rate": 1.0,
+   "record_indices": [
+    4
+   ],
+   "records_merkle_root": "0x791cef1cc90191f364e8cbd8c2cefa41f14e337e291f6a60b61abcf800d468de",
+   "safety_definition": "safe = no collision AND min bumper-to-bumper gap >= 2.0 m",
+   "schema": "faultline.memory.claim/v1",
+   "unsafe_ci95": [
+    0.206549,
+    1.0
+   ],
+   "unsafe_rate": 1.0,
+   "version": "1.0"
+  },
+  {
+   "agent_id": 579,
+   "artifact_digest": "56592f0463f1a04af3e339c1349cfd3aa7132eaafc8042493e61eb2b6ab79d8c",
+   "category": "hard_brake",
+   "ci95": [
+    0.094531,
+    0.905469
+   ],
+   "mean_speed_mps": 12.5064,
+   "model_id": "idm-follower",
+   "n_collisions": 1,
+   "n_tests": 2,
+   "n_unsafe": 2,
+   "rate": 0.5,
+   "record_indices": [
+    0,
+    2
+   ],
+   "records_merkle_root": "0x0f10580155e70348dab61ac39a916e3ea5b792d024f6f181314893b2c21f5823",
+   "safety_definition": "safe = no collision AND min bumper-to-bumper gap >= 2.0 m",
+   "schema": "faultline.memory.claim/v1",
+   "unsafe_ci95": [
+    0.34238,
+    1.0
+   ],
+   "unsafe_rate": 1.0,
+   "version": "1.0"
+  },
+  {
+   "agent_id": 579,
+   "artifact_digest": "56592f0463f1a04af3e339c1349cfd3aa7132eaafc8042493e61eb2b6ab79d8c",
+   "category": "lead_brake",
+   "ci95": [
+    0.0,
+    0.793451
+   ],
+   "mean_speed_mps": 11.3899,
+   "model_id": "idm-follower",
+   "n_collisions": 0,
+   "n_tests": 1,
+   "n_unsafe": 1,
+   "rate": 0.0,
+   "record_indices": [
+    6
+   ],
+   "records_merkle_root": "0x4a5ac73d69fc6a93c5b3d596cf49baa057f7a16f4025cb5cf7b00e9ae9807b1a",
+   "safety_definition": "safe = no collision AND min bumper-to-bumper gap >= 2.0 m",
+   "schema": "faultline.memory.claim/v1",
+   "unsafe_ci95": [
+    0.206549,
+    1.0
+   ],
+   "unsafe_rate": 1.0,
+   "version": "1.0"
+  },
+  {
+   "agent_id": 579,
+   "artifact_digest": "1f2328936cd0df03edf1036f4729e38b71e24966007d333d092561d23360938c",
+   "category": "low_friction",
+   "ci95": [
+    0.0,
+    0.793451
+   ],
+   "mean_speed_mps": 9.6878,
+   "model_id": "idm-follower",
+   "n_collisions": 0,
+   "n_tests": 1,
+   "n_unsafe": 0,
+   "rate": 0.0,
+   "record_indices": [
+    5
+   ],
+   "records_merkle_root": "0xb3ba00f8be29999205975258e92a2baa2b3806ac11d19ddc72cba2fdcc6c28fb",
+   "safety_definition": "safe = no collision AND min bumper-to-bumper gap >= 2.0 m",
+   "schema": "faultline.memory.claim/v1",
+   "unsafe_ci95": [
+    0.0,
+    0.793451
+   ],
+   "unsafe_rate": 0.0,
+   "version": "1.1"
+  },
+  {
+   "agent_id": 579,
+   "artifact_digest": "1f2328936cd0df03edf1036f4729e38b71e24966007d333d092561d23360938c",
+   "category": "hard_brake",
+   "ci95": [
+    0.0,
+    0.65762
+   ],
+   "mean_speed_mps": 8.9957,
+   "model_id": "idm-follower",
+   "n_collisions": 0,
+   "n_tests": 2,
+   "n_unsafe": 0,
+   "rate": 0.0,
+   "record_indices": [
+    1,
+    3
+   ],
+   "records_merkle_root": "0x23e15cc934a199172d908e7b9ee2d534cb3352c1d5631c3a10dff3993a442916",
+   "safety_definition": "safe = no collision AND min bumper-to-bumper gap >= 2.0 m",
+   "schema": "faultline.memory.claim/v1",
+   "unsafe_ci95": [
+    0.0,
+    0.65762
+   ],
+   "unsafe_rate": 0.0,
+   "version": "1.1"
+  },
+  {
+   "agent_id": 579,
+   "artifact_digest": "1f2328936cd0df03edf1036f4729e38b71e24966007d333d092561d23360938c",
+   "category": "lead_brake",
+   "ci95": [
+    0.0,
+    0.793451
+   ],
+   "mean_speed_mps": 8.4661,
+   "model_id": "idm-follower",
+   "n_collisions": 0,
+   "n_tests": 1,
+   "n_unsafe": 0,
+   "rate": 0.0,
+   "record_indices": [
+    7
+   ],
+   "records_merkle_root": "0x3fbf8f278ddf5b08e6848c2d930cb3c076c8d1628e42f12df008026333ad5522",
+   "safety_definition": "safe = no collision AND min bumper-to-bumper gap >= 2.0 m",
+   "schema": "faultline.memory.claim/v1",
+   "unsafe_ci95": [
+    0.0,
+    0.793451
+   ],
+   "unsafe_rate": 0.0,
+   "version": "1.1"
+  }
+ ],
+ "claims_root": "0xb310f6abbfbb117be034b28a4e1c6c29b0fd8528d9a0b1e94667e9f6426c51c6",
+ "explored_regions": {
+  "1.0/hard_brake": {
+   "box": {
+    "brake_onset_s": [
+     5.0,
+     5.0
+    ],
+    "ego_speed_mps": [
+     15.0,
+     15.0
+    ],
+    "friction_mu": [
+     0.8,
+     0.8
+    ],
+    "initial_gap_m": [
+     15.0,
+     30.0
+    ],
+    "lead_decel_mps2": [
+     6.0,
+     6.0
+    ],
+    "reaction_delay_s": [
+     0.6,
+     0.6
+    ]
+   },
+   "runs": 2
+  },
+  "1.0/lead_brake": {
+   "box": {
+    "brake_onset_s": [
+     5.0,
+     5.0
+    ],
+    "ego_speed_mps": [
+     15.0,
+     15.0
+    ],
+    "friction_mu": [
+     0.8,
+     0.8
+    ],
+    "initial_gap_m": [
+     12.0,
+     12.0
+    ],
+    "lead_decel_mps2": [
+     3.0,
+     3.0
+    ],
+    "reaction_delay_s": [
+     0.6,
+     0.6
+    ]
+   },
+   "runs": 1
+  },
+  "1.0/low_friction": {
+   "box": {
+    "brake_onset_s": [
+     5.0,
+     5.0
+    ],
+    "ego_speed_mps": [
+     15.0,
+     15.0
+    ],
+    "friction_mu": [
+     0.3,
+     0.3
+    ],
+    "initial_gap_m": [
+     30.0,
+     30.0
+    ],
+    "lead_decel_mps2": [
+     6.0,
+     6.0
+    ],
+    "reaction_delay_s": [
+     0.6,
+     0.6
+    ]
+   },
+   "runs": 1
+  },
+  "1.1/hard_brake": {
+   "box": {
+    "brake_onset_s": [
+     5.0,
+     5.0
+    ],
+    "ego_speed_mps": [
+     15.0,
+     15.0
+    ],
+    "friction_mu": [
+     0.8,
+     0.8
+    ],
+    "initial_gap_m": [
+     15.0,
+     30.0
+    ],
+    "lead_decel_mps2": [
+     6.0,
+     6.0
+    ],
+    "reaction_delay_s": [
+     0.6,
+     0.6
+    ]
+   },
+   "runs": 2
+  },
+  "1.1/lead_brake": {
+   "box": {
+    "brake_onset_s": [
+     5.0,
+     5.0
+    ],
+    "ego_speed_mps": [
+     15.0,
+     15.0
+    ],
+    "friction_mu": [
+     0.8,
+     0.8
+    ],
+    "initial_gap_m": [
+     12.0,
+     12.0
+    ],
+    "lead_decel_mps2": [
+     3.0,
+     3.0
+    ],
+    "reaction_delay_s": [
+     0.6,
+     0.6
+    ]
+   },
+   "runs": 1
+  },
+  "1.1/low_friction": {
+   "box": {
+    "brake_onset_s": [
+     5.0,
+     5.0
+    ],
+    "ego_speed_mps": [
+     15.0,
+     15.0
+    ],
+    "friction_mu": [
+     0.3,
+     0.3
+    ],
+    "initial_gap_m": [
+     30.0,
+     30.0
+    ],
+    "lead_decel_mps2": [
+     6.0,
+     6.0
+    ],
+    "reaction_delay_s": [
+     0.6,
+     0.6
+    ]
+   },
+   "runs": 1
+  }
+ },
+ "fingerprint_summary": {
+  "collision/ttc_collapse/friction_limited/braking_phase/after_lead_stopped": {
+   "1.0": 1
+  },
+  "collision/ttc_collapse/friction_limited/braking_phase/during_lead_braking": {
+   "1.0": 1
+  },
+  "margin/ttc_collapse/friction_limited/braking_phase/during_lead_braking": {
+   "1.0": 1
+  },
+  "margin/ttc_collapse/grip_available/braking_phase/after_lead_stopped": {
+   "1.0": 1
+  }
+ },
+ "memory_version": "idm-follower@1.1#2",
+ "merkle_scheme": "Merkle scheme (identical in packages/memory/src/merkle.ts; never re-serialize JSON across languages, Python prints\n35.0 where JS prints 35, so only raw bytes are hashed):\n  record_hash = sha256(raw UTF-8 bytes of one JSONL line, without the trailing newline)\n  leaves      = record hashes in file order\n  parent      = sha256(0x01 || left || right); an odd last node is carried up unchanged (no duplication)\n  root of []  = sha256(b\"\")\nA record line is canonical JSON (sort_keys, no spaces) starting with '{', so it can never be a 65-byte 0x01 node.\nClaims are hashed the same way over their canonical lines (`claim_lines` in public.json are those exact strings).\n",
+ "model_ref": {
+  "artifact_digest": "1f2328936cd0df03edf1036f4729e38b71e24966007d333d092561d23360938c",
+  "model_id": "idm-follower",
+  "params": {
+   "comfort_decel_mps2": 2.0,
+   "max_accel_mps2": 3.0,
+   "min_gap_m": 5.0,
+   "min_time_headway_s": 2.0
+  },
+  "source_sha256": {
+   "controller.py": "c37b935a38357b68a3a4ba4c2702fe4498846a6d181cffb97a3a8b86eb9747cb",
+   "experiment.py": "79291f3d4b18205357b15b1c61b479b1db753336dbaa4b5b99189031d1cd6dcb"
+  },
+  "version": "1.1"
+ },
+ "open_hypotheses": [],
+ "prev_snapshot_root": "0xabababababababababababababababababababababababababababababababab",
+ "record_count": 8,
+ "records_file_sha256": "83a0885b9059f5ec0bb30be3428a0ea027e9095320d12fc391dde93e737b0e92",
+ "records_root": "0xf563c47a87b3249bd0ec244f7948629dad13b5cc9472c2a0702ef8843ada0608",
+ "schema": "faultline.memory.snapshot/v1",
+ "seq": 2
+}

@@ -1,18 +1,19 @@
 # Why Arkiv
 
-The product promise is "no server of ours sees your model or your data", and that has to include the catalog. If
-listings lived in our database we would be the gatekeeper of what can be sold and a single point of censorship and
-failure (it would also break our CROPS claim).
+Faultline's safety claims ("idm-follower v1.1: 30 hard-brake tests, 0 collisions, 95 % CI [0, 11.4 %]") have to be
+**readable by people who don't trust the tester or the OEM**, **filterable** (by model, version, category, rate), and
+**owned** by the party making the claim. Arkiv gives all three without us running a server:
 
-Arkiv fits the catalog's shape exactly:
+- **Owned, attributable rows.** Each claim entity's `$owner` is the OEM wallet; a reader filters with
+  `ownedBy(oem)` and ignores anyone else writing the same schema tag. The same wallet owns ERC-8004 agent #579 and is
+  the only address the Galileo registry accepts anchors from, so "who said this" is one key across both chains.
+- **Queries, not blobs.** 0G Storage holds the evidence (sealed records, public summary) but you can't ask it "every
+  v1.1 claim with a collision rate under 1 %". Arkiv's indexed attributes answer that directly from a static page.
+- **Expiry that matches meaning.** A claim about one campaign should go stale (90 days); Arkiv expires it natively,
+  while the permanent evidence stays on 0G + Galileo.
+- **No backend.** The dashboard (`apps/memory-web`) reads Arkiv and Galileo straight from the browser (both RPCs answer
+  CORS preflights with `*`). Nothing for us to host, patch or be trusted for.
 
-- **Wallet-owned writes.** A listing is written by the seller's own wallet, so `$creator` is a cryptographic
-  statement of authorship that the client can check, not a field we vouch for.
-- **Expiration built in.** Offers have a validity window; Arkiv entities expire with them, so the catalog cleans itself.
-- **Queryable from the browser.** Indexed attributes (`category`, `task`, `architecture`, `seller`) give the browse
-  page real filtering with no backend, over a public RPC with CORS.
-- **Right split of data.** Arkiv holds small, public, searchable metadata; the heavy signed offer and encrypted model
-  live on 0G Storage, referenced by root. Private state never goes to Arkiv.
-
-Without Arkiv we would need either our own indexer (a server we run) or on-chain events scanned in the browser (no
-attribute queries, no expiry).
+What it would cost on Postgres: we would be the database operator. Readers would have to trust our rows, our
+timestamps, our deletions, and our uptime; there would be no owner signature on a row, and an OEM couldn't take its
+claims elsewhere.

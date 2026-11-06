@@ -1,45 +1,43 @@
-# Arkiv schema
+# Arkiv schema (Faultline)
 
-Defined in [`packages/integrations/src/arkiv.ts`](../packages/integrations/src/arkiv.ts) with `@arkiv-network/sdk` 1.0.1
-on the Rabdi testnet (chain 7794095). Only **public** data goes to Arkiv; private job state stays on the user's device
-or encrypted on 0G Storage.
+Defined in [`packages/memory/src/core.ts`](../packages/memory/src/core.ts) (`ClaimV1`) with `@arkiv-network/sdk` 1.0.1
+on the Rabdi testnet (chain 7794095). Writer = the model owner's (OEM's) wallet
+`0x8dac3a1fd3D7796254b84Ad70750430f67871069` (the `PRIVATE_KEY` wallet, which also owns ERC-8004 agent #579 on 0G
+Galileo). Only **aggregate, shareable** claims go to Arkiv; trajectories, configs, per-test parameters and the full
+record history are sealed (AES-256-GCM) on 0G Storage.
 
-## `sealedai.listing/v1` — one model offered for customization
-
-| Column | Type | Indexed | Meaning |
-|---|---|---|---|
-| `chainId` | u64 | | Settlement chain (16602, 0G Galileo) |
-| `escrow` | addr | | ERC-8183 escrow the offer pays through |
-| `seller` | addr | ✓ | Seller wallet (must equal the entity's `$creator`) |
-| `assetId` | key | ✓ | Namespaced asset id from the signed offer |
-| `assetVersion` | u64 | | Version of the model bundle |
-| `task` | str | ✓ | e.g. `text-classification` |
-| `architecture` | str | ✓ | e.g. `BertForSequenceClassification` |
-| `category` | str | ✓ | Marketplace category, e.g. `support-triage` |
-| `title` | str | | Display name (≤ 128 bytes, rendered as text) |
-| `parameters` | u64 | | Parameter count from the model card |
-| `price` | u256 | | Price in the payment token's base units |
-| `token` | addr | | Payment token |
-| `offerHash` | key | | EIP-712 hash of the signed Offer |
-| `offerRoot` | str | | 0G Storage root of the full signed Offer + public model card |
-| `validUntil` | u64 | | Offer expiry (unix seconds) |
-
-Expiration: the entity expires when the offer does (`ExpirationTime.fromSeconds(validUntil − now)`), so stale offers
-disappear from the catalog without anyone deleting them.
-
-## `sealedai.score/v1` — a buyer-reported result (schema defined; publishing is opt-in)
+## `faultline.claim/v1` — one safety claim per (model, version, category, campaign)
 
 | Column | Type | Indexed | Meaning |
 |---|---|---|---|
-| `listingKey` | key | ✓ | The listing that was customized |
-| `assetVersion` | u64 | | Model version evaluated |
-| `buyer` | addr | | Who reports the score |
-| `jobId` | u256 | | Escrow job |
-| `escrow` | addr | | Escrow contract |
-| `holdoutMacroF1` | dec | ✓ | Held-out score from the worker-signed receipt |
-| `n` | u64 | | Holdout rows |
-| `protocol` | str | | `sealedai/v1` |
-| `manifestRoot` | str | | 0G root of the public job manifest (salted commitments only) |
-| `receiptRoot` | str | | 0G root of the worker-signed receipt |
+| `model_id` | str | ✓ | e.g. `idm-follower` |
+| `version` | str | ✓ | e.g. `1.0`, `1.1` |
+| `category` | str | ✓ | `low_friction` (μ < 0.5), `slow_reaction` (delay ≥ 1 s), `hard_brake` (lead ≥ 6 m/s²), `lead_brake` (rest); first match wins |
+| `agent_id` | u64 | ✓ | ERC-8004 agent id of the tester (579) |
+| `campaign` | str | ✓ | memory version of the snapshot the claim comes from, e.g. `idm-follower@1.1#2` |
+| `n_tests` | u64 | ✓ | tests in this category for this version |
+| `n_collisions` | u64 | | collisions among them |
+| `rate` | dec | ✓ | collision rate `n_collisions / n_tests` (6 dp) |
+| `ci95_lo`, `ci95_hi` | dec | | Wilson 95 % interval of `rate` |
+| `n_unsafe` | u64 | | unsafe = collision OR min gap < 2 m |
+| `unsafe_rate` | dec | ✓ | `n_unsafe / n_tests` |
+| `mean_speed_mps` | dec | | efficiency: mean ego speed over the runs |
+| `artifact_digest` | str | | sha256 of the controller params + source (the model artifact tested) |
+| `public_root` | str | ✓ | 0G Storage root of the public summary JSON |
+| `sealed_root` | str | | 0G Storage root of the sealed snapshot (records + snapshot) |
+| `claims_root` | str | | Merkle root over all claim lines of the snapshot (anchored on Galileo) |
+| `records_merkle_root` | str | | Merkle root over this claim's records (auditor recomputes it from the sealed snapshot) |
+| `registry` | addr | | AgentMemoryRegistry on Galileo (`0x7a8676D267f1aa17d6B55cF5BfcD2A9509b963e3`) |
+| `anchor_seq` | u64 | | per-(agent, model) sequence of the anchor |
+| `anchor_tx` | str | | Galileo tx of the anchor |
 
-Scores are always labelled *buyer-reported*; PROTOCOL §10 defines when a "worker-signed" badge may be shown.
+Indexed columns are exactly the ones people filter on: model, version, category, campaign, sample size, rates, and the
+public root (to find every claim of one published snapshot).
+
+**Expiration: 90 days.** A regression claim is a statement about one model version on one campaign; a release cycle /
+quarterly re-test is the natural shelf life, after which a stale claim should disappear from queries rather than be
+read as current. The evidence does not expire: the anchor on Galileo and the roots on 0G Storage are permanent, so an
+expired claim can always be re-derived and re-published.
+
+Merkle scheme (same in Python and TS): `record_hash = sha256(raw JSONL line)`, `parent = sha256(0x01‖l‖r)`, odd node
+carried up, empty = `sha256("")`. Raw bytes only; JSON is never re-serialized across languages.

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https:; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Faultline Safety Memory</title>
+  <style>
+    :root { --bg:#f6f6f3; --card:#fff; --fg:#1c1f1e; --muted:#5d6663; --line:#dcdfdc; --ok:#1f6b3a; --bad:#a0302a; --warn:#9a6a00; --acc:#0d5f63; color-scheme: light; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#121615; --card:#1a201e; --fg:#e4ebe8; --muted:#9aa7a3; --line:#2c3633; --ok:#7fcf93; --bad:#ee8a83; --warn:#e6bd5c; --acc:#62c3bd; color-scheme: dark; } }
+    :root[data-theme="dark"] { --bg:#121615; --card:#1a201e; --fg:#e4ebe8; --muted:#9aa7a3; --line:#2c3633; --ok:#7fcf93; --bad:#ee8a83; --warn:#e6bd5c; --acc:#62c3bd; color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px 16px 64px; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 1100px; margin: 0 auto; }
+    h1 { margin: 0 0 4px; font-size: 26px; } h2 { font-size: 18px; margin: 0 0 10px; }
+    .sub { color: var(--muted); margin: 0 0 18px; }
+    section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 12px 0; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-top: 8px; }
+    input, select { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; }
+    button { margin-top: 10px; padding: 8px 14px; border: 0; border-radius: 6px; background: var(--acc); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: progress; }
+    .ok { color: var(--ok); } .bad { color: var(--bad); } .warn { color: var(--warn); } .muted { color: var(--muted); font-size: 13px; }
+    code { font-size: 12.5px; overflow-wrap: anywhere; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; } .row > * { flex: 1 1 180px; }
+    .table-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+    th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th { color: var(--muted); font-weight: 600; }
+    .bar { display: inline-block; height: 8px; border-radius: 4px; background: var(--bad); vertical-align: middle; margin-right: 6px; }
+    .bar.new { background: var(--ok); }
+    a { color: var(--acc); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Faultline safety memory</h1>
+  <p class="sub">Shareable regression claims for a driving controller, read live from Arkiv (one entity per model, version and category) and checked against the owner's memory anchors on 0G Galileo. No backend: this page talks to the public Arkiv and Galileo RPCs from your browser. Trajectories and configs are not here; they stay sealed on 0G Storage for auditors with the owner's key.</p>
+
+  <section>
+    <div class="row">
+      <div><label for="model">Model</label><select id="model"><option value="">any</option><option selected>idm-follower</option></select></div>
+      <div><label for="version">Version</label><select id="version"><option value="">any</option><option>1.0</option><option>1.1</option></select></div>
+      <div><label for="category">Category</label><select id="category"><option value="">any</option><option>low_friction</option><option>slow_reaction</option><option>hard_brake</option><option>lead_brake</option></select></div>
+    </div>
+    <div class="row">
+      <div><label for="owner">Claim owner (the OEM wallet; entities from anyone else are ignored)</label><input id="owner" value="0x8dac3a1fd3D7796254b84Ad70750430f67871069" autocomplete="off"></div>
+      <div><label for="akey">Arkiv access key (optional; empty = public, rate-limited endpoint; stays in this tab)</label><input id="akey" type="password" autocomplete="off"></div>
+    </div>
+    <button id="load">Query Arkiv and Galileo</button>
+    <p id="status" class="muted"></p>
+    <p class="muted">Query: <code id="query"></code></p>
+  </section>
+
+  <section>
+    <h2>v1.0 vs v1.1 by category</h2>
+    <div class="table-wrap"><table id="compare"><thead><tr><th>category</th><th>n</th><th>collisions v1.0</th><th>collisions v1.1</th><th>unsafe v1.0</th><th>unsafe v1.1</th><th>mean speed v1.0 → v1.1</th></tr></thead><tbody></tbody></table></div>
+    <p class="muted">Rates with Wilson 95 % intervals. Safe = no collision and min gap ≥ 2 m. The test set is failure-biased (it starts from v1.0's failure library), so rates compare versions; they are not field rates.</p>
+  </section>
+
+  <section>
+    <h2>Memory anchors on 0G Galileo</h2>
+    <div class="table-wrap"><table id="anchors"><thead><tr><th>seq</th><th>version</th><th>owner</th><th>prev root links</th><th>public root</th><th>sealed root</th><th>claims root</th><th>block</th></tr></thead><tbody></tbody></table></div>
+    <p class="muted" id="identity"></p>
+  </section>
+
+  <section>
+    <h2>Claim entities</h2>
+    <div class="table-wrap"><table id="claims"><thead><tr><th>entity</th><th>version</th><th>category</th><th>n</th><th>collisions</th><th>rate</th><th>ci95</th><th>anchor</th><th>public root matches anchor</th><th>expires (block)</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section>
+    <h2>Evidence</h2>
+    <ul class="muted">
+      <li><a href="https://github.com/Soni-Shivam/Pivot_HTE/blob/main/docs/evidence/faultline-memory.md" target="_blank" rel="noopener">faultline-memory.md</a> (model refs, regression table, request ids, signatures, auditor verify output)</li>
+      <li><a href="https://github.com/Soni-Shivam/Pivot_HTE/blob/main/docs/evidence/faultline-memory-regression.md" target="_blank" rel="noopener">faultline-memory-regression.md</a> (full regression report, 0G report and its audit)</li>
+      <li><a href="https://chainscan-galileo.0g.ai/address/0x7a8676D267f1aa17d6B55cF5BfcD2A9509b963e3" target="_blank" rel="noopener">AgentMemoryRegistry on chainscan</a> (verified source)</li>
+      <li><a href="https://github.com/Soni-Shivam/Pivot_HTE/blob/main/arkiv/how-you-use-arkiv.md" target="_blank" rel="noopener">How Faultline uses Arkiv</a></li>
+    </ul>
+  </section>
+</main>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

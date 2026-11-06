@@ -1,17 +1,19 @@
 # Reach
 
-**Who uses the catalog:** individuals and small teams who want to adapt an existing AI model to their own private
-data (support triage, document routing, moderation, domain classification) without handing that data to the model's
-owner, and model builders who want to license weights without ever shipping them.
+**Who reads the claims**
+- **OEMs / AV software teams** publish per-release safety claims for each controller version and compare releases
+  ("did v1.1 fix the v1.0 cut-in collisions? did it regress low-friction?").
+- **Insurers and fleet buyers** filter claims by model, version and category (and sample size) to price or accept a
+  release, without getting the OEM's trajectories or configs.
+- **Auditors / regulators** pick a claim, follow its `public_root` / `sealed_root` / `anchor_tx`, and, with the key the
+  OEM hands them, recompute every number from the sealed records (`npm run memory -- verify`).
 
-**What Arkiv makes possible for them:** a public, censorship-resistant shop window that anyone can read from a static
-page, where every listing is provably written by its seller and expires on its own. Any other front end can read the
-same `sealedai.listing/v1` entities and apply the same checks (`$creator == seller`, signed offer on 0G Storage), so
-the catalog isn't tied to our site.
+**What Arkiv makes possible for them:** a public, owner-signed, filterable list of safety claims that any front end can
+read from a static page, tied to permanent evidence on 0G Storage and an owner-only anchor on 0G Galileo.
 
-**Growth path:** more categories and task types (the schema already carries `task` and `architecture`), opt-in
-buyer-reported scores (`sealedai.score/v1`) linked to worker-signed receipts, and personal leaderboards built from a
-buyer's own completed jobs.
+**Growth path:** more categories and scenario families (cut-in, occlusion, multi-agent swarm from the CARLA runs),
+more models (`pdm-lite-lidar`), and third-party testers each writing claims under their own wallet and ERC-8004 id so
+readers can compare testers, not just models.
 
-**Today (testnet):** one seller wallet, one live listing, and one impostor listing used to prove the spoof check
-(see `how-you-use-arkiv.md`).
+**Today (testnet):** one OEM wallet, one model (`idm-follower`), two versions, four categories, 8 claim entities from
+one regression campaign (see `how-you-use-arkiv.md`).

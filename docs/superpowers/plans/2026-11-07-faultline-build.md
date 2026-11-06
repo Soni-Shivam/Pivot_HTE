@@ -194,7 +194,7 @@ def test_tracker_closing_speed_and_reset():
 - Produces in `controller.py`: `class IdmFollower: __init__(self, p: IdmParams, dt_s: float)`, `accel(self, v_ego: float, gap: float, v_lead: float) -> float` (IDM: `a_max*(1-(v/v0)^4-(s*/gap)^2)`, `s* = s0 + v*T + v*dv/(2*sqrt(a_max*b))`, clamped to `[-0.8*9.81*mu_cap, a_max]`, where the caller passes a reaction-delayed `(gap, v_lead)` using an internal FIFO of `round(reaction_delay_s/dt_s)` samples; expose `observe(gap, v_lead)` that pushes and returns the delayed pair); `class LeadLongitudinal: __init__(self, dt_s: float)`, `set_decel(self, decel_mps2: float)`, `step(self, v_now: float, v_hold: float) -> float` returning the target acceleration (hold `v_hold` with `MAINTAIN` via `kp=0.8*(v_hold - v_now)` clamped to `[-1.0, 1.5]`; otherwise `-decel` until `v_now <= 0.05`, then 0).
 - Produces in `world.py`: `class World(Protocol)` with `reset(self, s: Scenario) -> None`, `tick(self) -> "TickState"`, `set_lead_decel(self, decel_mps2: float | None) -> None` (`None` = MAINTAIN), `close(self) -> None`, property `t_s: float`; `@dataclass TickState(t_s, ego_x, ego_v, ego_a, lead_x, lead_v, lead_a, gt_gap, lidar_gap: float | None, lidar_closing: float | None, collision: bool)`; `class KinematicWorld(World)`: 1-D, semi-implicit Euler at `dt_s`, ego driven by `IdmFollower` using **true** gap/lead speed through the delay FIFO, `lidar_gap = gt_gap` (exact), `lidar_closing = ego_v - lead_v`, `collision = gt_gap <= 0`, `BRAKE_HARD` clamp `min(decel, 0.8*9.81*mu)`; bumper lengths: ego 4.9 m, lead 4.7 m (`gt_gap = lead_x - ego_x - (4.9+4.7)/2`).
 
-- [ ] **Step 1:** Write tests:
+- [x] **Step 1:** Write tests:
 ```python
 def test_idm_holds_desired_speed_when_free():   # gap 500 m, v_lead 20 → after 600 ticks |v_ego-20| < 0.2
 def test_idm_brakes_when_closing():            # v_ego 20, gap 15, v_lead 10 → accel < -2.0
@@ -206,8 +206,8 @@ def test_kinematic_world_maintain_then_brake_hard():
 def test_kinematic_world_is_deterministic():    # two fresh worlds, same decel schedule → identical TickState sequences (==)
 def test_brake_hard_is_clamped_by_friction():   # mu 0.3 → lead decel magnitude ≈ 0.8*9.81*0.3
 ```
-- [ ] **Step 2:** Run. Expected: FAIL. **Step 3:** Implement. **Step 4:** Run. Expected: PASS.
-- [ ] **Step 5:** Commit: `git commit -m "faultline: World protocol, kinematic world, IDM follower, lead controller"`.
+- [x] **Step 2:** Run. Expected: FAIL. **Step 3:** Implement. **Step 4:** Run. Expected: PASS.
+- [x] **Step 5:** Commit: `git commit -m "faultline: World protocol, kinematic world, IDM follower, lead controller"`.
 
 ### Task 6: Episode runner: checkpoint loop, safe-halt state machine, hash-chained log, bundle
 

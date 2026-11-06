@@ -82,13 +82,14 @@ class Designer:
         self.router = ZgRouter(base_url, api_key, model=model, timeout_s=timeout_s, http=http)  # its _post: same headers
         self.model, self.thinking = model, thinking
         self.max_tokens = 6000 if thinking else 600
+        self.final_max_tokens = 6000 if thinking else 2000  # bench-001: the final report was cut at 600 tokens
 
-    def call(self, system: str, user: dict) -> dict:
+    def call(self, system: str, user: dict, max_tokens: int | None = None) -> dict:
         """One Router call. Returns the trace record; `error` is None only for HTTP 200 with a request id and text."""
         body = {"model": self.model,
                 "messages": [{"role": "system", "content": system}, {"role": "user", "content": canonical(user)}],
                 "response_format": {"type": "json_object"}, "chat_template_kwargs": {"enable_thinking": self.thinking},
-                "temperature": 0, "max_tokens": self.max_tokens}
+                "temperature": 0, "max_tokens": max_tokens or self.max_tokens}
         rec = {"model": self.model, "thinking": self.thinking, "request_id": None, "provider": None, "zg_res_key": None,
                "http_status": None, "raw_sha256": None, "content": None, "reasoning_chars": 0, "usage": None,
                "user_sha256": hashlib.sha256(canonical(user).encode()).hexdigest(), "error": None}

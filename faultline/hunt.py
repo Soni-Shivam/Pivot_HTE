@@ -147,8 +147,8 @@ def run_designer(goal, designer: Designer, log: ChainLog, budget=None, on_step=N
     hist, hyps, calls, t0 = [], [], [], time.monotonic()
     out = {"method": "D-0G", "status": "completed", "reason": None, "final": None}
 
-    def call(kind, system, user, parse):
-        rec = designer.call(system, user)
+    def call(kind, system, user, parse, max_tokens=None):
+        rec = designer.call(system, user, max_tokens)
         obj, why = (None, rec["error"]) if rec["error"] else parse(rec["content"])
         calls.append(rec)
         entry = {"kind": kind, "goal": goal["id"], "turn": len(hist) + 1 if kind == "turn" else None, "source": "0g",
@@ -170,7 +170,7 @@ def run_designer(goal, designer: Designer, log: ChainLog, budget=None, on_step=N
             on_step(hist)
     if out["status"] == "completed":
         user = {**_user_msg(goal, hist, 0), "hypotheses": hyps}
-        obj, why, entry = call("final", FINAL_PROMPT, user, parse_final)
+        obj, why, entry = call("final", FINAL_PROMPT, user, parse_final, designer.final_max_tokens)
         log.append({**entry, "validity": None, "outcome": None})
         if obj is None:
             out.update(status="halted", reason=f"final report: {why}")

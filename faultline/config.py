@@ -38,4 +38,12 @@ def scenario_hash(s: Scenario) -> str:
     return hashlib.sha256(canonical(asdict(s)).encode()).hexdigest()
 
 
+def load_scenario(d: dict):
+    """scenario.json -> the family's frozen dataclass."""
+    if d.get("family") == "cut_in":
+        from faultline.cutin import CutInScenario
+        return CutInScenario(**d)
+    return Scenario(**d)
+
+
 DEMO = Scenario(seed=42)

@@ -29,11 +29,14 @@ def test_cluster_separates_two_cars_and_drops_specks():
     assert len(cl) == 2 and sorted(len(c) for c in cl) == sorted([len(a), len(b)])
 
 
-def test_fit_box_grows_unseen_faces_to_the_prior():
+def test_fit_box_anchors_on_the_near_faces():
     s, l, L, W = fit_box(car_points(15.0, 0.0)[:, :2], (0.0, 0.0))  # rear face only, straddling the sensor line
     assert abs(L - LEN_PRIOR) < 1e-9 and abs(s - (15.0 - 4.7 / 2 + LEN_PRIOR / 2)) < 1e-9 and abs(l) < 1e-9
     s, l, L, W = fit_box(car_points(15.0, 3.5)[:, :2], (0.0, 0.0))  # rear + right side visible
-    assert abs(L - 4.7) < 1e-9 and abs(W - WID_PRIOR) < 1e-9 and abs(l - 3.5) < 1e-9 and abs(s - 15.0) < 1e-9
+    # anchored on the near (rear) face with the prior length: the far end flickers with the side returns
+    assert L == LEN_PRIOR and W == WID_PRIOR and abs(l - 3.5) < 1e-9 and abs(s - (15.0 - 2.35 + LEN_PRIOR / 2)) < 1e-9
+    s, l, L, W = fit_box(car_points(20.0, 3.5, L=12.0)[:, :2], (0.0, 0.0))  # a bus: clearly longer than the prior
+    assert abs(L - 12.0) < 1e-9 and abs(s - 20.0) < 1e-9
 
 
 def test_tracker_velocity_yaw_and_confirmation():
@@ -77,3 +80,11 @@ def test_slow_object_snaps_to_lane_heading():
     for _ in range(20):  # stopped car, centre jitter of 5 cm
         out = tr.update(car_points(15 + rng.normal(0, 0.05), 0.5 + rng.normal(0, 0.05)), (0.0, 0.0))
     assert abs(out[0].yaw - 30.0) < 1e-9 and math.isclose(out[0].rel_yaw_deg, 0.0, abs_tol=1e-9)
+
+
+def test_roi_drops_roadside_clutter_but_keeps_cars():
+    tr = LidarTracker(0.05, l_min=-1.6, l_max=5.55)
+    pole = np.array([[8.0 + 0.1 * i, -1.58, 0.5 + 0.1 * j] for i in range(5) for j in range(10)])  # at the kerb
+    for _ in range(4):
+        out = tr.update(np.vstack([pole, car_points(15, 3.5)]), (1.5, 0.0))
+    assert len(out) == 1 and abs(out[0].l - 3.5) < 0.1

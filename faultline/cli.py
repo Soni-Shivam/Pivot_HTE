@@ -10,6 +10,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from faultline.chaos import MODES, TIMEOUT_S as CHAOS_TIMEOUT_S, FakeRouter
+from faultline import cutin
 from faultline.config import Scenario, canonical, scenario_hash
 from faultline.episode import _iso, run_episode
 from faultline.log import verify_chain
@@ -35,22 +36,30 @@ class MaintainBaseline:
     model = "scripted-baseline"
 
     def decide(self, obs, history, available):
-        return Decision(action="MAINTAIN", reason="ok", request_id=None, provider=None, zg_res_key=None,
+        # available[0] is MAINTAIN (lead_brake) / KEEP_LANE (cut_in)
+        return Decision(action=available[0], reason="ok", request_id=None, provider=None, zg_res_key=None,
                         model=self.model, latency_ms=0, http_status=None, raw_sha256=None, content=None,
                         ratelimit_remaining=None)
 
 
-def make_world(name: str, out: Path, view: bool, display: str = ":2"):
+def make_world(name: str, out: Path, view: bool, display: str = ":2", family: str = "lead_brake", degrade=None,
+               record: bool = True):
     if name == "kinematic":
+        if family == "cut_in":
+            return cutin.KinematicCutInWorld()
         from faultline.world import KinematicWorld
         return KinematicWorld()
-    from faultline.carla_world import CarlaWorld
     v = None
     if view:
         os.environ["DISPLAY"] = display
         from faultline.viewer import ChaseView
         v = ChaseView(out)
-    return CarlaWorld(recorder_path=out / "recorder.log", view=v)
+    rec = out / "recorder.log" if record else None
+    if family == "cut_in":
+        from faultline.carla_cutin import CutInCarlaWorld
+        return CutInCarlaWorld(recorder_path=rec, view=v, degrade=degrade)
+    from faultline.carla_world import CarlaWorld
+    return CarlaWorld(recorder_path=rec, view=v)
 
 
 def print_summary(out: Path, m: dict) -> None:
@@ -61,6 +70,8 @@ def print_summary(out: Path, m: dict) -> None:
     met = json.loads((out / "metrics.json").read_text())
     print(f"ccs {met['ccs']:.4f}  min_ttc_s {met['min_ttc_s']}  min_gap_m {met['min_gap_m']}  "
           f"perception {met['perception']}")
+    if "ground_truth" in met:
+        print(f"ground truth {met['ground_truth']}")
     print(f"\n{'cp':>3} {'action':<10} {'source':<17} {'reason':<12} {'request_id':<40} {'provider':<44} latency_ms")
     for line in (out / "decisions.jsonl").read_text().splitlines():
         d = json.loads(line)
@@ -79,22 +90,26 @@ def cmd_run(a) -> int:
         sys.exit(f"refusing to overwrite {out}")
     out.mkdir(parents=True, exist_ok=True)
     extra, fake = {}, None
+    from faultline.policy import SYSTEM_PROMPT
+    prompt = cutin.SYSTEM_PROMPT if a.family == "cut_in" else SYSTEM_PROMPT
     if a.decider == "maintain":
         decider = MaintainBaseline()
     elif a.chaos in FAKE_MODES:
         print(f"\033[31mCHAOS MODE: {a.chaos} (fake router, test only)\033[0m")
         fake = FakeRouter(a.chaos).__enter__()
-        decider, extra = ZgRouter(fake.url, "chaos-test", model=a.model, timeout_s=CHAOS_TIMEOUT_S), {"chaos": a.chaos}
+        decider, extra = ZgRouter(fake.url, "chaos-test", model=a.model, timeout_s=CHAOS_TIMEOUT_S,
+                                  system_prompt=prompt), {"chaos": a.chaos}
     else:
         url = UNREACHABLE_URL if a.chaos == "unreachable" else (a.router_url or os.environ.get("ZG_ROUTER_URL"))
         key = os.environ.get("ZG_API_KEY")
         if not url or not key:
             sys.exit("ZG_ROUTER_URL and ZG_API_KEY must be set in .env")
-        decider = ZgRouter(url, key, model=a.model)
-    s = Scenario(seed=a.seed)
+        decider = ZgRouter(url, key, model=a.model, system_prompt=prompt)
+    s = cutin.CutInScenario(seed=a.seed) if a.family == "cut_in" else Scenario(seed=a.seed)
+    mk = lambda: make_world(a.world, out, a.view, a.display, a.family)
     if not a.anchor:
         try:
-            m = run_episode(make_world(a.world, out, a.view, a.display), decider, s, out, extra=extra)
+            m = run_episode(mk(), decider, s, out, extra=extra)
         finally:
             if fake:
                 fake.__exit__()
@@ -110,7 +125,7 @@ def cmd_run(a) -> int:
                                                     "started_at": started_at, "preliminary": True}) + "\n")
     npm("commit", out)
     anc = json.loads((out / "anchor.json").read_text())
-    m = run_episode(make_world(a.world, out, a.view, a.display), decider, s, out, started_at=started_at,
+    m = run_episode(mk(), decider, s, out, started_at=started_at,
                     extra={"registry": anc["registry"], "commit_tx": anc["commitTx"]})
     print_summary(out, m)
     npm("publish", out)
@@ -132,12 +147,22 @@ def cmd_replay(a) -> int:
     if out.exists() and any(out.iterdir()):
         sys.exit(f"refusing to overwrite {out}")
     out.mkdir(parents=True, exist_ok=True)
-    r = replay(Path(a.run_dir), make_world(a.world, out, a.view, a.display), out)
+    fam = json.loads((Path(a.run_dir) / "scenario.json").read_text()).get("family", "lead_brake")
+    r = replay(Path(a.run_dir), make_world(a.world, out, a.view, a.display, fam), out)
     if a.world == "carla":
         r["playback_ok"] = playback(Path(a.run_dir))
         (out / "replay.json").write_text(json.dumps(r, sort_keys=True, separators=(",", ":")) + "\n")
     print(json.dumps(r, indent=2, sort_keys=True))
     return 0 if r["decisions_match"] else 1
+
+
+def cmd_occlusion(a) -> int:
+    from faultline.occlusion import sweep
+    out = Path(a.out or f"{a.run_dir.rstrip('/')}-occlusion")
+    summary = sweep(Path(a.run_dir), out, a.seed, a.only.split(",") if a.only else None,
+                    lambda deg, o: make_world("carla", o, False, family="cut_in", degrade=deg, record=False))
+    print(json.dumps(summary, indent=2, sort_keys=True))
+    return 0
 
 
 def cmd_playback(a) -> int:
@@ -160,6 +185,7 @@ def main(argv=None) -> int:
     r.add_argument("--chaos", choices=["none", "unreachable", *FAKE_MODES], default="none",
                    help="unreachable = real refused connection; the others use an in-process fake router (test only)")
     r.add_argument("--decider", choices=["0g", "maintain"], default="0g")
+    r.add_argument("--family", choices=["lead_brake", "cut_in"], default="lead_brake")
     r.add_argument("--view", action="store_true", help="chase-camera window + screen.mp4 (CARLA only)")
     r.add_argument("--anchor", action="store_true", help="Galileo commit before the loop, publish + finalize after")
     r.add_argument("--display", default=":2", help="X display for --view (the VNC desktop)")
@@ -171,6 +197,12 @@ def main(argv=None) -> int:
     rp.add_argument("--view", action="store_true")
     rp.add_argument("--display", default=":2")
     rp.set_defaults(fn=cmd_replay)
+    oc = sub.add_parser("occlusion", help="LiDAR-degradation sweep on a recorded cut-in episode (replayed decisions)")
+    oc.add_argument("run_dir")
+    oc.add_argument("--seed", type=int, default=0, help="seed of the point-dropout RNG")
+    oc.add_argument("--out")
+    oc.add_argument("--only", help="comma-separated condition names (default: all)")
+    oc.set_defaults(fn=cmd_occlusion)
     pb = sub.add_parser("playback", help="play runs/<id>/recorder.log on the CARLA server")
     pb.add_argument("run_dir")
     pb.set_defaults(fn=cmd_playback)

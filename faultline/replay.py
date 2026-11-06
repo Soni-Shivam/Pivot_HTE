@@ -5,7 +5,7 @@ import json
 import sys
 from pathlib import Path
 
-from faultline.config import Scenario, canonical
+from faultline.config import canonical, load_scenario
 from faultline.episode import run_episode
 from faultline.log import verify_chain
 from faultline.router import Decision
@@ -38,7 +38,7 @@ def replay(run_dir: Path, world, out_dir: Path) -> dict:
     manifest = json.loads((run_dir / "manifest.json").read_text())
     if not verify_chain(run_dir / "decisions.jsonl", manifest["log_head"]):
         raise ValueError("log chain broken")
-    scenario = Scenario(**json.loads((run_dir / "scenario.json").read_text()))
+    scenario = load_scenario(json.loads((run_dir / "scenario.json").read_text()))
     run_episode(world, RecordedDecider(run_dir / "decisions.jsonl"), scenario, out_dir)
 
     a, b = _lines(run_dir / "trajectory.jsonl"), _lines(out_dir / "trajectory.jsonl")

@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-CELL_M = 0.5
+CELL_M = (1.5, 0.5)  # along x across the lane: a car's side seen at a grazing angle has ~1 m between returns
 MIN_POINTS = 3
 H_MIN, H_MAX = 0.3, 2.5  # m above the road: below is ground, above is not a car
 LEN_PRIOR, WID_PRIOR, HALF_HEIGHT = 4.6, 1.9, 0.75
@@ -23,11 +23,12 @@ CONFIRM_HITS, MAX_MISSES = 3, 4
 YAW_EMA, YAW_CLIP_DEG, SLOW_MPS = 0.3, 40.0, 2.0
 
 
-def cluster_bev(sl: np.ndarray, cell: float = CELL_M, min_points: int = MIN_POINTS) -> list[np.ndarray]:
-    """Index arrays of 8-connected occupied grid cells over BEV points (N x 2); clusters below min_points dropped."""
+def cluster_bev(sl: np.ndarray, cell=CELL_M, min_points: int = MIN_POINTS) -> list[np.ndarray]:
+    """Index arrays of 8-connected occupied grid cells (size `cell` = (along, across)) over BEV points (N x 2);
+    clusters below min_points dropped."""
     if len(sl) == 0:
         return []
-    keys = np.floor(sl / cell).astype(np.int64)
+    keys = np.floor(sl / np.asarray(cell, dtype=float)).astype(np.int64)
     cells: dict[tuple, list] = {}
     for i, k in enumerate(map(tuple, keys)):
         cells.setdefault(k, []).append(i)
@@ -51,27 +52,24 @@ def cluster_bev(sl: np.ndarray, cell: float = CELL_M, min_points: int = MIN_POIN
     return out
 
 
+def _extent(lo: float, hi: float, sensor: float, prior: float, slack: float) -> tuple[float, float]:
+    """(centre, size) along one axis. A face turned away from the sensor is unobserved, so the box is anchored on the
+    near face with the prior size unless clearly more was seen (> prior + slack): the near face is the stable
+    measurement, the far extent flickers with the number of side returns."""
+    obs = hi - lo
+    size = obs if obs > prior + slack else prior
+    if lo > sensor:
+        return lo + size / 2, size
+    if hi < sensor:
+        return hi - size / 2, size
+    return (lo + hi) / 2, max(obs, prior)  # straddles the sensor: both ends of this axis are visible
+
+
 def fit_box(sl: np.ndarray, sensor_sl: tuple[float, float]) -> tuple[float, float, float, float]:
-    """Lane-aligned box (s_centre, l_centre, length, width) of one cluster seen from the sensor at `sensor_sl`.
-    Faces turned away from the sensor are not observed, so the box grows away from the sensor to the car prior."""
-    s0, s1 = sl[:, 0].min(), sl[:, 0].max()
-    l0, l1 = sl[:, 1].min(), sl[:, 1].max()
-    ss, ls = sensor_sl
-    if s0 > ss:  # ahead: rear face seen
-        s1 = max(s1, s0 + LEN_PRIOR)
-    elif s1 < ss:  # behind: front face seen
-        s0 = min(s0, s1 - LEN_PRIOR)
-    else:
-        c = (s0 + s1) / 2
-        s0, s1 = min(s0, c - LEN_PRIOR / 2), max(s1, c + LEN_PRIOR / 2)
-    if l0 > ls:  # to the left: right side seen
-        l1 = max(l1, l0 + WID_PRIOR)
-    elif l1 < ls:
-        l0 = min(l0, l1 - WID_PRIOR)
-    else:  # straddles the sensor's line: the full width of the facing side is visible
-        c = (l0 + l1) / 2
-        l0, l1 = min(l0, c - WID_PRIOR / 2), max(l1, c + WID_PRIOR / 2)
-    return (s0 + s1) / 2, (l0 + l1) / 2, s1 - s0, l1 - l0
+    """Lane-aligned box (s_centre, l_centre, length, width) of one cluster seen from the sensor at `sensor_sl`."""
+    s_c, length = _extent(sl[:, 0].min(), sl[:, 0].max(), sensor_sl[0], LEN_PRIOR, 0.6)
+    l_c, width = _extent(sl[:, 1].min(), sl[:, 1].max(), sensor_sl[1], WID_PRIOR, 0.4)
+    return s_c, l_c, length, width
 
 
 @dataclass
@@ -124,21 +122,26 @@ class Track:
 
 
 class LidarTracker:
-    """`to_world(s, l) -> (x, y, z, route_yaw_deg)` maps route coordinates to the world (None = leave world fields 0)."""
+    """`to_world(s, l) -> (x, y, z, route_yaw_deg)` maps route coordinates to the world (None = leave world fields 0).
+    [l_min, l_max] is the drivable region of interest (e.g. the ego lane and the adjacent same-direction lane), so
+    kerbs, poles and parked cars on the sidewalk never become tracks."""
 
-    def __init__(self, dt_s: float, l_max: float, to_world=None):
+    def __init__(self, dt_s: float, l_max: float, to_world=None, l_min: float | None = None):
         self.dt, self.l_max, self.to_world = dt_s, l_max, to_world
+        self.l_min = -l_max if l_min is None else l_min
         self.tracks: list[Track] = []
         self.next_id = 1
 
     def detect(self, slh: np.ndarray, sensor_sl, ego_sl=None, ego_half=(2.6, 1.2)) -> list[tuple]:
         ss, ls = sensor_sl
-        m = (slh[:, 2] >= H_MIN) & (slh[:, 2] <= H_MAX) & (np.abs(slh[:, 1]) <= self.l_max) & \
+        m = (slh[:, 2] >= H_MIN) & (slh[:, 2] <= H_MAX) & (slh[:, 1] >= self.l_min) & (slh[:, 1] <= self.l_max) & \
             (slh[:, 0] - ss >= -20.0) & (slh[:, 0] - ss <= 60.0)
         if ego_sl is not None:  # never cluster the ego's own body
             m &= ~((np.abs(slh[:, 0] - ego_sl[0]) <= ego_half[0]) & (np.abs(slh[:, 1] - ego_sl[1]) <= ego_half[1]))
         sl = slh[m, :2]
-        return [fit_box(sl[idx], sensor_sl) for idx in cluster_bev(sl)]
+        boxes = [fit_box(sl[idx], sensor_sl) for idx in cluster_bev(sl)]
+        # a box grown out of the ROI from a few edge returns (kerb poles, fences) is roadside clutter, not a car
+        return [b for b in boxes if self.l_min <= b[1] <= self.l_max]
 
     def update(self, slh: np.ndarray, sensor_sl, ego_sl=None, z_world: float = 0.0) -> list[Track]:
         dets = self.detect(slh, sensor_sl, ego_sl)

@@ -89,7 +89,7 @@ def run_episode(world, decider, scenario, out_dir: Path, clock=time, started_at:
     world.reset(s)
     state = "READY"
     n, last, k = 0, None, 0
-    items, decels = [], {"0g": 0, "none": 0, "scripted-baseline": 0}
+    items, decels = [], {"0g": 0, "none": 0, "scripted-baseline": 0, "replayed": 0}
     lead_decelerating, onset_t, reaction_delay, min_ttc, prev_a = False, None, None, None, None
     halt_n, stopped_n, collision = None, 0, False
     rows = []

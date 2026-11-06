@@ -78,6 +78,11 @@ class Config:
         -4.91381935e-12
     ])
     throttle_threshold_during_forecasting = 0.3
+    # faultline: not in the source. The regression was fitted on CARLA 0.9.x; on 0.10 (UE5/Chaos) its steady-state
+    # throttle at 8 m/s overshoots and the overspeed rule then brakes fully on ~20% of ticks. Scaling partial
+    # throttle (full throttle untouched) restores a steady hold. Measured on Town10 road 7 at 8 m/s, 6 s window:
+    # scale 1.0 -> 22% full-brake ticks, 0.5 -> 3%, 0.35 -> 0% (speed 8.02 +- 0.05 m/s).
+    throttle_scale = 0.35
     ego_vehicles_route_point_search_distance = 4 * points_per_meter
     leading_vehicles_max_route_distance = 2.5
     leading_vehicles_max_route_angle_distance = 35.
@@ -354,6 +359,8 @@ class PDMLite:
                                                               target_speed)
         self.target_speed_out = float(target_speed)
         throttle, control_brake = self._longitudinal_controller.get_throttle_and_brake(brake, target_speed, ego_speed)
+        if throttle < 1.0:  # faultline: CARLA 0.10 re-tune, see Config.throttle_scale
+            throttle *= self.config.throttle_scale
         steer = round(self._turn_controller.step(route_np, ego_speed, ego_position, compass), 3)
         control = carla.VehicleControl()
         control.steer = steer  # faultline: no steer noise

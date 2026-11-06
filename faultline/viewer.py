@@ -67,13 +67,15 @@ class ChaseView:
         ppm = f"P6 {W} {H} 255 ".encode() + bgra[:, :, 2::-1].tobytes()
         self.photo = tk.PhotoImage(data=ppm, format="PPM")
         self.cv.itemconfig(self.img_item, image=self.photo)
-        dec = world.kin.lead.decel
-        ctl = "MAINTAIN" if not dec else ("SAFE_HALT" if dec == SAFE_HALT_DECEL else NAMES.get(dec, "BRAKE_HARD"))
+        ctl = getattr(world, "control_label", None)  # cut-in world: the adversary's current action
+        if ctl is None:
+            dec = world.kin.lead.decel
+            ctl = "MAINTAIN" if not dec else ("SAFE_HALT" if dec == SAFE_HALT_DECEL else NAMES.get(dec, "BRAKE_HARD"))
         gap = "  --  " if st.lidar_gap is None else f"{st.lidar_gap:6.2f}"
         ttc = f"{st.lidar_gap / st.lidar_closing:5.2f}" if st.lidar_gap and st.lidar_closing and st.lidar_closing > 0.05 else "  -- "
         self._decision_line()
         self.cv.itemconfig(self.hud1, text=f"t {st.t_s:5.2f} s   LiDAR gap {gap} m   TTC {ttc} s   ego {st.ego_v:5.2f} m/s"
-                                            f"   lead {st.lead_v:5.2f} m/s   lead control {ctl}"
+                                            f"   adversary {st.lead_v:5.2f} m/s   control {ctl}"
                                             + ("   COLLISION" if st.collision else ""))
         self.cv.itemconfig(self.hud2, text="0G " + self.last)
         self.root.lift()

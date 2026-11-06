@@ -43,6 +43,7 @@ class CarlaWorld:
         self.map_name, self.recorder_path, self.idm_params = map_name, recorder_path, idm
         self.world = self.client.get_world()
         self.actors, self.recording, self.on_tick = [], False, None
+        self.tracks, self.last_decision, self.last_scan = [], None, None  # display hooks (viewer / ROS bridge)
 
     def _candidates(self, m):
         out = []
@@ -58,7 +59,8 @@ class CarlaWorld:
                 out.append(wp)
         return sorted(out, key=lambda w: (w.road_id, w.lane_id, w.transform.location.x, w.transform.location.y))
 
-    def reset(self, s: Scenario) -> None:
+    def _acquire(self, s) -> None:
+        """Exclusive flock on the shared server, then synchronous mode at the scenario's dt (undone in close())."""
         self.s = s
         self._lock = open(LOCK_PATH, "w")
         fcntl.flock(self._lock, fcntl.LOCK_EX)  # blocks while another faultline process drives CARLA
@@ -67,6 +69,9 @@ class CarlaWorld:
         st = self.world.get_settings()
         st.synchronous_mode, st.fixed_delta_seconds = True, s.dt_s
         self.world.apply_settings(st)
+
+    def reset(self, s: Scenario) -> None:
+        self._acquire(s)
         cands = self._candidates(self.world.get_map())
         route = [cands[s.seed % len(cands)]]
         while len(route) * ROUTE_STEP_M < ROUTE_LEN_M:  # at a junction take the straightest branch

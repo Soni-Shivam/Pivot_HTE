@@ -27,6 +27,7 @@ STIM_DECEL_MPS2 = 1.0  # lead decel / ego decel step that counts as a stimulus /
 MAX_DELAY_S = 2.5
 MIN_EVENTS, MIN_FOLLOW = 1, 5
 ESCAPE_H_S = 4.0
+BRAKE_LEVELS = (1.0, 0.75, 0.5, 0.25, 0.0)  # fractions of the escape brake tried in turn
 
 
 def _g(r, k):
@@ -147,8 +148,13 @@ def evaluate(world, last, s, available: dict, model: dict, used=(), horizon_s: f
     cands = []
     for combo in itertools.product(*opts):
         b = _rollout(world, last, s, cars, combo, _ego_behaviour(model, dt, s.friction_mu), horizon_s)
-        e = _rollout(world, last, s, cars, combo, _BestResponse(min(last.ego_a, 0.0), model["reaction_delay_s"],
-                                                                 brake, dt), ESCAPE_H_S)
+        # best response = any brake level after the delay (full braking alone can get the ego rear-ended by a
+        # car behind it that may brake less hard: smart-tac-05/07 v2 had 0 fair joints that way)
+        for f in BRAKE_LEVELS:
+            e = _rollout(world, last, s, cars, combo, _BestResponse(min(last.ego_a, 0.0), model["reaction_delay_s"],
+                                                                     f * brake, dt), ESCAPE_H_S)
+            if not e["collision"]:
+                break
         escapable = not e["collision"] or lane_free
         cands.append({"actions": dict(zip(cars, combo)), "min_ttc_s": _r(b["min_ttc"]),
                       "min_gap_in_path_m": _r(b["min_gap"]), "collision": b["collision"],

@@ -2,6 +2,7 @@
 # Every 5 min: push local build/faultline to pivot/main if it is a fast-forward; never force. Divergence is logged, not resolved.
 cd "$(dirname "$0")/.." || exit 1
 while true; do
+  nice -n 10 python3 scripts/publish_videos.py --commit >/dev/null 2>&1 || true  # new run videos -> videos/
   git fetch -q pivot main 2>/dev/null
   L=$(git rev-parse build/faultline); R=$(git rev-parse pivot/main 2>/dev/null)
   if [ "$L" != "$R" ]; then

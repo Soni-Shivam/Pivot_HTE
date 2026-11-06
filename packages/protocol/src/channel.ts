@@ -2,7 +2,7 @@
 // attested worker key and signed by the sender's wallet; every reply is ECIES-encrypted to a key the sender chose.
 // Proxies, hosts and TLS terminators only ever see ciphertext.
 import { encrypt, decrypt } from 'eciesjs'
-import { keccak256, recoverMessageAddress, bytesToHex, hexToBytes, type Address, type Hex } from 'viem'
+import { keccak256, recoverMessageAddress, bytesToHex, hexToBytes, concatHex, stringToHex, type Address, type Hex } from 'viem'
 import { randomBytes } from '@noble/hashes/utils.js'
 import { canonical } from './canonical.ts'
 
@@ -45,3 +45,6 @@ export const openReply = <T = unknown>(privKey: Hex, body: Uint8Array) => JSON.p
 
 export class ChannelError extends Error {}
 export { hexToBytes }
+
+/** What a worker signs to prove it holds its key for a fresh nonce (/v1/challenge). */
+export const challengeDigest = (nonce: Hex) => keccak256(concatHex([stringToHex('sealedai.challenge'), nonce]))

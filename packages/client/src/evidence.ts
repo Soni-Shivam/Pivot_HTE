@@ -4,7 +4,8 @@ import { verify as dcapVerify, getCollateral, PHALA_PCCS_URL, type Collateral } 
 import { sha512, sha384 } from '@noble/hashes/sha2.js'
 import { bytesToHex } from '@noble/hashes/utils.js'
 import { publicKeyToAddress } from 'viem/accounts'
-import { keccak256, recoverMessageAddress, concatHex, stringToHex, type Address, type Hex } from 'viem'
+import { recoverMessageAddress, type Address, type Hex } from 'viem'
+import { challengeDigest } from '@sealedai/protocol'
 
 export const RUNTIME_NAMES: Record<number, string> = { 0: 'none (no TEE)', 1: 'TAPP TDX+GPU', 2: 'TAPP TDX', 3: '0G sealed sandbox', 4: 'dstack TDX+GPU' }
 
@@ -41,7 +42,7 @@ function equalBytes(a: Uint8Array, b: Uint8Array) {
   return d === 0
 }
 
-export const challengeDigest = (nonce: Hex) => keccak256(concatHex([stringToHex('sealedai.challenge'), nonce]))
+export { challengeDigest }
 
 /** The worker must prove it holds the key the evidence names, for this exact nonce. */
 export async function verifyChallenge(ev: WorkerEvidence, nonce: Hex, signature: Hex) {

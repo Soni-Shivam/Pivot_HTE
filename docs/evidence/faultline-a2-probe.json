@@ -1,0 +1,44 @@
+{
+  "status": 200,
+  "request_id": "7daefcd6-96f6-478b-81e3-7507c037dad4",
+  "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+  "zg_res_key": "163f9a49-4994-4e4e-8626-5f310f829a8c",
+  "svc_url": "https://compute-network-20.integratenetwork.work",
+  "sig": {
+    "text": "zg-sig-v1/e2ee-ct:722ae25c41a76d22801514878663fe01df9855c4df3cf69e9ea909f54a5e6ad1:e7ab870ba57e582d03cd8e9efd2c4935a519dac8f623f3011166dabd110bf6af",
+    "signature": "0x0258af1e0942d86caa1bd67bd71d208ee6795d8d3031d592a3314f52c5640952273aeb6fda92cc458905543f9cb7448d45e11423570a850b2908fe29c29ff5091b",
+    "signing_address": "0xddaeaac4d8525d72dfd20cc6de0f28eb3d320bfb",
+    "signing_algo": "ecdsa"
+  },
+  "signer_ok": false,
+  "signedReqHash": "722ae25c41a76d22801514878663fe01df9855c4df3cf69e9ea909f54a5e6ad1",
+  "signedRespHash": "e7ab870ba57e582d03cd8e9efd2c4935a519dac8f623f3011166dabd110bf6af",
+  "reqVariant": {
+    "sent": "e473384250b07b4c17936aac06322c3b727aeea585e33b3a4d74b5d779693878"
+  },
+  "respVariants": {
+    "raw": "9089b13911f29b11fe57d838d274946656787c57cd405ee484a38f0bba40c1e6",
+    "noTrace_compact": "378a4953e3cbf44918347cc3463d125e96ff608b16a4084829f4ea00bf77c981",
+    "noTrace_indent2": "81cc2b2f93b512118280020129b113e73453926cd2fd6a584fdd8817682b5804",
+    "noTrace_compact_nl": "a3ad77c069d1a48c6a9bb0778dc1b95d1f2a8c180bfc23fa40c8f7782aa15930",
+    "raw_strip": "378a4953e3cbf44918347cc3463d125e96ff608b16a4084829f4ea00bf77c981",
+    "content_only": "dd3b78abf67553e14a671f906855ef9d8b4b096598d4bea4e3fb133a01d03899"
+  },
+  "matches": [],
+  "reqMatch": false,
+  "raw_b64": "eyJjaG9pY2VzIjpbeyJmaW5pc2hfcmVhc29uIjoic3RvcCIsImluZGV4IjowLCJsb2dwcm9icyI6bnVsbCwibWF0Y2hlZF9zdG9wIjoyNDgwNDYsIm1lc3NhZ2UiOnsiY29udGVudCI6IntcImFjdGlvblwiOiBcIk1BSU5UQUlOXCIsIFwid2h5XCI6IFwidGVzdFwifSIsInJlYXNvbmluZ19jb250ZW50IjpudWxsLCJyb2xlIjoiYXNzaXN0YW50IiwidG9vbF9jYWxscyI6bnVsbH19XSwiY3JlYXRlZCI6MTc5NDAwMTc2NiwiaWQiOiJjaGF0Y21wbC0xNjNmOWE0OS00OTk0LTRlNGUtODYyNi01ZjMxMGY4MjlhOGMiLCJtZXRhZGF0YSI6eyJ3ZWlnaHRfdmVyc2lvbiI6ImRlZmF1bHQifSwibW9kZWwiOiIwZ20tMS4wLTM1Yi1hM2IiLCJvYmplY3QiOiJjaGF0LmNvbXBsZXRpb24iLCJ1c2FnZSI6eyJjb21wbGV0aW9uX3Rva2VucyI6MTUsInByb21wdF90b2tlbnMiOjU5LCJwcm9tcHRfdG9rZW5zX2RldGFpbHMiOm51bGwsInJlYXNvbmluZ190b2tlbnMiOjAsInRvdGFsX3Rva2VucyI6NzR9LCJ4XzBnX3RyYWNlIjp7ImJpbGxpbmciOnsiY3VycmVuY3kiOiJ1c2QiLCJpbnB1dF9jb3N0IjoiNSIsIm91dHB1dF9jb3N0IjoiNyIsInRvdGFsX2Nvc3QiOiIxMiIsInRvdGFsX2Nvc3RfdXNkX21pY3JvIjoiMTIifSwicHJvdmlkZXIiOiIweGY0RkI4ZDJiRDg1NmU2NzJiNWY5ODQ4YjBlRDIzNUEyMDA3OUIyNTAiLCJyZXF1ZXN0X2lkIjoiN2RhZWZjZDYtOTZmNi00NzhiLTgxZTMtNzUwN2MwMzdkYWQ0In19",
+  "headers": {
+    "content-length": "738",
+    "content-type": "application/json",
+    "date": "Fri, 06 Nov 2026 21:49:27 GMT",
+    "x-0g-e2ee": "sealed",
+    "x-0g-gateway-instance": "3dabda3e87804111350bbd06e9e9cff5cfea2b87",
+    "x-provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+    "x-ratelimit-limit-requests": "500",
+    "x-ratelimit-remaining-requests": "499",
+    "x-ratelimit-reset-requests": "2026-11-06T21:50:00Z",
+    "x-request-id": "61a630578d673a0c, 7daefcd6-96f6-478b-81e3-7507c037dad4",
+    "zg-res-key": "163f9a49-4994-4e4e-8626-5f310f829a8c"
+  },
+  "probe": "packages/episode/a2probe (one-off, 2026-11-06T21:49Z UTC): one private-tier Router call, signature fetched at once from the provider"
+}

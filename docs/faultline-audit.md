@@ -210,3 +210,42 @@ Already works: 2 `ScenarioCommitted` and 2 `EpisodeFinalized` events on `0x23edb
 - Built verifier page in a headless Chromium against the live demo-002 root:
   - Merkle root recomputed ✓, hashes ✓, metrics ✓, aggregates ✓, pinned registry ✓
   - signatures ✗ 0/8 (published before the archive existed)
+
+---
+
+## 2026-11-07 follow-up (trust agent): A2 live probe
+
+**Probe.** One private-tier Router call (same body shape as `faultline/router.py`), signature fetched seconds later from
+`https://compute-network-20.integratenetwork.work/v1/proxy/signature/<Zg-Res-Key>`. Evidence (full response bytes,
+headers without credentials, signature): `docs/evidence/faultline-a2-probe.json`.
+- request id `7daefcd6-96f6-478b-81e3-7507c037dad4`, provider `0xf4FB8d2bD856e672b5f9848b0eD235A20079B250`,
+  `Zg-Res-Key` `163f9a49-4994-4e4e-8626-5f310f829a8c`, 2026-11-06T21:49:27Z
+- response header `x-0g-e2ee: sealed`
+- signed `text` = `zg-sig-v1/e2ee-ct:722ae25c…6ad1:e7ab870b…f6af`; EIP-191 signer recovers to
+  `0xDdaEaac4…0Bfb` = on-chain `teeSignerAddress`
+
+**Result: no match.** None of these equals either hash in `text`: the raw Router body, the body with `x_0g_trace`
+removed (re-serialized compact, indent 2, trailing newline, and textually cut from the raw bytes, which equal the
+compact form), the message content alone, or our request bytes.
+
+**Why (source).** The Router now seals every private-tier turn end-to-end to the provider enclave (broker
+`docs/design/e2ee.md` @ `56f24ba4`, §"Response signature"): for a sealed turn `signChatE2EE` signs
+`zg-sig-v1/e2ee-ct:<sha256(aad‖ciphertext) of the sealed request>:<same of the sealed response>`. The E2EE client is
+the Router, so only the Router holds those ciphertext bytes; what we receive is the Router's decrypted re-encoding.
+No transformation of our bytes can match. Content binding through the Router as we call it is impossible, so the
+check stays **off**; nothing claims it.
+
+**Side effect found and fixed.** `tee.ts SIGNED_TEXT` only accepted the plaintext form `<64hex>:<64hex>`, so every
+signature archived from a run today would have shown ✗. It now also accepts the `zg-sig-v1/e2ee-ct:` scheme (same
+EIP-191 signer check against the chain; the scheme is reported per signature). Test: a real archived signature from
+the probe verifies, and any edit to scheme or hash fails.
+
+**Ways to get real content binding (not done, no spend):**
+1. *Be the E2EE client ourselves* (preferred): seal `messages` to the enclave's X25519 key (`GET /v1/e2ee/pubkey`,
+   HPKE DHKEM-X25519/HKDF-SHA256/ChaCha20-Poly1305 per `0g-pc-e2ee` SPEC) and send the `_e2ee` envelope through the
+   Router (router acceptance `0g-router#618`, shipped per the same doc). We would then hold `aad‖ciphertext` of both
+   sides, so `sha256` of our own bytes must equal the signed hashes, and the Router never sees the prompt. Cost:
+   an HPKE client in Python plus the response-unseal path; no deposit. Needs the SPEC read first (not done here).
+2. *Compute SDK direct to the provider*: the broker then signs bytes we hold. Needs a ledger on 0G mainnet:
+   `broker.ledger.depositFund(n)` (minimum 3 0G) and `transferFund(provider, 'inference', …)` (per
+   `.claude/skills/sealedai-stack/SKILL.md`); not spent.

@@ -4,7 +4,8 @@ import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts'
 import { aggregatesOk, checkPublic, recomputeMetrics } from '../src/check.ts'
 import { publicJson, readRun, sealedTar, sealRun } from '../src/bundle.ts'
 import { archiveTee, checkTee, verify, type TeeDeps } from '../src/verify.ts'
-import type { Service } from '../src/tee.ts'
+import { readFileSync } from 'node:fs'
+import { checkArchived, signedScheme, type Service } from '../src/tee.ts'
 
 const dir = new URL('./fixtures/run-kinematic', import.meta.url).pathname
 const run = readRun(dir)
@@ -70,6 +71,15 @@ test('archive tampering, unacknowledged signers, missing signatures and zero dec
   assert.match(r.signatures[1].reason, /404/)
   assert.equal((await checkTee({ ...zgPub, decisions: [] }, deps())).allTrue, false) // no vacuous "0/0 true"
   assert.equal((await checkTee(zgPub, deps())).allTrue, false) // no archive at all
+})
+
+test('a real archived E2EE-scheme signature (A2 probe, 2026-11-06) recovers to the on-chain signer; any edit fails', async () => {
+  const ev = JSON.parse(readFileSync(new URL('../../../docs/evidence/faultline-a2-probe.json', import.meta.url), 'utf8'))
+  const signer = '0xDdaEaac4d8525d72DfD20cc6dE0f28eb3d320Bfb' // mainnet InferenceServing.getService(0xf4FB8d2b…B250).teeSignerAddress
+  assert.equal(signedScheme(ev.sig.text), 'e2ee-ct')
+  assert.equal(await checkArchived(ev.sig, signer), true)
+  assert.equal(await checkArchived({ ...ev.sig, text: ev.sig.text.replace('e2ee-ct', 'e2ee-cs') }, signer), false)
+  assert.equal(await checkArchived({ ...ev.sig, text: ev.sig.text.replace(/.$/, '0') }, signer), false)
 })
 
 test('sealed check binds every public decision field to the hash-chained sealed log', async () => {

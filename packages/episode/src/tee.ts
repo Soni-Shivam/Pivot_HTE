@@ -2,7 +2,11 @@
 //
 // Facts this follows (sources):
 // - Provider signs text = hex(sha256(reqBody)) + ":" + hex(sha256(respBody)) with EIP-191 personal_sign
-//   (0g-serving-broker api/inference/internal/ctrl/signing.go signChatWithKey, commit 56f24ba4).
+//   (0g-serving-broker api/inference/internal/ctrl/signing.go signChatWithKey, commit 56f24ba4). Sealed (E2EE) turns,
+//   which is what the Router sends today (response header x-0g-e2ee: sealed, seen live 2026-11-06), are signed as
+//   "zg-sig-v1/e2ee-ct:<reqH>:<respH>" over sha256(aad ‖ ciphertext) of the Router↔enclave envelopes
+//   (broker docs/design/e2ee.md §"Response signature", signChatE2EE). Neither form binds the body we receive from the
+//   Router (audit A2, docs/evidence/faultline-a2-probe.json); the signature proves the provider's TEE answered that chat.
 // - The signature is cached in memory only (chatCacheExpiration, default 20 min, config.go), served at
 //   GET {svc.url}/v1/proxy/signature/{chatID}?model={svc.model}; after expiry: 404 chat_id_not_found (seen live).
 // - Signer = Service.teeSignerAddress, or additionalInfo.TargetTeeAddress for separated decentralized providers
@@ -48,7 +52,9 @@ export async function fetchSignature(s: Service, chatId: string): Promise<Archiv
   return { text: j.text, signature: j.signature, signing_address: j.signing_address, signing_algo: j.signing_algo }
 }
 
-export const SIGNED_TEXT = /^[0-9a-f]{64}:[0-9a-f]{64}$/
+export const SIGNED_TEXT = /^(zg-sig-v1\/e2ee-ct:)?[0-9a-f]{64}:[0-9a-f]{64}$/
+/** 'e2ee-ct' (hashes over the Router↔enclave ciphertext) or 'plaintext'. */
+export const signedScheme = (text: string) => (text.startsWith('zg-sig-v1/e2ee-ct:') ? 'e2ee-ct' : 'plaintext')
 
 /** Offline check of an archived signature: well-formed text and EIP-191 signer equals `signer`. Never throws. */
 export async function checkArchived(sig: ArchivedSignature | null | undefined, signer: string | null): Promise<boolean> {
@@ -79,7 +85,7 @@ export type TeeArchive = { method: string; captured_at: string
   signatures: SignatureEntry[] }
 
 
-export type SignatureCheck = { cp: number; provider: string | null; verified: boolean; reason: string }
+export type SignatureCheck = { cp: number; provider: string | null; verified: boolean; reason: string; scheme?: string }
 
 /** Re-check archived signatures. The signer comes from the chain (deps.readService), never from the archive. */
 export async function checkTee(pub: any, deps: { readService: (provider: string) => Promise<Service> }): Promise<{ signatures: SignatureCheck[]; allTrue: boolean; quotes: Record<string, boolean> }> {
@@ -93,7 +99,7 @@ export async function checkTee(pub: any, deps: { readService: (provider: string)
     }
     const e = arch?.signatures.find((s) => s.cp === d.cp && s.zg_res_key === d.zg_res_key)
     const ok = await checkArchived(e?.sig, signers[d.provider])
-    out.push({ cp: d.cp, provider: d.provider, verified: ok,
+    out.push({ cp: d.cp, provider: d.provider, verified: ok, ...(e?.sig ? { scheme: signedScheme(e.sig.text) } : {}),
       reason: ok ? 'signer matches chain' : !e?.sig ? (e?.error ?? 'no archived signature') : !signers[d.provider] ? 'provider not TEE-acknowledged on chain' : 'bad signature or signer' })
   }
   const quotes: Record<string, boolean> = {}

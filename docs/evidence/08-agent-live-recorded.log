@@ -1,0 +1,11 @@
+#0 metrics {"runId":"baseline","metrics":{"valLoss":0.52,"valAccuracy":0.61,"valMacroF1":0.58,"trainLoss":0.9}}
+#1 policy_reject [b64228f691f146f9, bdb1afe4-a700-40e1-9c10-8e0cfd7ddf85] {"reason":"unexpected key \"reason\"","reply":"{\"tool\": \"propose_recipe\", \"args\": {\"recipe\": {\"method\": \"lora\", \"lora\": {\"r\": 16, \"alpha\": 32, \"dropout\": 0.1, \"targets\": [\"q_lin\", \"v_lin\"]}, \"o
+#2 plan [476c13c4015a437d, cd1c6c3b-9959-4fce-a3ec-4ea55dfc2092] {"proposalId":"p1","recipe":{"method":"lora","optim":{"lr":0.0001,"epochs":3,"batch":16,"warmup":0.06},"classWeights":"balanced","maxLen":128,"lora":{"r":16,"alpha":32,"dropout":0.1,"targets":["q_lin","v_lin"]}},"reason"
+#3 train_start [d31bef86c88a9959, 464b1739-7f3b-4a57-8ec7-8ff300aa390a] {"runId":"run1","proposalId":"p1","recipe":{"method":"lora","optim":{"lr":0.0001,"epochs":3,"batch":16,"warmup":0.06},"classWeights":"balanced","maxLen":128,"lora":{"r":16,"alpha":32,"dropout":0.1,"targets":["q_lin","v_l
+#4 train_end {"runId":"run1","gpuSeconds":120,"stoppedByBudget":false,"metrics":{"valLoss":0.39,"valAccuracy":0.74,"valMacroF1":0.71,"trainLoss":0.35}}
+#5 policy_reject [1f2e8d4481b7173c, 96ad6425-2cf9-403e-95bc-75f19fbd8a70] {"reason":"reply must be one JSON object {\"tool\": ..., \"args\": {...}}","reply":"{\"tool\": \"finish\", \"args\": {\"selected\": \"run1\", \"rationa"}
+#6 finish [c6f7b69837a587a8, d60ecd7d-01c7-4307-b247-7403105584bd] {"selected":"run1","rationale":"run1 achieved valMacroF1 of 0.71, significantly better than baseline 0.58. Train loss (0.35) is close to val loss (0.39), indicating no overfitting. Balanced class weights helped address t
+#7 holdout {"selected":"run1","metrics":{"valLoss":0.39,"valAccuracy":0.74,"valMacroF1":0.71,"trainLoss":0.3}}
+
+stop=1 selected=run1 plannerCalls=7 holdoutF1=0.71 head=0x105364b5630eb2f2c46bdf051d7c23bfd02f1e71458b42d2eb59c512f64d4438
+(metrics recorded, test run: the agent and its request IDs are live)

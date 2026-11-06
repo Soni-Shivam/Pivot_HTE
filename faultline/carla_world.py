@@ -6,6 +6,7 @@ integrator as KinematicWorld (IDM ego with reaction delay, LeadLongitudinal, fri
 on the lane centre of one shared route every tick with CARLA physics off. CARLA supplies the 3-D world, the ray-cast
 LiDAR the metrics are computed from, the collision sensor and the recorder.
 """
+import fcntl
 import math
 import queue
 from dataclasses import replace
@@ -24,6 +25,7 @@ LIDAR_ATTRS = {"channels": "64", "range": "80", "points_per_second": "1200000", 
 LIDAR_X, LIDAR_Z = 1.5, 1.9
 STRAIGHT_M = 140.0
 ROUTE_STEP_M, ROUTE_LEN_M = 2.0, 1000.0
+LOCK_PATH = "/tmp/faultline-carla.lock"  # one synchronous-mode client at a time on the shared server
 
 
 def _yaw_diff(a, b):
@@ -58,6 +60,8 @@ class CarlaWorld:
 
     def reset(self, s: Scenario) -> None:
         self.s = s
+        self._lock = open(LOCK_PATH, "w")
+        fcntl.flock(self._lock, fcntl.LOCK_EX)  # blocks while another faultline process drives CARLA
         if self.map_name not in self.world.get_map().name:
             self.world = self.client.load_world(self.map_name)
         st = self.world.get_settings()
@@ -192,3 +196,6 @@ class CarlaWorld:
             st = self.world.get_settings()
             st.synchronous_mode, st.fixed_delta_seconds = False, None
             self.world.apply_settings(st)
+            if getattr(self, "_lock", None):
+                self._lock.close()  # releases the flock
+                self._lock = None

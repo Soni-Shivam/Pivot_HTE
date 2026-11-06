@@ -170,3 +170,8 @@ self-paying agents, iAI sign-in, direct-to-TeeML-provider agent calls.
   demo-002 public root `0x03c68b42…7b44`, sealed root `0x3aa3978d…eb6e`, EpisodeRegistry
   `0x23edb2e37F9a2a2b1DAaF0514b58E278f2FFF46A`, commit tx `0x7cd9a7b5…aefc`, finalize tx `0xd7689a46…fbf3`,
   8/8 decisions `processResponse` true. SealedAI tasks above are paused, not done.
+- 2026-11-07 Faultline phase 2 (user-directed scope change): the spec's "SUT = our IDM, not PDM-Lite" is replaced by
+  PDM-Lite as the ego, driven from LiDAR-derived objects (map/route from CARLA allowed, no privileged actor list); new
+  scenario families: aggressive cut-in (0G chooses the cut-in) and a LiDAR-occlusion robustness experiment; live
+  visualization on VNC :2 (RViz2 LiDAR, Foxglove, HMI from SeDriCa_Autonomous_Buggy, Lanelet2 map exported from
+  CARLA). Phase-1 evidence (demo-001/002, halt-001) stays valid for the IDM ego.

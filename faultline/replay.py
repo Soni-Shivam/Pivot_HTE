@@ -74,6 +74,11 @@ def playback(run_dir: Path, host="127.0.0.1", port=2000) -> bool:
     print("\n".join(info.splitlines()[:6]))
     dur = next(float(l.split()[1]) for l in info.splitlines() if l.startswith("Duration:"))
     dt = json.loads((Path(run_dir) / "scenario.json").read_text())["dt_s"]
+    import fcntl
+
+    from faultline.carla_world import LOCK_PATH
+    lock = open(LOCK_PATH, "w")
+    fcntl.flock(lock, fcntl.LOCK_EX)
     w = c.get_world()
     st = w.get_settings()
     st.synchronous_mode, st.fixed_delta_seconds = True, dt
@@ -91,5 +96,6 @@ def playback(run_dir: Path, host="127.0.0.1", port=2000) -> bool:
         st = w.get_settings()
         st.synchronous_mode, st.fixed_delta_seconds = False, None
         w.apply_settings(st)
+    lock.close()
     print(f"playback ticks {int(dur / dt) + 5}  vehicles seen {seen}")
     return seen >= 2

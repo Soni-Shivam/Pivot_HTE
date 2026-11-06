@@ -1,0 +1,140 @@
+{
+  "publicRoot": "0x69a532d1bb89d02b43111558a338bbe0a42549f5d1c5d28302226d9a0c626a89",
+  "publicRootOk": true,
+  "episode_id": "3e8623c3968bf9d20f852e8c8532db33d34a43ba8741f21163f00b3eeb0e121c",
+  "status": "completed",
+  "filesOk": true,
+  "decisionsWellFormed": true,
+  "metricsRecomputedOk": true,
+  "aggregatesOk": true,
+  "signatures": [
+    {
+      "cp": 0,
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "verified": true,
+      "scheme": "e2ee-ct",
+      "reason": "signer matches chain"
+    },
+    {
+      "cp": 1,
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "verified": true,
+      "scheme": "e2ee-ct",
+      "reason": "signer matches chain"
+    },
+    {
+      "cp": 2,
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "verified": true,
+      "scheme": "e2ee-ct",
+      "reason": "signer matches chain"
+    },
+    {
+      "cp": 3,
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "verified": true,
+      "scheme": "e2ee-ct",
+      "reason": "signer matches chain"
+    },
+    {
+      "cp": 4,
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "verified": true,
+      "scheme": "e2ee-ct",
+      "reason": "signer matches chain"
+    },
+    {
+      "cp": 5,
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "verified": true,
+      "scheme": "e2ee-ct",
+      "reason": "signer matches chain"
+    },
+    {
+      "cp": 6,
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "verified": true,
+      "scheme": "e2ee-ct",
+      "reason": "signer matches chain"
+    },
+    {
+      "cp": 7,
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "verified": true,
+      "scheme": "e2ee-ct",
+      "reason": "signer matches chain"
+    }
+  ],
+  "signaturesAllTrue": true,
+  "quoteSignerMatchesChain": {
+    "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250": true
+  },
+  "contentBinding": "not checkable: provider signs the sealed (E2EE) Router turn, see audit A2",
+  "onchain": {
+    "anchored": true,
+    "ok": true,
+    "version": "v2",
+    "registry": "0xeE2260cE4835059F0e0f1FB9C9948Ca5a7d4b5A4",
+    "registryPinned": true,
+    "evaluator": "0x8dac3a1fd3D7796254b84Ad70750430f67871069",
+    "committed": true,
+    "commitTx": "0x7c905fca200f3be3ffec43b4c130276836ea854a6f14eccced4e111991590957",
+    "committedAt": 1794002588,
+    "finalizedAt": 1794002669,
+    "status": 1,
+    "collision": false,
+    "publicRoot": "0x69a532d1bb89d02b43111558a338bbe0a42549f5d1c5d28302226d9a0c626a89",
+    "sealedRoot": "0x0194c8000b53603b8c91bf878f2e57947f7032f2e707f48e9f48da6372ca8064",
+    "scenarioCommitment": "0x94fdde20590fd483a962bea67896398ed77095e8823cf19736562960290d6225",
+    "resultCommitment": "0xce5fdb4f6c523881067da185fc0ecbe82b82fbbeda9ee1f89ec2d23bd4745b34",
+    "publicRootMatches": true,
+    "firstCall": "2026-11-06T22:03:27.133Z",
+    "committedBeforeFirstCall": true,
+    "reveal": {
+      "scenarioFileOk": true,
+      "scenarioCommitmentOk": true,
+      "resultCommitmentOk": true
+    },
+    "seq": 2,
+    "commitBlock": 64237567,
+    "commitBlockHash": "0xec4a0e6c049f2624758a6e8edb95c730d61f40f5a498458c5bbed0c9e578e304",
+    "stats": {
+      "committed": 3,
+      "completed": 2,
+      "interrupted": 0,
+      "aborted": 0
+    },
+    "configHashOk": true,
+    "configHash": "0xe20e2e501b4eb1b1f27f8b35559885ed3515562ec2def5284dbcb5c741bd9878",
+    "bindingOk": true,
+    "noncesEchoed": 8,
+    "nonces0g": 8
+  },
+  "replay": {
+    "ok": true,
+    "ticks": 209,
+    "replayedTicks": 209,
+    "fields": [
+      "t_s",
+      "ego_x",
+      "ego_v",
+      "ego_a",
+      "lead_x",
+      "lead_v",
+      "lead_a",
+      "gt_gap"
+    ],
+    "firstMismatch": null,
+    "kinematic": false
+  },
+  "checked_at": "2026-11-06T22:05:23.857Z",
+  "sealed": {
+    "sealedRoot": "0x0194c8000b53603b8c91bf878f2e57947f7032f2e707f48e9f48da6372ca8064",
+    "opened": true,
+    "keyVersion": 2,
+    "manifestMatchesPublic": true,
+    "filesHashesMatchManifest": true,
+    "chainOk": true,
+    "publicDecisionsMatchSealed": true
+  }
+}

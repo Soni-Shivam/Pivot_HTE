@@ -190,3 +190,14 @@ self-paying agents, iAI sign-in, direct-to-TeeML-provider agent calls.
   archive + offline check, Merkle root check, verifier XSS/CSP, pinned registry, fail-closed commit tick, sealed field
   binding, aggregate recompute (`verify.ts` still loads ethers lazily for the live `sigs` check). Written, not
   deployed: `EpisodeRegistryV2`. Open: A2 content binding, A3 prompt nonce, public replay, scenario reveal (R7), hosting.
+- 2026-11-07 (trust agent, for Shivam): handoff items 1–4 and 6 done except as noted. A2 probe: **no content match**
+  (Router seals turns E2EE; provider signs `zg-sig-v1/e2ee-ct` over ciphertext only the Router holds), check left
+  off; `tee.ts` now accepts that scheme (else every new signature showed ✗). `EpisodeRegistryV2`
+  `0xeE2260cE4835059F0e0f1FB9C9948Ca5a7d4b5A4` deployed + verified and wired (configHash, evaluator stats, v1 still
+  read). Prompts carry `binding` {episode_id, commit block + hash, nonce}; missing/wrong echo → `bad_nonce` SAFE_HALT
+  (seen live in cutin-002 cp6). Public JSON reveals scenario.json + salt; browser replay (lead brake) bit-exact.
+  HKDF per-episode key (envelope v2; v1 bundles open), sealed-file allowlist, txSeq at finalize, Router host and
+  `chaos-fake` source in the manifest, ERC-8004 agentId 579. New runs: trust-kin-001, demo-003, cutin-002 (roots in
+  `docs/evidence/faultline-matrix.md`). **Deviation:** the reveal is in public.json at publish (just before finalize),
+  not a separate object at finalize. Open: content binding (own E2EE client or Compute SDK direct), cut-in browser
+  replay, hosting (item 5, user's call), agentId not yet in configHash.

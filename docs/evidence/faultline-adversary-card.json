@@ -1,0 +1,12 @@
+{
+  "name": "Faultline adversary",
+  "description": "Adversarial traffic agent for testing automated cars: 0G model 0gm-1.0-35b-a3b on the 0G Router private tier (TeeML) picks one discrete action per 1 s checkpoint for the lead car (lead_brake) or the cutting-in car (cut_in); a deterministic controller owns all physics and falls back to SAFE_HALT on any failure. Episodes are committed on EpisodeRegistryV2 before the first call and published on 0G Storage.",
+  "model": "0gm-1.0-35b-a3b",
+  "trustTier": "0G Router private (TeeML), no fallback",
+  "families": {
+    "lead_brake": { "promptSha256": "5968ffedea415c4dcd4ade23b2a0ae37cc49b3babbe074be64d5dd95cae8c572", "actions": ["MAINTAIN", "COAST", "BRAKE_SOFT", "BRAKE_HARD"] },
+    "cut_in": { "promptSha256": "55a670e90b7727767b3c53c4da4f5b49e899a21220f01ba6248b5e011363ba8e", "actions": ["KEEP_LANE", "ACCELERATE", "SLOW_DOWN", "CUT_IN", "CUT_IN_AGGRESSIVE", "BRAKE_HARD"] }
+  },
+  "episodeRegistry": "eip155:16602:0xeE2260cE4835059F0e0f1FB9C9948Ca5a7d4b5A4",
+  "supportedTrust": ["tee-attestation"]
+}

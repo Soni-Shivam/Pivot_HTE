@@ -7,6 +7,7 @@ import { publish } from './publish.ts'
 import { makeProcessResponse, verify } from './verify.ts'
 import { jsonlSignatures } from './sigs.ts'
 import { commit, finalize } from './anchor.ts'
+import { agentURI, registerAgent } from './erc8004.ts'
 
 config({ path: fileURLToPath(new URL('../../../.env', import.meta.url)), quiet: true })
 const env = (k: string) => { const v = process.env[k]; if (!v) throw new Error(`${k} missing in .env`); return v }
@@ -26,12 +27,14 @@ if (cmd === 'publish' && target) {
   const out = flag(rest, '--out')
   if (out) writeFileSync(out, JSON.stringify(v, null, 2) + '\n')
   console.log(JSON.stringify(v, null, 2))
+} else if (cmd === 'register-agent' && target) {
+  console.log(JSON.stringify(await registerAgent({ rpcUrl: env('RPC_URL'), privateKey: env('PRIVATE_KEY') }, agentURI(JSON.parse(readFileSync(target, 'utf8')))), null, 2))
 } else if (cmd === 'sigs' && target) {
   const r = await jsonlSignatures(readFileSync(target, 'utf8'), await makeProcessResponse())
   writeFileSync(`${target}.sigs.json`, JSON.stringify(r, null, 2) + '\n')
   console.log(JSON.stringify({ total: r.total, verified: r.verified, out: `${target}.sigs.json` }))
 } else {
-  console.error('usage: faultline commit|publish|finalize <dir> | verify <publicRoot> [--sealed <root> --key <hex|env>] [--out file] | sigs <jsonl>')
+  console.error('usage: faultline commit|publish|finalize <dir> | register-agent <card.json> | verify <publicRoot> [--sealed <root> --key <hex|env>] [--out file] | sigs <jsonl>')
   process.exit(2)
 }
 process.exit(0)

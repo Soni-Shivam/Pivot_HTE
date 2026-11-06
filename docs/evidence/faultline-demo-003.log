@@ -1,0 +1,167 @@
+{
+  "episodeId": "0x3e8623c3968bf9d20f852e8c8532db33d34a43ba8741f21163f00b3eeb0e121c",
+  "commitment": "0x94fdde20590fd483a962bea67896398ed77095e8823cf19736562960290d6225",
+  "configHash": "0xe20e2e501b4eb1b1f27f8b35559885ed3515562ec2def5284dbcb5c741bd9878",
+  "seq": 2,
+  "tx": "0x7c905fca200f3be3ffec43b4c130276836ea854a6f14eccced4e111991590957",
+  "commitBlock": 64237567,
+  "commitBlockTimestamp": 1794002588
+}
+
+episode 3e8623c3968bf9d20f852e8c8532db33d34a43ba8741f21163f00b3eeb0e121c  world carla-0.10.0  status completed  collision False
+decisions total 8  0g 8  halt 0  log_head a23b0974952b86a030971f41a571ef255cfd3555dff753e3e9e0075d80ded9af  chain_ok True
+ccs 0.9999  min_ttc_s 0.49587254934051034  min_gap_m 1.529517  perception {'max_abs_gap_error_m': 1.365016, 'mean_abs_gap_error_m': 0.5725166842105265, 'scans_without_target': 0}
+
+ cp action     source            reason       request_id                               provider                                     latency_ms
+  0 BRAKE_HARD 0g                ok           4f22b13c-61c5-4fce-88f0-fdc401a7bde9     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2300
+  1 BRAKE_HARD 0g                ok           f764c41f-4029-4194-9585-1b0e892fb34d     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   3028
+  2 BRAKE_HARD 0g                ok           02d5e813-db57-45e2-a539-d3f7b730f83c     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2702
+  3 BRAKE_HARD 0g                ok           a006db01-5f92-4cc6-89e3-e5aee38531a5     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2346
+  4 MAINTAIN   0g                ok           6f6c6b38-d027-4c6f-a00b-ce1d2bedad56     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2448
+  5 BRAKE_HARD 0g                ok           0a67a036-7e42-452c-89e8-1f45612d941d     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2269
+  6 MAINTAIN   0g                ok           95b82589-e0e8-47fa-a923-80f5d7475a1e     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2280
+  7 MAINTAIN   0g                ok           0c551e81-c379-4017-aa27-53a0be7d816f     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2406
+Starting upload for file of size: 240912 bytes
+Upload options: {
+  tags: '0x',
+  submitter: '',
+  finalityRequired: true,
+  taskSize: 1,
+  expectedReplica: 1,
+  fragmentSize: 4294967296,
+  skipTx: false,
+  skipIfFinalized: true,
+  fee: 0n,
+  nonce: undefined,
+  onProgress: undefined,
+  encryption: undefined
+}
+First selected node status : {
+  connectedPeers: 2,
+  logSyncHeight: 64237663,
+  logSyncBlock: '0x21118e79762d499d363583c77766bbce2a59d2cae73335ac18158b6f865cbd18',
+  nextTxSeq: 160556,
+  networkIdentity: {
+    chainId: 16602,
+    flowAddress: '0x22e03a6a89b950f1c82ec5e74f8eca321a105296',
+    p2pProtocolVersion: { major: 0, minor: 4, build: 0 }
+  }
+}
+Selected nodes: [
+  StorageNode {
+    url: 'http://34.19.125.196:5678',
+    timeout: 30000,
+    retry: 3
+  },
+  StorageNode {
+    url: 'http://34.169.28.106:5678',
+    timeout: 30000,
+    retry: 3
+  }
+]
+Using splitable upload (handles both single and fragment cases)
+File details - size: 240912, numSegments: 1, numChunks: 942
+Data prepared to upload root=0x0194c8000b53603b8c91bf878f2e57947f7032f2e707f48e9f48da6372ca8064 size=240912 numSegments=1 numChunks=942
+Attempting to find existing file info by root hash...
+Submitting transaction with storage fee: 29504299163520n
+Transaction submitted, hash: 0xe66cc2d6943d7e9e01b79b9dadacace994feb572c94bbc63c1bf7b7a4378f670
+Wait for log entry on storage node
+Waiting for storage node to sync (height=64237675)...
+Waiting for storage node to sync (height=64237675)...
+Waiting for storage node to sync (height=64237675)...
+Tasks created: [
+  [
+    {
+      clientIndex: 0,
+      taskSize: 1,
+      segIndex: 0,
+      numShard: 2,
+      txSeq: 160556
+    }
+  ]
+]
+Processing tasks in parallel with  1  tasks...
+All tasks processed
+Wait for log entry on storage node
+Single file upload completed - returning single result
+Starting upload for file of size: 174446 bytes
+Upload options: {
+  tags: '0x',
+  submitter: '',
+  finalityRequired: true,
+  taskSize: 1,
+  expectedReplica: 1,
+  fragmentSize: 4294967296,
+  skipTx: false,
+  skipIfFinalized: true,
+  fee: 0n,
+  nonce: undefined,
+  onProgress: undefined,
+  encryption: undefined
+}
+First selected node status : {
+  connectedPeers: 2,
+  logSyncHeight: 64237687,
+  logSyncBlock: '0x7ab1fb3b779e24b39d9e0801f7ea08ba74ac475dcf7105fbefb8487c46a35ccb',
+  nextTxSeq: 160557,
+  networkIdentity: {
+    chainId: 16602,
+    flowAddress: '0x22e03a6a89b950f1c82ec5e74f8eca321a105296',
+    p2pProtocolVersion: { major: 0, minor: 4, build: 0 }
+  }
+}
+Selected nodes: [
+  StorageNode {
+    url: 'http://34.19.125.196:5678',
+    timeout: 30000,
+    retry: 3
+  },
+  StorageNode {
+    url: 'http://34.169.28.106:5678',
+    timeout: 30000,
+    retry: 3
+  }
+]
+Using splitable upload (handles both single and fragment cases)
+File details - size: 174446, numSegments: 1, numChunks: 682
+Data prepared to upload root=0x69a532d1bb89d02b43111558a338bbe0a42549f5d1c5d28302226d9a0c626a89 size=174446 numSegments=1 numChunks=682
+Attempting to find existing file info by root hash...
+Submitting transaction with storage fee: 21636486053248n
+Transaction submitted, hash: 0x0cacf25ed7fddb0e24d6b37b4aa75c3ec3b12ff97c4dcc9d32ad84b6c186da7d
+Wait for log entry on storage node
+Waiting for storage node to sync (height=64237700)...
+Waiting for storage node to sync (height=64237700)...
+Tasks created: [
+  [
+    {
+      clientIndex: 1,
+      taskSize: 1,
+      segIndex: 0,
+      numShard: 2,
+      txSeq: 160557
+    }
+  ]
+]
+Processing tasks in parallel with  1  tasks...
+All tasks processed
+Wait for log entry on storage node
+Single file upload completed - returning single result
+{
+  "episode_id": "3e8623c3968bf9d20f852e8c8532db33d34a43ba8741f21163f00b3eeb0e121c",
+  "publicRoot": "0x69a532d1bb89d02b43111558a338bbe0a42549f5d1c5d28302226d9a0c626a89",
+  "publicTx": "0x0cacf25ed7fddb0e24d6b37b4aa75c3ec3b12ff97c4dcc9d32ad84b6c186da7d",
+  "publicTxSeq": 160557,
+  "sealedRoot": "0x0194c8000b53603b8c91bf878f2e57947f7032f2e707f48e9f48da6372ca8064",
+  "sealedTx": "0xe66cc2d6943d7e9e01b79b9dadacace994feb572c94bbc63c1bf7b7a4378f670",
+  "sealedTxSeq": 160556,
+  "sealedKey": "hkdf-sha256(tenant key, \"faultline/episode/v2:\"+episode_id), envelope version 2",
+  "publicBytes": 174446,
+  "sealedBytes": 240912,
+  "signatures_archived": 8,
+  "signatures_0g": 8
+}
+{
+  "tx": "0x97b65582c33288c111bd3d030c56fc396798f0a4b31ba6902bbd4150fa0ffbf3",
+  "onchainMatches": true
+}
+anchored: commit 0x7c905fca200f3be3ffec43b4c130276836ea854a6f14eccced4e111991590957  finalize 0x97b65582c33288c111bd3d030c56fc396798f0a4b31ba6902bbd4150fa0ffbf3  onchain_matches True

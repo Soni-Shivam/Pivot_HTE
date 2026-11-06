@@ -249,3 +249,20 @@ the probe verifies, and any edit to scheme or hash fails.
 2. *Compute SDK direct to the provider*: the broker then signs bytes we hold. Needs a ledger on 0G mainnet:
    `broker.ledger.depositFund(n)` (minimum 3 0G) and `transferFund(provider, 'inference', …)` (per
    `.claude/skills/sealedai-stack/SKILL.md`); not spent.
+
+## 2026-11-07 follow-up (trust agent): status after the fixes
+
+| Item | Status | Evidence |
+|---|---|---|
+| A1 signatures expire | **fixed, shown live**: demo-003 8/8, cutin-002 6/6, trust-kin-001 8/8 archived and ✓ offline (CLI and page) | `docs/evidence/faultline-verify-*.json` |
+| A2 content binding | **open, cannot be fixed through the Router as called** (probe above). Options: our own E2EE client through the Router, or Compute SDK direct (ledger ≥ 3 0G) | `faultline-a2-probe.json` |
+| A3 episode binding | **fixed as far as A2 allows**: `binding` {episode_id, commit_block, commit_blockhash, nonce} in every anchored prompt; the parser requires the nonce echo (`bad_nonce` → SAFE_HALT; happened live at cutin-002 cp6). The page checks blockhash(commitBlock) on Galileo and the echoed nonce of every accepted 0G decision. Not signature-bound until A2 | demo-003, cutin-002 |
+| C2 / R9 rerun-until-good, front-running | **fixed, deployed**: `EpisodeRegistryV2` `0xeE2260cE4835059F0e0f1FB9C9948Ca5a7d4b5A4`; page shows run #seq and the evaluator's committed/completed/interrupted/aborted/never-finalized counts; configHash = keccak(prompt_hash, model, git commit) recomputed by the page | `faultline-registry-v2-deploy.log` |
+| C1 commit before the first call | still the evaluator's clock for the tick, now backed by the nonce (A3). Storage `txSeq`s recorded in anchor.json at finalize | `runs/*/anchor.json` |
+| R7 scenario hidden | **decided (team lead): reveal**. public.json carries `reveal {scenario_json, salt}` (at publish, just before finalize); sealed bundle keeps anchor.json too | anchor.test.ts |
+| B2 public replay | **fixed for lead brake**: `packages/episode/src/replay.ts`, bit-exact on the fixture (test) and on trust-kin-001 (every field) and demo-003 (ground-truth fields; CARLA LiDAR not deterministic). Cut-in: not ported | replay.test.ts |
+| C3 / R6 commitments opened | **fixed** via the reveal: page and CLI recompute scenario and result commitments against `getEpisode` | `onchain.ts` |
+| A4 provenance | **fixed**: manifest `router_host`; chaos fake router logs `source: "chaos-fake"` | `cli.py` |
+| R12 one key, stale files | **fixed**: envelope version 2 = HKDF-SHA256(tenant key, "faultline/episode/v2:"+id); version 1 still opens; `SEALED_FILES` allowlist | bundle.test.ts |
+| ERC-8004 | **done**: agentId 579 (interface from the EIP text; deployed source unverified, call simulated first). Not in configHash yet | `faultline-erc8004.log` |
+| T1 live demo link | not done (user's decision). `dist/` makes only https requests, so static https hosting works | README |

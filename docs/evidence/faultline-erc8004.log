@@ -1,0 +1,7 @@
+# ERC-8004 identity: Faultline adversary — 2026-11-06T22:05:14Z
+npm run faultline -- register-agent docs/evidence/faultline-adversary-card.json
+registry=0x8004A818BFB912233c491871b3d84c89A494BD9e (Galileo Identity; interface from EIP-8004 text, source not verified on chainscan; call simulated first)
+agentId=579 owner=0x8dac3a1fd3D7796254b84Ad70750430f67871069 (the episode evaluator)
+tx=0x84974f06bc8db27e89e6447368f9d26aadd7ec75d949e38d6517619b810e67fa block=64237790 status=1
+agentURI = data:application/json;base64 of the EIP-8004 registration-v1 file built from docs/evidence/faultline-adversary-card.json
+not in configHash yet (registered after demo-003 started)

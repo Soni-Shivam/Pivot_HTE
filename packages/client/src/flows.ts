@@ -3,19 +3,18 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createHash, randomBytes } from 'node:crypto'
-import { PrivateKey, encrypt, decrypt } from 'eciesjs'
+import { encrypt, decrypt } from 'eciesjs'
 import { keccak256, encodeAbiParameters, bytesToHex, hexToBytes, type Address, type Hex, type LocalAccount } from 'viem'
 import {
-  canonical, jsonSafe, packTar, seal, sealChunked, open as openObject, sealRequest, openReply, typedData, typedHash, recoverTyped,
+  canonical, jsonSafe, packTar, seal, sealChunked, open as openObject, typedData, typedHash, recoverTyped,
   commit, tag, digestToBytes32, metric1e4, verifyTimeline, ROLE, JOB_DESCRIPTION_PREFIX,
   type Offer, type JobManifest, type WorkerReceipt, type TimelineEvent,
 } from '@sealedai/protocol'
 import { catalogV1, catalogHash } from '@sealedai/planner'
 import { storage, escrow as escrowClient, type Escrow } from '@sealedai/integrations'
-import { verifyWorkerEvidence, verifyChallenge, type WorkerEvidence, type EvidencePolicy, type EvidenceVerdict } from './evidence.ts'
+import { WorkerClient, verifyWorker, type Verifier } from './worker-client.ts'
 
 export type Env = { rpcUrl: string; indexerUrl: string; escrow?: Address }
-export type Verifier = (ev: WorkerEvidence, p: EvidencePolicy) => Promise<EvidenceVerdict>
 const rand32 = () => bytesToHex(randomBytes(32))
 const sha256Hex = (b: Uint8Array) => `0x${createHash('sha256').update(b).digest('hex')}` as Hex
 const BUNDLE_FILES = new Set(['config.json', 'model.safetensors', 'tokenizer.json', 'tokenizer_config.json', 'special_tokens_map.json', 'vocab.txt', 'card.json'])
@@ -53,40 +52,6 @@ export async function publishModel(env: Env, seller: LocalAccount, privateKey: H
   return { offer, offerSig, offerHash: typedHash('Offer', offer, esc.address), offerRoot, card, assetKey: s.key, assetSalt }
 }
 
-// ── Talking to a worker ───────────────────────────────────────────────────────────────────────────────────────
-export class WorkerClient {
-  readonly session = new PrivateKey() // replies (and the buyer's report key) are encrypted to this
-  workerPubKey?: Hex
-  constructor(readonly url: string, readonly account: LocalAccount) {}
-  get sessionPubKey() { return `0x${this.session.publicKey.toHex(false)}` as Hex }
-
-  async challenge() {
-    const nonce = rand32()
-    const r = await fetch(`${this.url}/v1/challenge`, { method: 'POST', body: JSON.stringify({ nonce }) })
-    if (!r.ok) throw new Error(`challenge failed: ${await r.text()}`)
-    const { evidence, signature } = (await r.json()) as { evidence: WorkerEvidence & { escrow?: string; chainId?: number }; signature: Hex }
-    return { nonce, evidence, signature }
-  }
-
-  async call<T>(path: string, payload: unknown): Promise<T> {
-    if (!this.workerPubKey) throw new Error('verify the worker before sending it anything')
-    const body = await sealRequest(this.workerPubKey, path, payload, this.account, this.sessionPubKey)
-    const r = await fetch(`${this.url}${path}`, { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: Buffer.from(body) })
-    if (!r.ok) throw new Error(`${path}: ${((await r.json().catch(() => ({}))) as { error?: string }).error ?? r.status}`)
-    return openReply<T>(bytesToHex(this.session.secret), new Uint8Array(await r.arrayBuffer()))
-  }
-}
-
-/** Fresh challenge → key possession → evidence policy. Only after this may the client send the worker anything. */
-export async function verifyWorker(w: WorkerClient, p: Omit<EvidencePolicy, 'nonce'>, verifier: Verifier = verifyWorkerEvidence) {
-  const { nonce, evidence, signature } = await w.challenge()
-  const { escrow: _e, chainId: _c, ...ev } = evidence
-  await verifyChallenge(ev, nonce, signature)
-  const verdict = await verifier(ev, { ...p, nonce })
-  w.workerPubKey = ev.workerPubKey
-  return { evidence: ev, evidenceHash: keccak256(canonical(ev)), verdict }
-}
-
 // ── Seller: release the model key to a verified worker for an exact, funded job ─────────────────────────────
 export async function sellerRelease(env: Env, seller: LocalAccount, w: WorkerClient, published: { offer: Offer; offerHash: Hex; assetKey: Uint8Array; assetSalt: Hex }, manifest: JobManifest, verifier?: Verifier) {
   const { evidence } = await verifyWorker(w, { expectedImageDigest: `sha256:${published.offer.workerImageDigest.slice(2)}`, requireGpu: false }, verifier)
@@ -112,15 +77,6 @@ export async function sealDataset(env: Env, privateKey: Hex, rows: { text: strin
   const datasetRoot = (await st.uploadBlob(s.blob)).root as Hex
   const datasetSalt = rand32()
   return { datasetRoot, datasetKey: s.key, datasetSalt, datasetCommitment: commit(datasetSalt, `0x${s.header.plaintextSha256}`) }
-}
-
-/** Numeric summary computed on the buyer's device: all the planning agent may see (I9). */
-export function localSummary(rows: { text: string; label: string }[]) {
-  const hist: Record<string, number> = {}
-  for (const r of rows) hist[r.label] = (hist[r.label] ?? 0) + 1
-  const lens = rows.map((r) => r.text.split(/\s+/).length).sort((a, b) => a - b)
-  const q = (x: number) => lens[Math.min(lens.length - 1, Math.floor(x * lens.length))] ?? 0
-  return { rows: { train: Math.round(rows.length * 0.6), val: Math.round(rows.length * 0.2) }, labelHistogram: hist, tokenLenP50: q(0.5), tokenLenP95: q(0.95) }
 }
 
 export function buyerRelease(esc: Escrow, buyer: LocalAccount, w: WorkerClient, manifest: JobManifest, d: { datasetRoot: Hex; datasetKey: Uint8Array; datasetSalt: Hex }, secrets: { goal: string; goalSalt: Hex; splitSalt: Hex; splitSeed: Hex; routerKey: string }) {

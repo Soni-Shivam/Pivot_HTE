@@ -34,7 +34,7 @@ export type EvidenceVerdict = { runtime: number; workerAddress: Address; tcbStat
 
 export class EvidenceRejected extends Error {}
 const reject = (m: string): never => { throw new EvidenceRejected(m) }
-const b64 = (s: string) => Uint8Array.from(Buffer.from(s, 'base64'))
+const b64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0)) // browser + Node
 function equalBytes(a: Uint8Array, b: Uint8Array) {
   if (a.length !== b.length) return false
   let d = 0
@@ -82,7 +82,7 @@ export async function verifyQuote(quote: Uint8Array, p: Pick<EvidencePolicy, 'al
 
 async function verifyTapp(ev: WorkerEvidence, p: EvidencePolicy): Promise<EvidenceVerdict> {
   if (!ev.tapp?.evidence) return reject('TAPP evidence missing')
-  const j = JSON.parse(Buffer.from(ev.tapp.evidence, 'base64').toString('utf8')) as {
+  const j = JSON.parse(new TextDecoder().decode(b64(ev.tapp.evidence))) as {
     quote: string; cc_eventlog: string; runtime_data?: string; gpu_evidence?: { evidence_list: { cc_enabled: boolean; attestation_report: string; certificate: string }[] } | null
   }
   const { status, td } = await verifyQuote(b64(j.quote), p)

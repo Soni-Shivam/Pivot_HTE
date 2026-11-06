@@ -1,0 +1,10 @@
+    raise ValueError(f"unknown op {op!r}")
+ValueError: unknown op 'eval'
+    raise ValueError(f"{len(bad)} rows are malformed or use labels outside the model's label set")
+ValueError: 1 rows are malformed or use labels outside the model's label set
+    raise ValueError("only the selected, holdout-evaluated version can serve")
+ValueError: only the selected, holdout-evaluated version can serve
+baseline 0.855 run1 0.93 holdout 0.929
+...baseline 0.754 -> lora 0.982 in 0.694s
+tests/test_train.py::test_lora_improves_over_baseline
+21 passed, 1 skipped, 1 warning in 12.35s

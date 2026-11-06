@@ -40,6 +40,8 @@ class KinematicWorld:
     """Semi-implicit Euler at dt_s. The ego senses the true gap and lead speed through the reaction-delay FIFO;
     the 'LiDAR' gap is exact."""
 
+    name = "kinematic"
+
     def __init__(self, s: Scenario | None = None, idm: IdmParams = IdmParams()):
         self.idm_params = idm
         if s is not None:

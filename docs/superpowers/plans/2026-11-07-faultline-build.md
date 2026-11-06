@@ -226,7 +226,7 @@ def test_brake_hard_is_clamped_by_friction():   # mu 0.3 → lead decel magnitud
   - per tick, metrics from the **LiDAR** fields: `ttc_1d(lidar_gap, lidar_closing)`, `thw(lidar_gap, ego_v)`, `drac(lidar_gap, lidar_closing)` when `lidar_gap is not None`, else all `None` and `applicable=False`; `score(...)` → `ccs`.
   - files in `out_dir`: `scenario.json`, `decisions.jsonl` (ChainLog; entry keys `cp, sim_time_s, observation, history, action, control_decel_mps2, source ("0g"|"none"), reason, model, request_id, provider, zg_res_key, latency_ms, raw_sha256, content`), `trajectory.jsonl` (one line per tick: `TickState` fields + `ttc_s, thw_s, drac_mps2, ccs, applicable`), `metrics.json` (`score_episode` output + `min_ttc_s, min_gap_m, max_ego_decel_mps2, collision, perception: {mean_abs_gap_error_m, max_abs_gap_error_m, scans_without_target}`), `manifest.json` (`schema "faultline.episode/v1", episode_id = sha256(scenario_hash + ":" + seed + ":" + started_at), scenario_hash, prompt_hash, model, trust_mode "private", status "completed"|"interrupted", collision, decisions_total, decisions_0g, decisions_halt, log_head, files: {name: sha256}, started_at, finished_at, world: "kinematic"|"carla-0.10.0"`).
 
-- [ ] **Step 1:** Write tests (scripted deciders produce `Decision(...)` objects directly):
+- [x] **Step 1:** Write tests (scripted deciders produce `Decision(...)` objects directly):
 ```python
 def test_happy_path_logs_one_entry_per_checkpoint_with_chain(tmp_run_dir): # 28 ok decisions MAINTAIN → status completed, decisions_0g == number of checkpoints, verify_chain True, every entry has request_id
 def test_brake_hard_decision_changes_motion(tmp_run_dir):                  # decider: MAINTAIN×3 then BRAKE_HARD… → min_gap_m < 20 and metrics["ccs"] > 0.5 (vs < 0.4 for the all-MAINTAIN run)
@@ -235,8 +235,8 @@ def test_collision_during_halt_records_both(tmp_run_dir):                  # Sce
 def test_metrics_use_lidar_fields_and_mark_gaps(tmp_run_dir):              # a World wrapper that returns lidar_gap None on ticks 100..110 → those trajectory lines have applicable False and ttc_s None; metrics.perception.scans_without_target == 11
 def test_history_grows_and_reaction_delay_is_estimated(tmp_run_dir):       # third decision's history has 2 items; after a BRAKE_HARD the next history has ego_observed_reaction_delay_s within 0.4..1.0 (IDM delay 0.6 + response)
 ```
-- [ ] **Step 2:** Run. Expected: FAIL. **Step 3:** Implement `log.py` then `episode.py`. **Step 4:** Run. Expected: PASS.
-- [ ] **Step 5:** Commit: `git commit -m "faultline: episode runner with safe-halt state machine and hash-chained log"`.
+- [x] **Step 2:** Run. Expected: FAIL. **Step 3:** Implement `log.py` then `episode.py`. **Step 4:** Run. Expected: PASS.
+- [x] **Step 5:** Commit: `git commit -m "faultline: episode runner with safe-halt state machine and hash-chained log"`.
 
 ### Task 7: CARLA world and `run` CLI (first real episode with real 0G decisions)
 

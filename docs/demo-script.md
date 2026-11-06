@@ -22,3 +22,22 @@ Footage on disk: `runs/demo-001/screen.mp4`, `runs/demo-002/screen.mp4`, `runs/h
 5. **Limits (15 s).** Physics and the stand-in driver run on our machine (0G referees decisions and the record);
    CARLA motion is kinematic on the lane; LiDAR blind zone under 1.5 m; CCS is a criticality score, not an accident
    probability.
+
+## Swarm cut (new, 60-90 s): `runs/videos/INDEX.md` → `swarm-carla-008__stitched.mp4`, `swarm-carla-010__stitched.mp4`
+
+Sim-time videos, no frozen frames; every 0G call is a card with the model's raw JSON. Evidence:
+`docs/evidence/faultline-swarm.md`. Not anchored: say so on screen.
+
+6. **The plan (10 s).** Open `swarm-carla-010/director.mp4` at 0:00: the strategist card (thinking 0GM, 26 s real
+   time, 14k reasoning chars) shows "Staggered Cut-in", the role of each coloured car, the phases, the request id and
+   plan sha256.
+7. **The swarm moves (35 s).** Same file 0:04–0:32: drone panel labels each car with its current action; the 0G panel
+   shows the phase, the four actions and the model's "why"; LiDAR BEV shows the tracks PDM-Lite sees; metrics strip
+   gap / TTC / brake. B cuts in, A brakes, C cuts in last ("forcing the ego to stop behind B"). Then the second
+   pattern: `swarm-carla-008` (Decoy cut-in: B cuts in then accelerates away, C cuts in 6 s later).
+8. **The robotics view (15 s).** `swarm-carla-010/stitched.mp4`: the same moment in RViz (LiDAR cloud, coloured GT
+   box per car) and the Lichtblick HMI, which reads `AWAITING_0G` exactly under each 0G card.
+9. **Every output, verbatim (10 s).** Scroll `runs/swarm-carla-010/decisions.html`: plan JSON, then per checkpoint
+   the state table, the forecast the model saw (chosen row highlighted), raw JSON, request id, latency.
+10. **Fail-closed (10 s).** `swarm-carla-003/director.mp4`: the model names a cut-in its car may not make; red card
+   "SAFE_HALT for every car (no substitute decision)", all four cars brake. Line: "one bad car stops the swarm."

@@ -208,7 +208,9 @@ def available_for(c, advs, ego_arc, ego_lat, dims) -> tuple:
 def car_state(adv, gap: float, acts, lw: float = 3.5) -> str:
     """One line per car: lane, lane change, stopped, and why cut-ins / braking are not offered."""
     if adv.lc is not None:
-        lane = f"changing into the ego lane ({100 * adv.progress:.0f}% done, completes by itself)"
+        # carla-007: the model re-sent CUT_IN to "complete" a lane change in progress (-> halt)
+        lane = (f"cut-in already under way ({100 * adv.progress:.0f}% done, completes by itself: do not send CUT_IN "
+                "again, choose its speed)")
     else:
         lane = "in the ego lane (no lane changes from here)" if abs(adv.lat) < lw / 2 else "in the left lane"
     where = "ahead of" if gap > 0 else ("behind" if gap < -(EGO_LEN_M + ADV_LEN_M) else "beside")

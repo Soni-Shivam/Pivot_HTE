@@ -23,7 +23,7 @@ Evidence: user, 2026-11-06: "Confirm as recommended" (choices A–D per PLAN §2
 ## T01 · Dependencies and hardware answers. Needs: T00. Status: `todo`
 Acceptance:
 - [ ] Exact pins installed; `npm ci` reproducible on a fresh clone; `scripts/setup.sh` restores `.0g-skills@04b5a42`.
-- [ ] Worker image lockfile (Python: torch, transformers, peft, safetensors, eciespy) builds reproducibly; digest recorded.
+- [ ] Worker image lockfile (Python: torch, transformers, peft, safetensors; locked by uv in worker/ml/uv.lock) builds reproducibly; digest recorded.
 - [ ] Hardware: written answers or quota results for H1 (0G), H2 (GCP `a3-highgpu-1g` confidential quota, zone),
       H3 (Phala), and the H4 CPU training-time estimate for distilbert on 5k synthetic rows.
 - [ ] NVIDIA GPU attestation verifier chosen (NRAS or local), with a doc reference.
@@ -64,8 +64,9 @@ role-event replay shows zero holders. The testnet deploy is a separate go-ahead.
 
 ## T06 · Envelope, vault, ECIES compatibility. Needs: T00. Status: `todo`
 Acceptance: a real 0G round trip; wrong key, bit flip, header change and truncation each throw; chunked model
-bundles (≥ 3 chunks) round-trip; fresh-device recovery from file + passphrase; no signature-derived keys; eciesjs
-(TS) ↔ eciespy (Python) encrypt/decrypt both ways on fixed vectors.
+bundles (≥ 3 chunks) round-trip; fresh-device recovery from file + passphrase; no signature-derived keys. (ECIES
+compatibility dropped: only TS code does crypto; the Python ML plane receives plaintext inside the enclave via
+tmpfs and a local pipe.)
 
 ## T14 · Evidence verifiers (client) [S→C]. Needs: T01. Status: `todo`
 Acceptance: per runtime (PROTOCOL §9). The TDX quote verified with dcap-qvl against recorded real quotes (from the
@@ -128,6 +129,8 @@ self-paying agents, iAI sign-in, direct-to-TeeML-provider agent calls.
   aggregates only, fixing the rev-2 flaw where classifier calls carried seller templates and buyer text through the
   0G gateway. Added T13 (ML plane) and T14 (evidence verifiers); MOCK removed everywhere. Pending: T00 confirmation
   of choices A–D.
+- 2026-11-06 build: the ML plane does no crypto (the control plane decrypts into enclave tmpfs), so eciespy and the
+  TS↔Python ECIES compatibility test are removed.
 - 2026-11-06 T00 done: the user confirmed rev 3 with the recommended choices: A = ask 0G for a hosted GPU TEE
   (H1) + request GCP `a3-highgpu-1g` confidential quota (H2) in parallel, budget set by the user before any spend,
   H4 for small models if CPU timing allows; B = B1 standard formats only; C = C1 hosted inference (C2 adapter export

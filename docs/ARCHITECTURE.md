@@ -87,7 +87,7 @@ flowchart LR
         R4["0G Router"]
         R5["Arkiv SDK"]
         R6["PyTorch, transformers, peft, safetensors"]
-        R7["dcap-qvl, NVIDIA GPU verifier,<br/>noble, eciesjs / eciespy"]
+        R7["dcap-qvl, NVIDIA GPU verifier,<br/>noble, eciesjs"]
     end
     subgraph OURS["Ours"]
         P["packages/protocol"]

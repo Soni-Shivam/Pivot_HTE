@@ -15,7 +15,7 @@ in (T02B, Phase 2).
 
 **Tech Stack:** Node 22, TypeScript (`moduleResolution: "bundler"`), `tsx --test`, `@noble/ciphers`,
 `@noble/hashes`, `eciesjs@0.5.0`, `canonicalize`, `viem`, `ethers@6.13.1` (storage adapter only); Python 3.11+,
-`torch`, `transformers`, `peft`, `safetensors`, `datasets`, `eciespy`, `pytest` (exact pins in
+`torch`, `transformers`, `peft`, `safetensors`, `pytest` (exact pins in
 `worker/ml/requirements.lock`); Foundry (solc 0.8.28, cancun), `erc-8183/base-contracts@142e669`.
 
 **Spec:** `docs/PLAN.md`, `docs/SECURITY.md`, `docs/PROTOCOL.md`
@@ -49,9 +49,8 @@ in (T02B, Phase 2).
   scratch clone → exit 0, lockfile unchanged.
 - [ ] **Step 2:** `scripts/setup.sh`: clone `0gfoundation/0g-agent-skills` into `.0g-skills` at `04b5a42`; idempotent.
 - [ ] **Step 3:** `tsconfig.base.json`: `strict`, `module: "ESNext"`, `moduleResolution: "bundler"`, `target: "ES2022"`.
-- [ ] **Step 4:** Python env: `python3 -m venv worker/ml/.venv`; write `requirements.in` (torch with CUDA for the
-  A5000, transformers, peft, safetensors, datasets, eciespy, pytest); lock with `pip-compile` or
-  `pip freeze > requirements.lock`; check `torch.cuda.is_available()` prints True.
+- [ ] **Step 4:** Python env with `uv` in `worker/ml` (`pyproject.toml` + `uv.lock`): torch with CUDA for the A5000,
+  transformers, peft, safetensors, numpy, pytest; `uv sync`; check `torch.cuda.is_available()` prints True.
 - [ ] **Step 5:** `examples/05-arkiv-roundtrip.ts`: throwaway `sealedai.probe/v1` entity (1 h expiry) on
   `ARKIV_RPC_URL` with `X-API-KEY`, query back by creator; print `entityKey`, `tx`, `queryHit=true` (ask the user for
   Arkiv faucet funds first). Follow `docs.arkiv.network` "Your first entity" for exact calls.
@@ -63,11 +62,10 @@ in (T02B, Phase 2).
   answers in `docs/evidence/runtime.json`.
 - [ ] **Step 8:** Commit.
 
-### Task 2: Envelope, vault, ECIES compatibility (T06)
+### Task 2: Envelope, chunks, vault (T06)
 
 **Files:** Create `packages/protocol/src/{canonical,envelope,chunks}.ts`, `packages/protocol/test/envelope.test.ts`,
 `packages/client/src/vault.ts`, `packages/client/test/vault.test.ts`, `packages/integrations/src/storage.ts`,
-`worker/ml/sealedai_ml/crypto.py`, `worker/ml/tests/test_ecies_compat.py`, `packages/protocol/test/fixtures/ecies/*.json`,
 `examples/07-envelope-0g-roundtrip.ts`.
 
 **Interfaces:**
@@ -81,7 +79,6 @@ in (T02B, Phase 2).
   `openChunked(manifestBlob, blobs, key): Uint8Array`
 - `class Vault { static create(); put(id: string, key: Uint8Array); get(id: string): Uint8Array; save(path: string); static load(path: string); exportRecovery(pass: string): Uint8Array; static importRecovery(file: Uint8Array, pass: string): Vault }`
 - `uploadBlob(blob): Promise<{ root: string; txHash: string }>`, `downloadBlob(root): Promise<Uint8Array>`
-- Python: `ecies_decrypt(priv_hex: str, data: bytes) -> bytes`, `gcm_open(blob: bytes, key: bytes, expect: dict|None) -> bytes`
 
 - [ ] **Step 1: Failing TS tests:** `roundTrip`, `wrongKeyThrows`, `flippedBitThrows`, `modifiedHeaderThrows`,
   `truncatedThrows`, `expectMismatchThrows`, `freshNonceEachSeal`, `chunkedRoundTrip3Chunks`,
@@ -92,9 +89,7 @@ in (T02B, Phase 2).
 - [ ] **Step 3:** Implement per PROTOCOL §3 (vault: random master key at `~/.sealedai/master.key` 0600; vault file
   = `seal(…, {objectType:'vault'})`; recovery = scrypt(N=2^17, r=8, p=1, 16-byte salt) + AES-GCM with the salt and
   params in an AAD-covered header). Run → all pass.
-- [ ] **Step 4: ECIES + GCM compatibility:** generate fixed vectors in TS (eciesjs encrypt, our `seal`); a Python
-  test decrypts them with eciespy and `gcm_open`; and the reverse (Python encrypts, a TS test decrypts). Run
-  `pytest worker/ml/tests/test_ecies_compat.py` and the TS test → pass both ways.
+- [ ] **Step 4:** (Removed in build: only TS code does crypto, so no TS↔Python ECIES compatibility is needed.)
 - [ ] **Step 5:** `examples/07-envelope-0g-roundtrip.ts`: a 3-chunk sealed bundle (use `chunkSize` 1 MiB for the
   example) → upload → download → `openChunked`; a truncated chunk → throws. Record the roots and tx.
 - [ ] **Step 6:** Commit.

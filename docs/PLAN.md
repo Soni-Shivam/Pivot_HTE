@@ -87,7 +87,7 @@ outcome-based pricing, pay-per-call, self-paying agents, our own backend server,
 | Escrow | **ERC-8183 reference** + `ERC8183WithAuthorization` | `erc-8183/base-contracts@142e669` |
 | Agent inference | **0G Private Computer Router**, private tier only, key set to private-only routing; aggregates only. Option: call a TeeML provider directly via the Compute SDK to skip the gateway (**VERIFY** that its TLS ends in the enclave and that it counts for the track; needs a 3 0G ledger deposit). | live `/v1/models` |
 | Blob storage | **0G Storage SDK**, Merkle-proofed upload/download, **SDK encryption off** (its `aes256` is unauthenticated AES-CTR) | 1.2.13 |
-| Crypto | `@noble/ciphers` (AES-GCM), `@noble/hashes` (scrypt, sha256), `eciesjs` 0.5.0 (client) and `eciespy` (worker, the Python sibling of eciesjs). **VERIFY** byte compatibility in T06. | npm / PyPI |
+| Crypto | `@noble/ciphers` (AES-GCM), `@noble/hashes` (scrypt, sha256), `eciesjs` 0.5.0 (client and worker control plane; the Python ML plane does no crypto). | npm / PyPI |
 | Public catalog | **Arkiv** `@arkiv-network/sdk` 1.0.1 | npm |
 
 ### 3.2 Ours

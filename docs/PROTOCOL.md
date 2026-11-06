@@ -74,8 +74,8 @@ custom code; `config.architectures[0]` must be on the allowlist (MVP: `DistilBer
 match the card ± 1 %.
 
 ## 5. Key release
-`wrapped = ECIES(workerPubKey, objectKey)` (eciesjs on the client, eciespy in the worker; T06 proves byte
-compatibility). Sent as `{release: KeyRelease, sig, wrapped}`, itself ECIES-encrypted to the worker (I8). The worker
+`wrapped = ECIES(workerPubKey, objectKey)` (eciesjs on both sides: the worker's TS control plane does all crypto; the
+Python ML plane never sees keys or ciphertext). Sent as `{release: KeyRelease, sig, wrapped}`, itself ECIES-encrypted to the worker (I8). The worker
 checks: the signer is `manifest.seller` (role 1) or `manifest.buyer` (role 2); `manifestHash` matches;
 `wrappedKeyHash == keccak256(wrapped)`; the key opens an object whose header matches the committed one. One release
 per role; a conflicting second one aborts the job.

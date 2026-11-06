@@ -2,5 +2,6 @@
   "escrow": "0x0E28A6Cb4A7B7De38Cc626E8E1E80A95cD0e070a",
   "token": "0xDfe37dF36Eff5Bed6F628ed8430EFaE8c8f7a7d7",
   "setup": "0x04b02d9D9096394e04F5e31951375D721576A9e6",
-  "chainId": 16602
+  "chainId": 16602,
+  "episodeRegistry": "0x23edb2e37F9a2a2b1DAaF0514b58E278f2FFF46A"
 }

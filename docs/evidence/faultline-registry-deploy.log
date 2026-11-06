@@ -1,0 +1,8 @@
+# EpisodeRegistry on 0G Galileo (16602) — 2026-11-06T19:53:36Z
+forge test --match-contract EpisodeRegistry: 7 tests passed, 0 failed, 0 skipped (7 total tests)
+forge script script/DeployRegistry.s.sol --rpc-url $RPC_URL --broadcast --gas-estimate-multiplier 150 --private-key $PRIVATE_KEY
+episodeRegistry=0x23edb2e37F9a2a2b1DAaF0514b58E278f2FFF46A
+deployTx=0x565b039287982f5206ff86673f9d71aa387d665cac72bcd925e42ecfe8b07d38 block=64221309 status=1
+explorer: https://chainscan-galileo.0g.ai/address/0x23edb2e37F9a2a2b1DAaF0514b58E278f2FFF46A
+source verified via forge verify-contract --verifier custom --verifier-url https://chainscan-galileo.0g.ai/open/api
+  (getsourcecode returns src/EpisodeRegistry.sol)

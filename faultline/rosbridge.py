@@ -61,6 +61,18 @@ def _f(t, k):
     return t[k] if isinstance(t, dict) else getattr(t, k)
 
 
+def lidar_static_tf():
+    from geometry_msgs.msg import TransformStamped
+    from tf2_msgs.msg import TFMessage
+
+    from faultline.carla_world import LIDAR_X, LIDAR_Z
+    st = TransformStamped()
+    st.header.frame_id, st.child_frame_id = "ego", "lidar"
+    st.transform.translation.x, st.transform.translation.z = LIDAR_X, LIDAR_Z
+    st.transform.rotation.w = 1.0
+    return TFMessage(transforms=[st])
+
+
 def _import_ros():
     try:
         import yaml  # noqa: F401
@@ -92,8 +104,6 @@ class RosBridge:
         from tf2_msgs.msg import TFMessage
         from visualization_msgs.msg import MarkerArray
 
-        from faultline.carla_world import LIDAR_X, LIDAR_Z
-
         self.M = dict(TransformStamped=TransformStamped, Odometry=Odometry, Clock=Clock, PointCloud2=PointCloud2,
                       PointField=PointField, Bool=Bool, Float64=Float64, String=String, TFMessage=TFMessage,
                       MarkerArray=MarkerArray)
@@ -120,11 +130,7 @@ class RosBridge:
         self.world = world
         self.runup_s = getattr(getattr(world, "s", None), "runup_s", 3.0)
         self._t_s, self._last_wall, self._base_mode = 0.0, time.monotonic(), "RUNUP"
-        st = TransformStamped()
-        st.header.frame_id, st.child_frame_id = "ego", "lidar"
-        st.transform.translation.x, st.transform.translation.z = LIDAR_X, LIDAR_Z
-        st.transform.rotation.w = 1.0
-        self.pub["tf_static"].publish(TFMessage(transforms=[st]))
+        self.pub["tf_static"].publish(lidar_static_tf())
         if self.map_path.exists():
             self.pub["lanelet_map"].publish(self._lanelet_markers())
         prev = world.on_tick
@@ -143,7 +149,7 @@ class RosBridge:
         for i, (mk, ns, w, rgba) in enumerate(((borders, "borders", 0.15, (0.85, 0.85, 0.9, 0.9)),
                                                (centres, "centrelines", 0.08, (0.3, 0.6, 1.0, 0.7)))):
             mk.header.frame_id, mk.ns, mk.id, mk.type, mk.action = "map", ns, i, Marker.LINE_LIST, Marker.ADD
-            mk.scale.x, mk.pose.orientation.w = w, 1.0
+            mk.scale.x, mk.pose.orientation.w, mk.frame_locked = w, 1.0, True  # stamp 0: draw with the latest TF
             mk.color.r, mk.color.g, mk.color.b, mk.color.a = rgba
         for lt in m.laneletLayer:
             for b in (list(lt.leftBound), list(lt.rightBound)):  # lanelet2 linestrings do not slice
@@ -232,8 +238,9 @@ class RosBridge:
         clear.action = Marker.DELETEALL
         tracks = [clear]
         for tr in getattr(world, "tracks", None) or []:
-            # shortcut: assumes CARLA-frame track yaw in degrees (carla.Rotation convention); confirm when world.tracks lands
-            tracks += self._box("tracks", int(_f(tr, "id")), _f(tr, "x"), _f(tr, "y"), ego_tf.location.z + 0.8,
+            # faultline.ego.lidar_tracker.Track: CARLA world frame, yaw in degrees (carla.Rotation convention)
+            z = (getattr(tr, "z", 0.0) or ego_tf.location.z) + 0.8
+            tracks += self._box("tracks", int(_f(tr, "id")), _f(tr, "x"), _f(tr, "y"), z,
                                 _f(tr, "yaw"), _f(tr, "length"), _f(tr, "width"), 1.6, (0.1, 0.8, 1.0, 0.6), stamp,
                                 f"track {_f(tr, 'id')} {float(_f(tr, 'speed')):.1f} m/s")
         P["tracks"].publish(M["MarkerArray"](markers=tracks))

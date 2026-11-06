@@ -1,0 +1,115 @@
+Panels: []
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid
+      Enabled: true
+      Reference Frame: ego
+      Cell Size: 10
+      Plane Cell Count: 20
+      Color: 80; 80; 90
+      Alpha: 0.4
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Lanelet2 map
+      Enabled: true
+      Namespaces: {}
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /faultline/lanelet_map
+      Value: true
+    - Class: rviz_default_plugins/PointCloud2
+      Name: LiDAR
+      Enabled: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /faultline/lidar
+      Color Transformer: AxisColor
+      Axis: Z
+      Autocompute Value Bounds: false
+      Min Value: -2.2
+      Max Value: 2
+      Use Fixed Frame: false
+      Style: Points
+      Size (Pixels): 2
+      Alpha: 1
+      Decay Time: 0
+      Position Transformer: XYZ
+      Queue Size: 5
+      Selectable: false
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Ground truth boxes
+      Enabled: true
+      Namespaces: {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /faultline/gt
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Name: LiDAR tracks
+      Enabled: true
+      Namespaces: {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /faultline/tracks
+      Value: true
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: true
+      Show Arrows: false
+      Show Axes: true
+      Show Names: true
+      Marker Scale: 2
+      Frame Timeout: 15
+      Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 22; 26; 32
+    Fixed Frame: map
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Measure
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/ThirdPersonFollower
+      Name: Follow ego
+      Target Frame: ego
+      Distance: 38
+      Focal Point:
+        X: 14
+        Y: 0
+        Z: 0
+      Pitch: 0.55
+      Yaw: 3.14159
+      Near Clip Distance: 0.01
+      Focal Shape Fixed Size: false
+      Focal Shape Size: 0.05
+      Invert Z Axis: false
+      Value: ThirdPersonFollower (rviz_default_plugins)
+    Saved: ~
+Window Geometry:
+  Displays:
+    collapsed: true
+  Height: 416
+  Width: 1280
+  X: 0
+  Y: 784
+  Hide Left Dock: true
+  Hide Right Dock: true

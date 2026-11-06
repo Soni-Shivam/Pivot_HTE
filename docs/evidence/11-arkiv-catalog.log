@@ -1,0 +1,5 @@
+seller listing entity 0xe7e6e3a53f9a682a01f68df5f3945a5116ad3cb3180888f746b61b3daae3a7e3 tx 0x1fe02667f0c50d96ea7a9b193accfbfa9e6796616065b0842356523321d15e1b (writer 0x8dac3a1fd3D7796254b84Ad70750430f67871069)
+impostor listing entity 0x22d6d29bbd5ae916ac50349d6169ca00005f4c5315e6bebf3c4dabedba937af6 (writer 0x76cE631D4d750124DBDA74774840F25D3A70Cd5E, claims seller 0x8dac3a1fd3D7796254b84Ad70750430f67871069)
+SHOWN  0xe7e6e3a53f9a682a01f68df5f3945a5116ad3cb3180888f746b61b3daae3a7e3 "ticket-triage-bert" price 25000000 seller 0x8dac3a1fd3D7796254b84Ad70750430f67871069
+HIDDEN 0x22d6d29bbd5ae916ac50349d6169ca00005f4c5315e6bebf3c4dabedba937af6: listing not written by its seller
+query: select listing/v1 where category = "support-triage", shown only if $creator == seller and the 0G-stored offer verifies

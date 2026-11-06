@@ -1,5 +1,7 @@
 # SealedAI (working name)
 
+> **Faultline build in progress** (branch `build/faultline`): see the spec `docs/superpowers/specs/2026-11-06-faultline-0g-architecture-design.md`.
+
 **Customize someone else's AI model on your private data, without either of you seeing the other's asset.**
 
 A seller lists a proprietary model (weights stay encrypted). A buyer states a goal. An AI agent on **0G Private

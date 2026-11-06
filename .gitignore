@@ -8,3 +8,5 @@ contracts/cache/
 contracts/broadcast/*/31337/
 apps/web/dist/
 .venv
+__pycache__/
+.pytest_cache/

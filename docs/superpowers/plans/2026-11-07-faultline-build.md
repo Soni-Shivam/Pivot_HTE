@@ -42,17 +42,17 @@
 **Interfaces:**
 - Produces: `.venv` with `carla==0.10.0`, `numpy==1.26.4`, `pytest==8.3.3`; `requirements-sim.txt` lists exactly those plus the local wheel path.
 
-- [ ] **Step 1:** Write `requirements-sim.txt`:
+- [x] **Step 1:** Write `requirements-sim.txt`:
 ```
 /home/sedrica-w/carla/Carla-0.10.0-Linux-Shipping/PythonAPI/carla/dist/carla-0.10.0-cp312-cp312-linux_x86_64.whl
 numpy==1.26.4
 requests==2.32.3
 pytest==8.3.3
 ```
-- [ ] **Step 2:** Run `.venv/bin/pip install -r requirements-sim.txt` (the venv already exists; `pip install` is idempotent). Expected: no error; `.venv/bin/python -c "import carla, numpy, pytest"` prints nothing.
-- [ ] **Step 3:** Write `tests/python/conftest.py` that inserts the repo root into `sys.path` and defines a `tmp_run_dir` fixture (a `tmp_path / "runs" / "ep"` directory).
-- [ ] **Step 4:** Run `.venv/bin/python -m pytest tests/python -q`. Expected: `no tests ran`, exit 5.
-- [ ] **Step 5:** Commit: `git add pyproject.toml requirements-sim.txt faultline tests/python && git commit -m "faultline: python package skeleton"`.
+- [x] **Step 2:** Run `.venv/bin/pip install -r requirements-sim.txt` (the venv already exists; `pip install` is idempotent). Expected: no error; `.venv/bin/python -c "import carla, numpy, pytest"` prints nothing.
+- [x] **Step 3:** Write `tests/python/conftest.py` that inserts the repo root into `sys.path` and defines a `tmp_run_dir` fixture (a `tmp_path / "runs" / "ep"` directory).
+- [x] **Step 4:** Run `.venv/bin/python -m pytest tests/python -q`. Expected: `no tests ran`, exit 5.
+- [x] **Step 5:** Commit: `git add pyproject.toml requirements-sim.txt faultline tests/python && git commit -m "faultline: python package skeleton"`.
 
 ### Task 1: Vendored criticality metrics (MIT, from MBRDI)
 

@@ -1,0 +1,4 @@
+/home/sedrica-w/carla/Carla-0.10.0-Linux-Shipping/PythonAPI/carla/dist/carla-0.10.0-cp312-cp312-linux_x86_64.whl
+numpy==1.26.4
+requests==2.32.3
+pytest==8.3.3

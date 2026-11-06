@@ -1,12 +1,16 @@
 """python -m faultline run ... (plan Task 7). Reads ZG_ROUTER_URL / ZG_API_KEY from .env; never prints them."""
 import argparse
+import hashlib
+import json
 import os
+import subprocess
 import sys
 import time
+from dataclasses import asdict
 from pathlib import Path
 
-from faultline.config import Scenario
-from faultline.episode import run_episode
+from faultline.config import Scenario, canonical, scenario_hash
+from faultline.episode import _iso, run_episode
 from faultline.log import verify_chain
 from faultline.router import DEFAULT_MODEL, Decision, ZgRouter
 
@@ -62,6 +66,10 @@ def print_summary(out: Path, m: dict) -> None:
               f"{str(d['provider']):<44} {d['latency_ms']}")
 
 
+def npm(cmd: str, out: Path) -> None:
+    subprocess.run(["bash", "-c", f". ~/.nvm/nvm.sh >/dev/null && npm run -s faultline -- {cmd} {out}"], cwd=ROOT, check=True)
+
+
 def cmd_run(a) -> int:
     load_dotenv()
     out = Path(a.out or f"runs/{a.world}-{a.seed}-{time.strftime('%Y%m%dT%H%M%S')}")
@@ -76,8 +84,30 @@ def cmd_run(a) -> int:
         if not url or not key:
             sys.exit("ZG_ROUTER_URL and ZG_API_KEY must be set in .env")
         decider = ZgRouter(url, key, model=a.model)
-    m = run_episode(make_world(a.world, out, a.view, a.display), decider, Scenario(seed=a.seed), out)
+    s = Scenario(seed=a.seed)
+    if not a.anchor:
+        m = run_episode(make_world(a.world, out, a.view, a.display), decider, s, out)
+        print_summary(out, m)
+        return 0
+    # Commit-before: scenario.json + preliminary manifest, Galileo commitScenario, only then the first 0G call.
+    started_at = _iso(time.time())
+    (out / "scenario.json").write_text(canonical(asdict(s)) + "\n")
+    episode_id = hashlib.sha256(f"{scenario_hash(s)}:{s.seed}:{started_at}".encode()).hexdigest()
+    (out / "manifest.json").write_text(json.dumps({"episode_id": episode_id, "scenario_hash": scenario_hash(s),
+                                                    "started_at": started_at, "preliminary": True}) + "\n")
+    npm("commit", out)
+    anc = json.loads((out / "anchor.json").read_text())
+    m = run_episode(make_world(a.world, out, a.view, a.display), decider, s, out, started_at=started_at,
+                    extra={"registry": anc["registry"], "commit_tx": anc["commitTx"]})
     print_summary(out, m)
+    npm("publish", out)
+    npm("finalize", out)
+    pub, anc = json.loads((out / "publish.json").read_text()), json.loads((out / "anchor.json").read_text())
+    # local copy only: the published manifest (inside public.json / sealed.bin) predates these fields
+    m.update(public_root=pub["publicRoot"], sealed_root=pub["sealedRoot"], public_tx=pub["publicTx"],
+             sealed_tx=pub["sealedTx"], finalize_tx=anc["finalizeTx"])
+    (out / "manifest.json").write_text(json.dumps(m, sort_keys=True, indent=2) + "\n")
+    print(f"anchored: commit {anc['commitTx']}  finalize {anc['finalizeTx']}  onchain_matches {anc['onchainMatches']}")
     return 0
 
 
@@ -105,6 +135,7 @@ def cmd_playback(a) -> int:
 
 
 def main(argv=None) -> int:
+    sys.stdout.reconfigure(line_buffering=True)  # keep our table in order with the npm subprocess output
     p = argparse.ArgumentParser(prog="faultline")
     sub = p.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
@@ -116,6 +147,7 @@ def main(argv=None) -> int:
     r.add_argument("--chaos", choices=["none", "unreachable"], default="none")
     r.add_argument("--decider", choices=["0g", "maintain"], default="0g")
     r.add_argument("--view", action="store_true", help="chase-camera window + screen.mp4 (CARLA only)")
+    r.add_argument("--anchor", action="store_true", help="Galileo commit before the loop, publish + finalize after")
     r.add_argument("--display", default=":2", help="X display for --view (the VNC desktop)")
     r.set_defaults(fn=cmd_run)
     rp = sub.add_parser("replay")

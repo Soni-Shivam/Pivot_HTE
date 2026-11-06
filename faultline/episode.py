@@ -49,11 +49,13 @@ def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def run_episode(world, decider, scenario: Scenario, out_dir: Path, clock=time) -> dict:
+def run_episode(world, decider, scenario: Scenario, out_dir: Path, clock=time, started_at: str | None = None,
+                extra: dict | None = None) -> dict:
+    """`started_at` lets --anchor fix the episode id before the loop; `extra` is merged into the manifest."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     s = scenario
-    started_at = _iso(clock.time())
+    started_at = started_at or _iso(clock.time())
     s_hash = scenario_hash(s)
     (out_dir / "scenario.json").write_text(canonical(asdict(s)) + "\n")
     log = ChainLog(out_dir / "decisions.jsonl")
@@ -151,6 +153,6 @@ def run_episode(world, decider, scenario: Scenario, out_dir: Path, clock=time) -
                 "trust_mode": "private", "status": status, "collision": collision,
                 "decisions_total": sum(decels.values()), "decisions_0g": decels["0g"],
                 "decisions_halt": decels["none"], "log_head": log.head, "files": files, "started_at": started_at,
-                "finished_at": _iso(clock.time()), "world": getattr(world, "name", type(world).__name__)}
+                "finished_at": _iso(clock.time()), "world": getattr(world, "name", type(world).__name__), **(extra or {})}
     (out_dir / "manifest.json").write_text(json.dumps(manifest, sort_keys=True, indent=2) + "\n")
     return manifest

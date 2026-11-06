@@ -1,0 +1,48 @@
+# faultline demo-002 end to end — 2026-11-06T20:04:04Z
+# .venv/bin/python -m faultline run --world carla --seed 7 --out runs/demo-002 --anchor --view
+# registry 0x23edb2e37F9a2a2b1DAaF0514b58E278f2FFF46A (Galileo 16602)
+## anchor.json (salt omitted here; it is only in the sealed tar)
+{
+  "registry": "0x23edb2e37F9a2a2b1DAaF0514b58E278f2FFF46A",
+  "episodeId": "0x11b84c63fe1bb90613977a5d5d9146400c60ff615d4729db051956d014a3338b",
+  "scenarioCommitment": "0xa725f9798d150cff37f8025f8ac66ea6517034442f8b544acef5d37600e2b03f",
+  "commitTx": "0x7cd9a7b563802bf2630b3c98731763773cf101c93ca68325ddd8965e3ec2aefc",
+  "commitBlock": 64222541,
+  "commitBlockTimestamp": 1793995266,
+  "resultCommitment": "0x7527b6895ebc756c81922ff55d99708f0865b38c0058d544058d657c1ff8b4d4",
+  "status": 1,
+  "collision": false,
+  "finalizeTx": "0xd7689a465a98a3189b85f1e8d2f0bc9591350042082c3ae26737744e3d57fbf3",
+  "finalizeBlock": 64222723,
+  "finalizeBlockTimestamp": 1793995355,
+  "onchainMatches": true
+}
+## publish.json
+{
+  "episode_id": "11b84c63fe1bb90613977a5d5d9146400c60ff615d4729db051956d014a3338b",
+  "publicRoot": "0x03c68b42f385410a4dfabde299667490e29f2d23af5b616d9389070e4f2d7b44",
+  "publicTx": "0x495d13a24bc01a47aa93b7bf1e3ed59b5d850dadaa83edeaf0d96f3afa7e0770",
+  "sealedRoot": "0x3aa3978d37b52729e36b7e252e891d990ea5701eefa855d401391ba8e1aceb6e",
+  "sealedTx": "0xc2a5035db72c824cad5d86a3f287c809add6a2aef418c1d3d8e04c8551bded18",
+  "publicBytes": 82535,
+  "sealedBytes": 288528,
+  "signatures_true": 8,
+  "signatures_0g": 8
+}
+## verification.json (summary)
+{"publicRootOk":true,"filesOk":true,"chainOk":true,"metricsRecomputedOk":true,"signaturesAllTrue":true,"sealed":{"sealedRoot":"0x3aa3978d37b52729e36b7e252e891d990ea5701eefa855d401391ba8e1aceb6e","opened":true,"manifestMatchesPublic":true,"filesHashesMatchManifest":true,"chainOk":true,"observationsMatchPublic":true},"signatures":[{"cp":0,"request_id":"ffa55e0f-03b9-420e-87e0-853b5fa2c2e4","provider":"0xf4FB8d2bD856e672b5f9848b0eD235A20079B250","verified":true},{"cp":1,"request_id":"1fe2843b-1f95-4920-8b88-334e161f99f9","provider":"0xf4FB8d2bD856e672b5f9848b0eD235A20079B250","verified":true},{"cp":2,"request_id":"a66cd487-bbd8-4d90-b902-90204d69cf43","provider":"0xf4FB8d2bD856e672b5f9848b0eD235A20079B250","verified":true},{"cp":3,"request_id":"d34aa4ae-ed87-4c42-a20d-537e4a076695","provider":"0xf4FB8d2bD856e672b5f9848b0eD235A20079B250","verified":true},{"cp":4,"request_id":"5cbcef91-6715-48f5-a403-7c76d7770913","provider":"0xf4FB8d2bD856e672b5f9848b0eD235A20079B250","verified":true},{"cp":5,"request_id":"9d65316e-3034-42c3-be33-1dd168587d35","provider":"0xf4FB8d2bD856e672b5f9848b0eD235A20079B250","verified":true},{"cp":6,"request_id":"81de2a1e-74d7-4e68-a0f5-9d16897f7eca","provider":"0xf4FB8d2bD856e672b5f9848b0eD235A20079B250","verified":true},{"cp":7,"request_id":"2d7b58d4-82f7-48d3-8ac8-299e4b0fc6dc","provider":"0xf4FB8d2bD856e672b5f9848b0eD235A20079B250","verified":true}]}
+## ordering
+commit block 2026-11-06T20:01:06+00:00 < first decision 2026-11-06T20:01:29.733000+00:00 True | last decision 2026-11-06T20:02:02.509000+00:00 < finalize block 2026-11-06T20:02:35+00:00 True | onchainMatches True
+## decisions
+0 2026-11-06T20:01:29.733Z BRAKE_HARD 0g ok ffa55e0f-03b9-420e-87e0-853b5fa2c2e4 0xf4FB8d2bD856e672b5f9848b0eD235A20079B250 6f3e2767-a576-4d… 2215 ms
+1 2026-11-06T20:01:34.279Z BRAKE_HARD 0g ok 1fe2843b-1f95-4920-8b88-334e161f99f9 0xf4FB8d2bD856e672b5f9848b0eD235A20079B250 197db173-080c-48… 2276 ms
+2 2026-11-06T20:01:39.055Z BRAKE_HARD 0g ok a66cd487-bbd8-4d90-b902-90204d69cf43 0xf4FB8d2bD856e672b5f9848b0eD235A20079B250 19b5b4c9-ff8f-41… 2420 ms
+3 2026-11-06T20:01:43.747Z BRAKE_HARD 0g ok d34aa4ae-ed87-4c42-a20d-537e4a076695 0xf4FB8d2bD856e672b5f9848b0eD235A20079B250 ca965e95-30ae-46… 2384 ms
+4 2026-11-06T20:01:48.355Z MAINTAIN 0g ok 5cbcef91-6715-48f5-a403-7c76d7770913 0xf4FB8d2bD856e672b5f9848b0eD235A20079B250 98ab13dd-9cb1-48… 2314 ms
+5 2026-11-06T20:01:53.038Z MAINTAIN 0g ok 9d65316e-3034-42c3-be33-1dd168587d35 0xf4FB8d2bD856e672b5f9848b0eD235A20079B250 2e949156-276a-46… 2367 ms
+6 2026-11-06T20:01:57.756Z MAINTAIN 0g ok 81de2a1e-74d7-4e68-a0f5-9d16897f7eca 0xf4FB8d2bD856e672b5f9848b0eD235A20079B250 2bb9be06-8f4e-45… 2558 ms
+7 2026-11-06T20:02:02.509Z MAINTAIN 0g ok 2d7b58d4-82f7-48d3-8ac8-299e4b0fc6dc 0xf4FB8d2bD856e672b5f9848b0eD235A20079B250 ea8e4b00-f916-4d… 2392 ms
+## metrics
+{"ccs":0.9999123835349224,"min_ttc_s":0.49720587967181135,"min_gap_m":1.530547,"collision":false,"perception":{"max_abs_gap_error_m":1.363996,"mean_abs_gap_error_m":0.5591718612440193,"scans_without_target":0}}
+## replay (CARLA)
+{"decisions_match":true,"max_abs_gap_diff_m":0.0,"max_abs_lidar_gap_diff_m":1.2695349999999976,"max_abs_v_diff_mps":0.0,"playback_ok":true,"ticks_original":209,"ticks_replay":209,"trajectory_sha256_match":false}

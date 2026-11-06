@@ -78,7 +78,7 @@ def playback(run_dir: Path, host="127.0.0.1", port=2000) -> bool:
     st = w.get_settings()
     st.synchronous_mode, st.fixed_delta_seconds = True, dt
     w.apply_settings(st)
-    seen = 0
+    seen, before = 0, {a.id for a in w.get_actors()}
     try:
         print(c.replay_file(log, 0.0, 0.0, 0))
         for i in range(int(dur / dt) + 5):
@@ -86,6 +86,8 @@ def playback(run_dir: Path, host="127.0.0.1", port=2000) -> bool:
             seen = max(seen, len(w.get_actors().filter("vehicle.*")))
     finally:
         c.stop_replayer(False)
+        c.apply_batch_sync([carla.command.DestroyActor(a.id) for a in w.get_actors()
+                            if a.id not in before and a.type_id.startswith(("vehicle.", "sensor."))])
         st = w.get_settings()
         st.synchronous_mode, st.fixed_delta_seconds = False, None
         w.apply_settings(st)

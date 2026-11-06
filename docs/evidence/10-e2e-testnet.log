@@ -1,0 +1,29 @@
+worker 0x0870415A810bBcbd39fbC6bDd9DfA528a2a9D715 listening (no TEE)
+fund buyer gas tx 0xf50ddfb1f6ff3e42f18e09b8f325cddb8d54946a7478c36c52f447f6348ead7e
+A. seller published: assetRoot 0xf363c65741f3746e695380ad12c5cd3bd526047af4ea99de640c9a41a6696ff7 offerRoot 0x326aef9704afbc057ad23e0e91c7a52c90aa65dca73d29197f0b184bce11aa6e offerHash 0xd8a5a4ea476bc3c2b651045ce6faf707bd49db839857103d7b423b9c9ace1520
+B. buyer dataset sealed: root 0x3ed9d5b70f83bee99e59b9cdfe7f137aff3ecc31001de4feec7d4e1ea9a29e76 (1200 synthetic rows)
+B. agent's proposed plan [256901f3c3557d25]: Outage is rare (131/1365); balanced weights prevent bias. LoRA r=16 captures nuance. 3 epochs with warmup stabilizes learning on small minority. → buyer approves (planHash 0xc22064dff7841566bd324fda4abaf0a7ec2b695fb1d3140b7f88a71620cfa1f1)
+B. production verifier: REFUSED → no TEE evidence (dev server has no TDX (test run)): keys are never released to an unattested worker
+  ⚠ TEST HARNESS: accepting UNATTESTED worker 0x0870415A810bBcbd39fbC6bDd9DfA528a2a9D715 (runtime 0: dev server has no TDX (test run)). Not confidential.
+C. escrow job 1 created tx 0x3437c1788c2c84e7f98535dd78b0756085c90b2a4d4930e3300e520fc0e29ad3
+C. worker gas tx 0xb37af9e971b91d245e4370fbbdc3ce4b02f4cf2cd0fe12350e3f8c8e8267f3cb
+C. worker quoted on chain: payout→seller tx 0x5fa798ee8f32876c469b08bc018bfc209f2fb9deb267d7ce1e56ede694bae663, budget tx 0xb233ef292c3d91626c4a62c3af2fd897fb94c2161c78b6d862a4f5aaf3bb7144
+C. mint test USDC tx 0x90e5e42d53d02959abf7e4e30cfbabdce1d35cbec478bfa4acbf3d05bde38b12
+C. funded: approve 0x89bfa4cc4f3ac4502ebc2f756d2c6b7f9026ddd5cbebded00558a0d431e4b0dc fund 0xd9f0337eaa71b6053c85674952232f40d0f6c110ec9db7426e0032adffd48741
+  ⚠ TEST HARNESS: accepting UNATTESTED worker 0x0870415A810bBcbd39fbC6bDd9DfA528a2a9D715 (runtime 0: dev server has no TDX (test run)). Not confidential.
+C. seller release: {"accepted":"model key","haveBoth":false}
+C. buyer release: {"accepted":"dataset key","haveBoth":true}
+D. #0 metrics {"metrics":{"perClass":{"billing":{"f1":0.804,"n":113},"other":{"f1":0.671,"n":99},"outage":{"f1":0.889,"n":30}},"valAccuracy":0.773,"valLoss":0.638,"valMacroF1":0.788},"runId":"baseline"}
+D. #1 plan [1aca622631c372d7] {"proposalId":"p1","reason":"Baseline valMacroF1 is 0.788. Outage class has low count (n=30) and high F1 (0.889) but 'other' is weak (0.671). Using balanced class weights to help minority classes, LoR
+D. #2 train_start [31486e835454782b] {"proposalId":"p1","recipe":{"classWeights":"balanced","lora":{"alpha":32,"dropout":0.1,"r":16,"targets":["query","value"]},"maxLen":128,"method":"lora","optim":{"batch":16,"epochs":3,"lr":0.0001,"war
+D. #3 train_end {"gpuSeconds":0.544,"metrics":{"perClass":{"billing":{"f1":0.957,"n":113},"other":{"f1":0.975,"n":99},"outage":{"f1":0.909,"n":30}},"trainLoss":0.355,"valAccuracy":0.959,"valLoss":0.27,"valMacroF1":0.
+D. #4 policy_reject [9922cdbe07d62e6b] {"reason":"missing \"rationale\"","reply":"{\"tool\": \"finish\", \"args\": {\"selected\": \"run1\", \"rationate\": \"run1 achieved valMacroF1 of 0.947, significantly improving over the baseline 0.788
+D. #5 finish [49f79e4bbb65b984] {"rationale":"run1 achieved valMacroF1 of 0.947, significantly improving over the baseline 0.788. The balanced class weights helped improve the 'other' class F1 from 0.671 to 0.975, while maintaining 
+D. #6 holdout {"metrics":{"perClass":{"billing":{"f1":0.966,"n":115},"other":{"f1":0.982,"n":109},"outage":{"f1":0.944,"n":37}},"valAccuracy":0.969,"valLoss":0.264,"valMacroF1":0.964},"selected":"run1"}
+E. receipt accepted: report 0x9522ed9db27a5c15c405b20c475fe3a28738c669578ab5f53cf7988791d2fde3, submit tx 0x0e3a928d0bc092f792f60bca0a9ab8b3c4a792c0a9998157392596230d9c9633
+E. baseline val F1 0.788 → selected run1 → holdout F1 0.964 (stop 1)
+E. seller complete tx 0xee18a058a608cfc12b67599658f72b97d0d9b5436c26a95410dc85078ed9edbc; seller test-USDC balance 25000000
+F. infer "no internet in Bandra since last night" → outage (call 1/20)
+F. infer "my april bill has a fee I did not agree to" → billing (call 2/20)
+F. infer "how do I port my number" → other (call 3/20)
+TEST RUN COMPLETE: unattested worker, synthetic data. Every chain, storage and Router ID above is real.

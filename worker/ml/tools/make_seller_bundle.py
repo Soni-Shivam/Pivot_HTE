@@ -1,7 +1,7 @@
-"""Build the demo SELLER asset: distilbert-base-uncased fine-tuned on synthetic generic-SaaS tickets (domain A), saved
-as an hf-safetensors/v1 bundle with card.json (PROTOCOL §4). Synthetic data only.
+"""Build the demo SELLER asset: a base model (distilbert or bert) fine-tuned on synthetic generic-SaaS tickets
+(domain A), saved as an hf-safetensors/v1 bundle with card.json (PROTOCOL §4). Synthetic data only.
 
-    uv run python tools/make_seller_bundle.py models/distilbert-base-uncased models/seller-triage-v1
+    uv run python tools/make_seller_bundle.py models/bert-mini models/seller-triage-bert-mini
 """
 from __future__ import annotations
 
@@ -29,24 +29,26 @@ print("seller training", info, "seller-domain val", {k: v for k, v in engine.eva
 if dst.exists():
     shutil.rmtree(dst)
 dst.mkdir(parents=True)
-trained.config.architectures = ["DistilBertForSequenceClassification"]
+ARCH = {"distilbert": ("DistilBertForSequenceClassification", ["q_lin", "v_lin"]), "bert": ("BertForSequenceClassification", ["query", "value"])}
+arch, targets = ARCH[trained.config.model_type]
+trained.config.architectures = [arch]
 trained.save_pretrained(dst, safe_serialization=True)
 tok.save_pretrained(dst)
 for f in list(dst.iterdir()):  # keep only the allowlisted files
     if f.name not in {"config.json", "model.safetensors", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "vocab.txt"}:
         f.unlink()
 card = {
-    "name": "ticket-triage-distilbert",
+    "name": f"ticket-triage-{trained.config.model_type}",
     "task": "text-classification",
-    "architecture": "DistilBertForSequenceClassification",
+    "architecture": arch,
     "parameters": trained.num_parameters(),
     "license": "demo-proprietary",
     "labels": LABELS,
     "inputSchema": {"text": "string"},
     "outputSchema": {"label": LABELS},
-    "allowedTargets": ["q_lin", "v_lin"],
+    "allowedTargets": targets,
     "maxLen": 128,
-    "publicDescription": "Support-ticket triage model (billing / outage / other), trained on SaaS tickets. Customizable with LoRA on q_lin, v_lin.",
+    "publicDescription": "Support-ticket triage model (billing / outage / other), trained on SaaS tickets. Customizable with LoRA on " + ", ".join(targets) + ".",
 }
 (dst / "card.json").write_text(json.dumps(card, indent=2))
 print("bundle", sorted(p.name for p in dst.iterdir()))

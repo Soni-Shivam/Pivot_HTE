@@ -1,0 +1,147 @@
+# faultline cutin-halt-001 — 2026-11-06T20:51:23Z — run --world carla --family cut_in --seed 7 --chaos unreachable --view --out runs/cutin-halt-001 (router URL http://127.0.0.1:1, a real refused connection)
+
+
+episode f39b0f3d857aeaf3633cda20eb855690418607b941311ce97aefdc41a3a40a9a  world carla-0.10.0-cut-in  status interrupted  collision False
+decisions total 1  0g 0  halt 1  log_head ca7dde87488cfb34b50b19456ad22a0d1ecfafd76b3bee3e57a5cc3b8da2621f  chain_ok True
+ccs 0.0000  min_ttc_s None  min_gap_m None  perception {'max_abs_gap_error_m': None, 'mean_abs_gap_error_m': None, 'scans_without_target': 200}
+ground truth {'ccs': 0.0, 'collision': False, 'first_lidar_in_lane_t_s': None, 'first_tracked_t_s': 0.15, 'in_path_from_t_s': None, 'max_ego_brake': 0.0, 'max_ego_decel_mps2': 3.340092, 'min_gap_in_path_m': None, 'min_ttc_s': None}
+
+ cp action     source            reason       request_id                               provider                                     latency_ms
+  0 None       none              unreachable  None                                     None                                         1
+
+=== npm run faultline -- publish runs/cutin-halt-001 ===
+Detected mainnet (chain ID: 16661)
+Starting upload for file of size: 224528 bytes
+Upload options: {
+  tags: '0x',
+  submitter: '',
+  finalityRequired: true,
+  taskSize: 1,
+  expectedReplica: 1,
+  fragmentSize: 4294967296,
+  skipTx: false,
+  skipIfFinalized: true,
+  fee: 0n,
+  nonce: undefined,
+  onProgress: undefined,
+  encryption: undefined
+}
+First selected node status : {
+  connectedPeers: 2,
+  logSyncHeight: 64228745,
+  logSyncBlock: '0xaa2098948dabc83692214c0d862577ffcc80086627c8b588ebe47cc9847d6f31',
+  nextTxSeq: 160444,
+  networkIdentity: {
+    chainId: 16602,
+    flowAddress: '0x22e03a6a89b950f1c82ec5e74f8eca321a105296',
+    p2pProtocolVersion: { major: 0, minor: 4, build: 0 }
+  }
+}
+Selected nodes: [
+  StorageNode {
+    url: 'http://34.83.53.209:5678',
+    timeout: 30000,
+    retry: 3
+  },
+  StorageNode {
+    url: 'http://34.169.28.106:5678',
+    timeout: 30000,
+    retry: 3
+  }
+]
+Using splitable upload (handles both single and fragment cases)
+File details - size: 224528, numSegments: 1, numChunks: 878
+Data prepared to upload root=0xba9aa80b5bd40a1e57c2fb19c5b8b10d31ed8e73169a8e027634e3b33b4c2a6e size=224528 numSegments=1 numChunks=878
+Attempting to find existing file info by root hash...
+Submitting transaction with storage fee: 27537345885952n
+Transaction submitted, hash: 0xcaff0fc395753cd355706c0200aee84392c0e6eb7e64108857899d24145faca1
+Wait for log entry on storage node
+Waiting for storage node to sync (height=64228745)...
+Tasks created: [
+  [
+    {
+      clientIndex: 0,
+      taskSize: 1,
+      segIndex: 0,
+      numShard: 2,
+      txSeq: 160444
+    }
+  ]
+]
+Processing tasks in parallel with  1  tasks...
+All tasks processed
+Wait for log entry on storage node
+Single file upload completed - returning single result
+Starting upload for file of size: 93281 bytes
+Upload options: {
+  tags: '0x',
+  submitter: '',
+  finalityRequired: true,
+  taskSize: 1,
+  expectedReplica: 1,
+  fragmentSize: 4294967296,
+  skipTx: false,
+  skipIfFinalized: true,
+  fee: 0n,
+  nonce: undefined,
+  onProgress: undefined,
+  encryption: undefined
+}
+First selected node status : {
+  connectedPeers: 2,
+  logSyncHeight: 64228757,
+  logSyncBlock: '0x7fd29026b47c89c91bf775cb08bb9075bd618fbfdc47defcfff7cbdad770e4f6',
+  nextTxSeq: 160445,
+  networkIdentity: {
+    chainId: 16602,
+    flowAddress: '0x22e03a6a89b950f1c82ec5e74f8eca321a105296',
+    p2pProtocolVersion: { major: 0, minor: 4, build: 0 }
+  }
+}
+Selected nodes: [
+  StorageNode {
+    url: 'http://34.83.53.209:5678',
+    timeout: 30000,
+    retry: 3
+  },
+  StorageNode {
+    url: 'http://34.169.28.106:5678',
+    timeout: 30000,
+    retry: 3
+  }
+]
+Using splitable upload (handles both single and fragment cases)
+File details - size: 93281, numSegments: 1, numChunks: 365
+Data prepared to upload root=0x0b2c6de2bec5c7fd28efac9cef5016a75f53bff079fab302f4e84f0ed8117763 size=93281 numSegments=1 numChunks=365
+Attempting to find existing file info by root hash...
+Submitting transaction with storage fee: 11801719665408n
+Transaction submitted, hash: 0x110824094adbad313191f0eef9a29dacabc2518991fc167f04b8b4e744136cf7
+Wait for log entry on storage node
+Waiting for storage node to sync (height=64228770)...
+Waiting for storage node to sync (height=64228770)...
+Tasks created: [
+  [
+    {
+      clientIndex: 1,
+      taskSize: 1,
+      segIndex: 0,
+      numShard: 2,
+      txSeq: 160446
+    }
+  ]
+]
+Processing tasks in parallel with  1  tasks...
+All tasks processed
+Wait for log entry on storage node
+Single file upload completed - returning single result
+{
+  "episode_id": "f39b0f3d857aeaf3633cda20eb855690418607b941311ce97aefdc41a3a40a9a",
+  "publicRoot": "0x0b2c6de2bec5c7fd28efac9cef5016a75f53bff079fab302f4e84f0ed8117763",
+  "publicTx": "0x110824094adbad313191f0eef9a29dacabc2518991fc167f04b8b4e744136cf7",
+  "sealedRoot": "0xba9aa80b5bd40a1e57c2fb19c5b8b10d31ed8e73169a8e027634e3b33b4c2a6e",
+  "sealedTx": "0xcaff0fc395753cd355706c0200aee84392c0e6eb7e64108857899d24145faca1",
+  "publicBytes": 93281,
+  "sealedBytes": 224528,
+  "signatures_true": 0,
+  "signatures_0g": 0
+}

@@ -1,0 +1,277 @@
+{
+  "episodeId": "0xd3b666f0ceeeaa5a49d5e83db940f361f80acb55e3b42eeace64db88e15beee4",
+  "commitment": "0xe2ae9d1afccb203efb0a693e4f53fe577d370bea167965f6c52b043e98e77dc8",
+  "tx": "0x8ba47d241a42320485b36ad37ff259f6b9f840f989b96c7308ae4769f40f633a",
+  "commitBlockTimestamp": 1793998124
+}
+
+episode d3b666f0ceeeaa5a49d5e83db940f361f80acb55e3b42eeace64db88e15beee4  world carla-0.10.0-cut-in  status completed  collision False
+decisions total 10  0g 10  halt 0  log_head 89a4dafe3fd49830494711347b5722dd7fe208fd342f6225dd4f1ef2b883ae69  chain_ok True
+ccs 0.9292  min_ttc_s 1.0280793985237728  min_gap_m 3.550308  perception {'max_abs_gap_error_m': 3.812160999999998, 'mean_abs_gap_error_m': 0.10979834871794869, 'scans_without_target': 45}
+ground truth {'ccs': 0.9082034483229817, 'collision': False, 'first_lidar_in_lane_t_s': 2.3, 'first_tracked_t_s': 0.15, 'in_path_from_t_s': 2.5, 'max_ego_brake': 1.0, 'max_ego_decel_mps2': 7.062597, 'min_gap_in_path_m': 3.501463, 'min_ttc_s': 1.109839}
+
+ cp action     source            reason       request_id                               provider                                     latency_ms
+  0 CUT_IN_AGGRESSIVE 0g                ok           c994934f-7d1b-49f0-a708-141fce7e959a     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2336
+  1 BRAKE_HARD 0g                ok           a0768572-cc72-47d0-ac60-e901254828e0     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2299
+  2 BRAKE_HARD 0g                ok           8d6f05d3-5f73-47ae-b562-976970fe1500     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2271
+  3 BRAKE_HARD 0g                ok           ca6a98fa-eca7-49e4-bb62-e4300ad6c547     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2338
+  4 BRAKE_HARD 0g                ok           e646fafd-abb4-418c-81d1-e2a17601340b     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2276
+  5 ACCELERATE 0g                ok           b8f20d35-9b6c-4141-9601-ed4cd23f2e04     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2292
+  6 ACCELERATE 0g                ok           c360295f-a7f9-4290-b404-be0560a429a8     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2270
+  7 SLOW_DOWN  0g                ok           3e593431-031f-43f3-84da-5732c7a376f2     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2210
+  8 BRAKE_HARD 0g                ok           db0eef81-735a-4388-8881-d52bf9482916     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2141
+  9 BRAKE_HARD 0g                ok           ce8c62aa-12c2-48df-b558-6a40fc714f0c     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2145
+Detected mainnet (chain ID: 16661)
+Starting upload for file of size: 299280 bytes
+Upload options: {
+  tags: '0x',
+  submitter: '',
+  finalityRequired: true,
+  taskSize: 1,
+  expectedReplica: 1,
+  fragmentSize: 4294967296,
+  skipTx: false,
+  skipIfFinalized: true,
+  fee: 0n,
+  nonce: undefined,
+  onProgress: undefined,
+  encryption: undefined
+}
+First selected node status : {
+  connectedPeers: 2,
+  logSyncHeight: 64228485,
+  logSyncBlock: '0x689b6407dfe598cea97ea501050883f91d9dcddeb2a56dfa15d106659d3901ea',
+  nextTxSeq: 160440,
+  networkIdentity: {
+    chainId: 16602,
+    flowAddress: '0x22e03a6a89b950f1c82ec5e74f8eca321a105296',
+    p2pProtocolVersion: { major: 0, minor: 4, build: 0 }
+  }
+}
+Selected nodes: [
+  StorageNode {
+    url: 'http://34.83.53.209:5678',
+    timeout: 30000,
+    retry: 3
+  },
+  StorageNode {
+    url: 'http://34.169.28.106:5678',
+    timeout: 30000,
+    retry: 3
+  }
+]
+Using splitable upload (handles both single and fragment cases)
+File details - size: 299280, numSegments: 2, numChunks: 1170
+Data prepared to upload root=0x757f419543a14acbe91aed0c1b0cc76e2b5086efadabe2ab576eb39fc0f6f7c2 size=299280 numSegments=2 numChunks=1170
+Attempting to find existing file info by root hash...
+Submitting transaction with storage fee: 39339065551360n
+Transaction submitted, hash: 0x5c163253eff12c0f5841f338c1ba7fa8ed2810f7436f74760983b23e7056c0c6
+Wait for log entry on storage node
+Waiting for storage node to sync (height=64228497)...
+Waiting for storage node to sync (height=64228497)...
+Tasks created: [
+  [
+    {
+      clientIndex: 0,
+      taskSize: 1,
+      segIndex: 1,
+      numShard: 2,
+      txSeq: 160440
+    }
+  ],
+  [
+    {
+      clientIndex: 1,
+      taskSize: 1,
+      segIndex: 0,
+      numShard: 2,
+      txSeq: 160440
+    }
+  ]
+]
+Processing tasks in parallel with  2  tasks...
+All tasks processed
+Wait for log entry on storage node
+Single file upload completed - returning single result
+Starting upload for file of size: 132244 bytes
+Upload options: {
+  tags: '0x',
+  submitter: '',
+  finalityRequired: true,
+  taskSize: 1,
+  expectedReplica: 1,
+  fragmentSize: 4294967296,
+  skipTx: false,
+  skipIfFinalized: true,
+  fee: 0n,
+  nonce: undefined,
+  onProgress: undefined,
+  encryption: undefined
+}
+First selected node status : {
+  connectedPeers: 2,
+  logSyncHeight: 64228510,
+  logSyncBlock: '0x7ce4287bc4ae3f47aa0d406349da7bb012db447cadfd6bd024e71a535d8751df',
+  nextTxSeq: 160441,
+  networkIdentity: {
+    chainId: 16602,
+    flowAddress: '0x22e03a6a89b950f1c82ec5e74f8eca321a105296',
+    p2pProtocolVersion: { major: 0, minor: 4, build: 0 }
+  }
+}
+Selected nodes: [
+  StorageNode {
+    url: 'http://34.83.53.209:5678',
+    timeout: 30000,
+    retry: 3
+  },
+  StorageNode {
+    url: 'http://34.169.28.106:5678',
+    timeout: 30000,
+    retry: 3
+  }
+]
+Using splitable upload (handles both single and fragment cases)
+File details - size: 132244, numSegments: 1, numChunks: 517
+Data prepared to upload root=0x4e13bd176cfb48e993952fcbecb450023508a2a62da0abe63f4f004f3d09d0f2 size=132244 numSegments=1 numChunks=517
+Attempting to find existing file info by root hash...
+Submitting transaction with storage fee: 17702579498112n
+Transaction submitted, hash: 0xe509d385208d71be1ebf4c60e96f2d71b7717ef0d0e09844761638eb86920982
+Wait for log entry on storage node
+Waiting for storage node to sync (height=64228522)...
+Waiting for storage node to sync (height=64228522)...
+Tasks created: [
+  [
+    {
+      clientIndex: 1,
+      taskSize: 1,
+      segIndex: 0,
+      numShard: 2,
+      txSeq: 160442
+    }
+  ]
+]
+Processing tasks in parallel with  1  tasks...
+All tasks processed
+Wait for log entry on storage node
+Single file upload completed - returning single result
+{
+  "episode_id": "d3b666f0ceeeaa5a49d5e83db940f361f80acb55e3b42eeace64db88e15beee4",
+  "publicRoot": "0x4e13bd176cfb48e993952fcbecb450023508a2a62da0abe63f4f004f3d09d0f2",
+  "publicTx": "0xe509d385208d71be1ebf4c60e96f2d71b7717ef0d0e09844761638eb86920982",
+  "sealedRoot": "0x757f419543a14acbe91aed0c1b0cc76e2b5086efadabe2ab576eb39fc0f6f7c2",
+  "sealedTx": "0x5c163253eff12c0f5841f338c1ba7fa8ed2810f7436f74760983b23e7056c0c6",
+  "publicBytes": 132244,
+  "sealedBytes": 299280,
+  "signatures_true": 10,
+  "signatures_0g": 10
+}
+{
+  "tx": "0x34fae9334a28f46d31bf77c82b5da862a95c9e228545e40548ec436ec22864f6",
+  "onchainMatches": true
+}
+anchored: commit 0x8ba47d241a42320485b36ad37ff259f6b9f840f989b96c7308ae4769f40f633a  finalize 0x34fae9334a28f46d31bf77c82b5da862a95c9e228545e40548ec436ec22864f6  onchain_matches True
+
+=== keyless verify of the public root (npm run faultline -- verify 0x4e13...d0f2) ===
+Getting file locations for root hash: 0x4e13bd176cfb48e993952fcbecb450023508a2a62da0abe63f4f004f3d09d0f2
+Found 4 locations for 0x4e13bd176cfb48e993952fcbecb450023508a2a62da0abe63f4f004f3d09d0f2: [
+  'http://34.83.53.209:5678',
+  'http://34.19.125.196:5678',
+  'http://34.169.28.106:5678',
+  'http://35.236.80.213:5678'
+]
+Selected 2 of 4 nodes for 0x4e13bd176cfb48e993952fcbecb450023508a2a62da0abe63f4f004f3d09d0f2
+Detected mainnet (chain ID: 16661)
+{
+  "publicRoot": "0x4e13bd176cfb48e993952fcbecb450023508a2a62da0abe63f4f004f3d09d0f2",
+  "publicRootOk": true,
+  "episode_id": "d3b666f0ceeeaa5a49d5e83db940f361f80acb55e3b42eeace64db88e15beee4",
+  "status": "completed",
+  "filesOk": true,
+  "chainOk": true,
+  "metricsRecomputedOk": true,
+  "signatures": [
+    {
+      "cp": 0,
+      "request_id": "c994934f-7d1b-49f0-a708-141fce7e959a",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "ebac47ce-f4dd-4b88-a991-ff9b60344c0d",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 1,
+      "request_id": "a0768572-cc72-47d0-ac60-e901254828e0",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "8bb77915-9d22-4c17-9fa4-2e1bf21ecfff",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 2,
+      "request_id": "8d6f05d3-5f73-47ae-b562-976970fe1500",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "456e613d-276b-4210-9e26-913f700a3b09",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 3,
+      "request_id": "ca6a98fa-eca7-49e4-bb62-e4300ad6c547",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "a1cdc222-41cb-44ec-91dc-1224edc9f5de",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 4,
+      "request_id": "e646fafd-abb4-418c-81d1-e2a17601340b",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "7e4f4994-f757-45d9-b0d6-dd6408200257",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 5,
+      "request_id": "b8f20d35-9b6c-4141-9601-ed4cd23f2e04",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "d3dd041c-cde6-4a49-8609-7ffae355717e",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 6,
+      "request_id": "c360295f-a7f9-4290-b404-be0560a429a8",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "838d11ac-bdfd-4d97-bc92-00cdf885a9e2",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 7,
+      "request_id": "3e593431-031f-43f3-84da-5732c7a376f2",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "8e3566cd-10ff-4398-88ff-3d98475cce37",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 8,
+      "request_id": "db0eef81-735a-4388-8881-d52bf9482916",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "52db59c4-6d61-4c9d-a37b-26775bcde8cd",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 9,
+      "request_id": "ce8c62aa-12c2-48df-b558-6a40fc714f0c",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "b5181412-49ce-4701-9e37-6ce21be593c2",
+      "source": "0g",
+      "verified": true
+    }
+  ],
+  "signaturesAllTrue": true,
+  "checked_at": "2026-11-06T20:51:01.313Z"
+}

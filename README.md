@@ -38,6 +38,29 @@ The full T1–T11 matrix with every request ID, root and transaction is in
 [`docs/evidence/faultline-matrix.md`](docs/evidence/faultline-matrix.md); the verifier page on the live root is
 [`docs/evidence/faultline-web-demo-002.png`](docs/evidence/faultline-web-demo-002.png).
 
+### Phase 2: aggressive cut-in against PDM-Lite on LiDAR (live, 2026-11-07)
+
+Family `cut_in_v1` on Town10 road 7 (two same-direction lanes): the ego is **PDM-Lite** (carla_garage's rule-based
+expert, vendored) on **CARLA physics**, seeing other vehicles only through its own LiDAR tracker; the adversary
+starts 12 m ahead in the left lane at 9 m/s and 0G picks `KEEP_LANE`, `ACCELERATE`, `SLOW_DOWN`, `CUT_IN` (2.0 s),
+`CUT_IN_AGGRESSIVE` (1.0 s) or `BRAKE_HARD` each second.
+
+| | |
+|---|---|
+| Anchored episode `runs/cutin-001` | 10 decisions by `0gm-1.0-35b-a3b`, all `processResponse === true`: CUT_IN_AGGRESSIVE at t = 2 s, then BRAKE_HARD ×4, ACCELERATE ×2, SLOW_DOWN, BRAKE_HARD ×2; no collision, ground-truth min TTC 1.11 s, min in-path gap 3.50 m, CCS 0.91, PDM-Lite peak decel 7.1 m/s² |
+| Public / sealed root | `0x4e13bd176cfb48e993952fcbecb450023508a2a62da0abe63f4f004f3d09d0f2` / `0x757f419543a14acbe91aed0c1b0cc76e2b5086efadabe2ab576eb39fc0f6f7c2` |
+| Commit / finalize (Galileo) | [`0x8ba47d24…633a`](https://chainscan-galileo.0g.ai/tx/0x8ba47d241a42320485b36ad37ff259f6b9f840f989b96c7308ae4769f40f633a) / [`0x34fae933…64f6`](https://chainscan-galileo.0g.ai/tx/0x34fae9334a28f46d31bf77c82b5da862a95c9e228545e40548ec436ec22864f6), on-chain roots match |
+| Real outage `runs/cutin-halt-001` | refused connection → one `source: "none"` entry, adversary stops in its own lane, `interrupted` |
+| LiDAR occlusion sweep | replayed decisions of cutin-001 under 0–90% point dropout and a 3°–60° left blind sector: outcome unchanged in every row; see [`docs/evidence/faultline-occlusion.md`](docs/evidence/faultline-occlusion.md) |
+
+Logs: `docs/evidence/faultline-cutin-001.log`, `faultline-cutin-halt-001.log`, `faultline-occlusion-001.log`.
+```bash
+.venv/bin/python -m faultline run --world carla --family cut_in --seed 7 --out runs/my-cutin --anchor --view
+```
+```bash
+.venv/bin/python -m faultline occlusion runs/my-cutin --seed 0
+```
+
 ## How one episode runs
 
 1. `scenario.json` (frozen `lead_brake_demo_v1`: both cars at 20 m/s, 35 m gap, μ 0.8, 30 s horizon) and a
@@ -129,6 +152,7 @@ node apps/faultline-web/test/headless.mjs
 |---|---|
 | `faultline/` | Python: scenario, IDM follower, lead controller, `KinematicWorld`, `CarlaWorld`, LiDAR perception, 0G Router client, episode loop + safe-halt state machine, hash-chained log, replay, CLI, chase-camera viewer |
 | `faultline/metrics/` | TTC / THW / DRAC and CCS v2, vendored (MIT) from MBRDI, see `ATTRIBUTION.md` |
+| `faultline/ego/` | PDM-Lite vendored (MIT) from carla_garage + our LiDAR tracker; `cutin.py`, `carla_cutin.py`, `occlusion.py` |
 | `packages/episode/` | TypeScript: public/sealed bundles, 0G Storage publish, Compute SDK verification, Galileo anchoring, CLI |
 | `contracts/src/EpisodeRegistry.sol` | commit-before / finalize-after registry (Foundry, Galileo) |
 | `apps/faultline-web/` | static verifier and replay page |
@@ -163,6 +187,13 @@ enclave sees them), that the simulation itself is proven honest, or anything abo
   the CLI, not in the browser (the page shows the result embedded at publish time and the command to re-check).
 - Observations are visible inside the TeeML enclave and, per 0G, to the Router in memory for billing.
 - One synthetic tenant; tenant isolation is shown with a second random key.
+- Cut-in (phase 2): PDM-Lite is vendored with walkers, traffic lights, stop signs, the junction speed cap and
+  Leaderboard workarounds removed, and its partial throttle scaled ×0.35 for CARLA 0.10 physics (see
+  `faultline/ego/ATTRIBUTION.md`). The LiDAR tracker is a simple BEV clusterer with car-sized priors and a region of
+  interest of the two same-direction lanes; it is not a learned detector. The adversary stays kinematic. In the
+  cut-in trajectory `gt_gap` is the signed longitudinal bumper gap in every phase (adjacent lane included);
+  `gt_in_path` / `gt_ttc_s` say when it matters. Public decisions carry the action, not the cut-in control fields
+  (`control_accel_mps2`, `lane_change_s`), which are in the sealed log and follow from the action.
 
 ## Attribution
 

@@ -175,3 +175,8 @@ self-paying agents, iAI sign-in, direct-to-TeeML-provider agent calls.
   scenario families: aggressive cut-in (0G chooses the cut-in) and a LiDAR-occlusion robustness experiment; live
   visualization on VNC :2 (RViz2 LiDAR, Foxglove, HMI from SeDriCa_Autonomous_Buggy, Lanelet2 map exported from
   CARLA). Phase-1 evidence (demo-001/002, halt-001) stays valid for the IDM ego.
+- 2026-11-07 Faultline phase 2 (ego agent) done: PDM-Lite vendored (`faultline/ego/`, carla_garage 48e6a6d, MIT) on
+  LiDAR tracks + CARLA physics; `cut_in_v1` family; occlusion sweep. Evidence: cutin-001 public root
+  `0x4e13bd17…d0f2`, sealed `0x757f4195…f7c2`, commit tx `0x8ba47d24…633a`, finalize tx `0x34fae933…64f6`, 10/10
+  `processResponse` true; cutin-halt-001 interrupted on a refused connection; `docs/evidence/faultline-occlusion.md`.
+  Deviations: tracker ROI/priors, PDM-Lite throttle ×0.35 on CARLA 0.10, signals/walkers disabled on the segment.

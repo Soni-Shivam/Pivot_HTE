@@ -1,0 +1,138 @@
+# faultline occlusion sweep — 2026-11-06T20:52:34Z — python -m faultline occlusion runs/cutin-001 --seed 0 (replayed decisions of cutin-001, no 0G calls)
+
+{"collision": false, "condition": "dropout-0.00", "first_lidar_in_lane_t_s": 2.3, "first_tracked_t_s": 0.15, "gt_ccs": 0.9082034483229817, "in_path_from_t_s": 2.5, "kind": "dropout", "lidar_in_lane_lag_s": -0.2, "max_abs_gap_error_m": 3.812160999999998, "mean_abs_gap_error_m": 0.10979834871794869, "min_gt_gap_in_path_m": 3.501463, "min_gt_ttc_s": 1.109839, "p": 0.0, "pdm_max_brake": 1.0, "pdm_max_decel_mps2": 7.062597, "seed": 0, "status": "completed"}
+{"collision": false, "condition": "dropout-0.25", "first_lidar_in_lane_t_s": 2.3, "first_tracked_t_s": 0.15, "gt_ccs": 0.9010227614140331, "in_path_from_t_s": 2.5, "kind": "dropout", "lidar_in_lane_lag_s": -0.2, "max_abs_gap_error_m": 3.812160999999998, "mean_abs_gap_error_m": 0.11041807179487179, "min_gt_gap_in_path_m": 3.500617, "min_gt_ttc_s": 1.127129, "p": 0.25, "pdm_max_brake": 1.0, "pdm_max_decel_mps2": 7.073421, "seed": 1, "status": "completed"}
+{"collision": false, "condition": "dropout-0.50", "first_lidar_in_lane_t_s": 2.35, "first_tracked_t_s": 0.15, "gt_ccs": 0.882354850471859, "in_path_from_t_s": 2.5, "kind": "dropout", "lidar_in_lane_lag_s": -0.15, "max_abs_gap_error_m": 3.2011450000000004, "mean_abs_gap_error_m": 0.09128851030927833, "min_gt_gap_in_path_m": 3.498929, "min_gt_ttc_s": 1.162559, "p": 0.5, "pdm_max_brake": 1.0, "pdm_max_decel_mps2": 7.066336, "seed": 2, "status": "completed"}
+{"collision": false, "condition": "dropout-0.75", "first_lidar_in_lane_t_s": 2.35, "first_tracked_t_s": 0.15, "gt_ccs": 0.9010227614140331, "in_path_from_t_s": 2.5, "kind": "dropout", "lidar_in_lane_lag_s": -0.15, "max_abs_gap_error_m": 3.247074999999999, "mean_abs_gap_error_m": 0.09405985051546391, "min_gt_gap_in_path_m": 3.498997, "min_gt_ttc_s": 1.127129, "p": 0.75, "pdm_max_brake": 1.0, "pdm_max_decel_mps2": 7.073421, "seed": 3, "status": "completed"}
+{"collision": false, "condition": "dropout-0.90", "first_lidar_in_lane_t_s": 2.35, "first_tracked_t_s": 0.15, "gt_ccs": 0.8875914672564765, "in_path_from_t_s": 2.5, "kind": "dropout", "lidar_in_lane_lag_s": -0.15, "max_abs_gap_error_m": 3.7872330000000005, "mean_abs_gap_error_m": 0.10202744845360817, "min_gt_gap_in_path_m": 3.504364, "min_gt_ttc_s": 1.152724, "p": 0.9, "pdm_max_brake": 1.0, "pdm_max_decel_mps2": 7.06769, "seed": 4, "status": "completed"}
+{"collision": false, "condition": "sector-left-3-60", "deg": [3.0, 60.0], "first_lidar_in_lane_t_s": 2.35, "first_tracked_t_s": 2.45, "gt_ccs": 0.8917249527513532, "in_path_from_t_s": 2.5, "kind": "sector", "lidar_in_lane_lag_s": -0.15, "max_abs_gap_error_m": 4.1044529999999995, "mean_abs_gap_error_m": 0.12144286082474229, "min_gt_gap_in_path_m": 3.49096, "min_gt_ttc_s": 1.14453, "pdm_max_brake": 1.0, "pdm_max_decel_mps2": 7.066383, "side": "left", "status": "completed"}
+{
+  "decisions": "replayed decisions (logged 0G actions, no new 0G calls)",
+  "dropout_seed": 0,
+  "runs": [
+    {
+      "collision": false,
+      "condition": "dropout-0.00",
+      "first_lidar_in_lane_t_s": 2.3,
+      "first_tracked_t_s": 0.15,
+      "gt_ccs": 0.9082034483229817,
+      "in_path_from_t_s": 2.5,
+      "kind": "dropout",
+      "lidar_in_lane_lag_s": -0.2,
+      "max_abs_gap_error_m": 3.812160999999998,
+      "mean_abs_gap_error_m": 0.10979834871794869,
+      "min_gt_gap_in_path_m": 3.501463,
+      "min_gt_ttc_s": 1.109839,
+      "p": 0.0,
+      "pdm_max_brake": 1.0,
+      "pdm_max_decel_mps2": 7.062597,
+      "seed": 0,
+      "status": "completed"
+    },
+    {
+      "collision": false,
+      "condition": "dropout-0.25",
+      "first_lidar_in_lane_t_s": 2.3,
+      "first_tracked_t_s": 0.15,
+      "gt_ccs": 0.9010227614140331,
+      "in_path_from_t_s": 2.5,
+      "kind": "dropout",
+      "lidar_in_lane_lag_s": -0.2,
+      "max_abs_gap_error_m": 3.812160999999998,
+      "mean_abs_gap_error_m": 0.11041807179487179,
+      "min_gt_gap_in_path_m": 3.500617,
+      "min_gt_ttc_s": 1.127129,
+      "p": 0.25,
+      "pdm_max_brake": 1.0,
+      "pdm_max_decel_mps2": 7.073421,
+      "seed": 1,
+      "status": "completed"
+    },
+    {
+      "collision": false,
+      "condition": "dropout-0.50",
+      "first_lidar_in_lane_t_s": 2.35,
+      "first_tracked_t_s": 0.15,
+      "gt_ccs": 0.882354850471859,
+      "in_path_from_t_s": 2.5,
+      "kind": "dropout",
+      "lidar_in_lane_lag_s": -0.15,
+      "max_abs_gap_error_m": 3.2011450000000004,
+      "mean_abs_gap_error_m": 0.09128851030927833,
+      "min_gt_gap_in_path_m": 3.498929,
+      "min_gt_ttc_s": 1.162559,
+      "p": 0.5,
+      "pdm_max_brake": 1.0,
+      "pdm_max_decel_mps2": 7.066336,
+      "seed": 2,
+      "status": "completed"
+    },
+    {
+      "collision": false,
+      "condition": "dropout-0.75",
+      "first_lidar_in_lane_t_s": 2.35,
+      "first_tracked_t_s": 0.15,
+      "gt_ccs": 0.9010227614140331,
+      "in_path_from_t_s": 2.5,
+      "kind": "dropout",
+      "lidar_in_lane_lag_s": -0.15,
+      "max_abs_gap_error_m": 3.247074999999999,
+      "mean_abs_gap_error_m": 0.09405985051546391,
+      "min_gt_gap_in_path_m": 3.498997,
+      "min_gt_ttc_s": 1.127129,
+      "p": 0.75,
+      "pdm_max_brake": 1.0,
+      "pdm_max_decel_mps2": 7.073421,
+      "seed": 3,
+      "status": "completed"
+    },
+    {
+      "collision": false,
+      "condition": "dropout-0.90",
+      "first_lidar_in_lane_t_s": 2.35,
+      "first_tracked_t_s": 0.15,
+      "gt_ccs": 0.8875914672564765,
+      "in_path_from_t_s": 2.5,
+      "kind": "dropout",
+      "lidar_in_lane_lag_s": -0.15,
+      "max_abs_gap_error_m": 3.7872330000000005,
+      "mean_abs_gap_error_m": 0.10202744845360817,
+      "min_gt_gap_in_path_m": 3.504364,
+      "min_gt_ttc_s": 1.152724,
+      "p": 0.9,
+      "pdm_max_brake": 1.0,
+      "pdm_max_decel_mps2": 7.06769,
+      "seed": 4,
+      "status": "completed"
+    },
+    {
+      "collision": false,
+      "condition": "sector-left-3-60",
+      "deg": [
+        3.0,
+        60.0
+      ],
+      "first_lidar_in_lane_t_s": 2.35,
+      "first_tracked_t_s": 2.45,
+      "gt_ccs": 0.8917249527513532,
+      "in_path_from_t_s": 2.5,
+      "kind": "sector",
+      "lidar_in_lane_lag_s": -0.15,
+      "max_abs_gap_error_m": 4.1044529999999995,
+      "mean_abs_gap_error_m": 0.12144286082474229,
+      "min_gt_gap_in_path_m": 3.49096,
+      "min_gt_ttc_s": 1.14453,
+      "pdm_max_brake": 1.0,
+      "pdm_max_decel_mps2": 7.066383,
+      "side": "left",
+      "status": "completed"
+    }
+  ],
+  "schema": "faultline.occlusion/v1",
+  "sector_left_deg": [
+    3.0,
+    60.0
+  ],
+  "source_episode": "d3b666f0ceeeaa5a49d5e83db940f361f80acb55e3b42eeace64db88e15beee4",
+  "source_run": "runs/cutin-001"
+}

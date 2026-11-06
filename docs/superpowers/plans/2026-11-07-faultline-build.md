@@ -139,7 +139,7 @@ def test_scenario_hash_is_content_addressed():
 **Interfaces:**
 - Produces: `@dataclass Decision(action: str | None, reason: str, request_id: str | None, provider: str | None, zg_res_key: str | None, model: str, latency_ms: int, http_status: int | None, raw_sha256: str | None, content: str | None, ratelimit_remaining: int | None)`; `class ZgRouter: __init__(self, base_url: str, api_key: str, model: str = "0gm-1.0-35b-a3b", timeout_s: float = 8.0, http=requests)`; `decide(self, obs: dict, history: list[dict], available: tuple[str, ...]) -> Decision`. `reason` ∈ `{"ok","invalid_json","out_of_set","timeout","unreachable","http_429","http_5xx","http_other","no_request_id","no_provider_for_trust_mode"}`. Headers sent: `Authorization: Bearer`, `X-0G-Provider-Trust-Mode: private`, `Content-Type`. Body exactly the Global Constraints request. `request_id` = `X-Request-Id` header, else `x_0g_trace.request_id`; `zg_res_key` = `Zg-Res-Key` header (case-insensitive); `provider` = `x_0g_trace.provider`. A 200 with no request id → `reason "no_request_id"`, `action None`. 429 → sleep `min(Retry-After, 5)` and retry once; a second 429 → `"http_429"`. 503 with `error.code == "no_provider_for_trust_mode"` → that reason. Never a second model or tier.
 
-- [ ] **Step 1:** Write `tests/python/test_router.py` with a `FakeRouter` (threaded `HTTPServer`) whose handler reads a module-level `MODE` ∈ `ok | prose | out_of_set | r429_then_ok | r502 | r503_trust | no_reqid | slow | garbage` and asserts the incoming header `X-0G-Provider-Trust-Mode == "private"` and `json body["model"] == "0gm-1.0-35b-a3b"` (fail the request with 400 otherwise). Tests:
+- [x] **Step 1:** Write `tests/python/test_router.py` with a `FakeRouter` (threaded `HTTPServer`) whose handler reads a module-level `MODE` ∈ `ok | prose | out_of_set | r429_then_ok | r502 | r503_trust | no_reqid | slow | garbage` and asserts the incoming header `X-0G-Provider-Trust-Mode == "private"` and `json body["model"] == "0gm-1.0-35b-a3b"` (fail the request with 400 otherwise). Tests:
 ```python
 def test_ok_decision_records_trace():   # MODE=ok returns 200, headers X-Request-Id: r1, Zg-Res-Key: k1, body with x_0g_trace.provider "0xabc", content '{"action":"BRAKE_SOFT","why":"w"}'
     d = router.decide(OBS, [], ACTIONS); assert (d.action, d.reason, d.request_id, d.zg_res_key, d.provider) == ("BRAKE_SOFT","ok","r1","k1","0xabc") and d.latency_ms >= 0 and len(d.raw_sha256) == 64
@@ -149,11 +149,11 @@ def test_502_503_no_reqid(): ...                   # "http_5xx", "no_provider_fo
 def test_timeout_and_unreachable():               # slow handler sleeps 2 s with timeout_s=0.5 → "timeout"; base_url on a closed port → "unreachable"
 def test_never_changes_model_or_tier():            # after any failure the server saw no request with another model or header value (the handler's 400 would have surfaced)
 ```
-- [ ] **Step 2:** Run it. Expected: FAIL (`ModuleNotFoundError`).
-- [ ] **Step 3:** Implement `faultline/router.py` with `requests` (already pinned). Compute `raw_sha256` over the response bytes. Do not log the key.
-- [ ] **Step 4:** Run it. Expected: PASS (6 tests).
-- [ ] **Step 5:** Live smoke (paid, cents): `.venv/bin/python -c "..."` calling `ZgRouter(env ZG_ROUTER_URL, ZG_API_KEY).decide(OBS_FROM_SPEC, [], ACTIONS)` and print `action, reason, request_id, provider, zg_res_key, latency_ms` (never the key). Expected: `reason == "ok"`, an action in the set, 64-hex `raw_sha256`. Append the printed line to `docs/evidence/faultline-router-smoke.log`.
-- [ ] **Step 6:** Commit: `git commit -m "faultline: fail-closed 0G Router client with fake-server tests"`.
+- [x] **Step 2:** Run it. Expected: FAIL (`ModuleNotFoundError`).
+- [x] **Step 3:** Implement `faultline/router.py` with `requests` (already pinned). Compute `raw_sha256` over the response bytes. Do not log the key.
+- [x] **Step 4:** Run it. Expected: PASS (6 tests).
+- [x] **Step 5:** Live smoke (paid, cents): `.venv/bin/python -c "..."` calling `ZgRouter(env ZG_ROUTER_URL, ZG_API_KEY).decide(OBS_FROM_SPEC, [], ACTIONS)` and print `action, reason, request_id, provider, zg_res_key, latency_ms` (never the key). Expected: `reason == "ok"`, an action in the set, 64-hex `raw_sha256`. Append the printed line to `docs/evidence/faultline-router-smoke.log`.
+- [x] **Step 6:** Commit: `git commit -m "faultline: fail-closed 0G Router client with fake-server tests"`.
 
 ### Task 4: LiDAR perception (gap and closing speed from the point cloud)
 

@@ -1,4 +1,10 @@
-# Response to the PR #1 review (revision 2)
+# Response to the PR #1 review (revision 2, updated for revision 3)
+
+> **Revision 3 changes some of the answers below** (the user's decisions, 2026-11-06): the seller asset is now a
+> real model trained inside the enclave (not an `llm-classifier/v1` config), there is no MOCK mode, and the 0G
+> Router sees aggregates only. That strengthens the answers to D9 (real training), R01/R02 (no asset ever reaches the
+> Router gateway; GPU TEE evidence added) and R14 (metrics are computed by our code, not an LLM). Where a row below
+> says "config", "MOCK" or "classifier calls via Router", read PLAN rev 3 instead.
 
 Review by Parav29 on `docs/architecture-plan@da2e53d`. Each point: accepted or not, what changed, and where.
 All 16 points and the D9 product comment are accepted. Nothing here is implemented yet; acceptance tests live in

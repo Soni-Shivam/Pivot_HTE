@@ -1,261 +1,217 @@
 # Project plan (working name SealedAI; the name is a placeholder)
 
-Status: **REVISION 2, awaiting scope approval (T00)** · 2026-11-06
-Revision 1 dropped the customization agent and the two-party key release. The PR #1 review (R01–R16, T00–T12)
-asked for both back. This revision restores them. How each review point is handled: `docs/REVIEW-RESPONSE.md`.
+Status: **REVISION 3, awaiting final confirmation (T00)** · 2026-11-06
+History: rev 1 (reuse-first) dropped the customization agent. Rev 2 restored it after the PR #1 review
+(`docs/REVIEW-RESPONSE.md`) but kept a config-only asset whose prompts passed through the 0G Router gateway. Rev 3
+applies the user's decisions: **everything confidential, no mock mode, a real seller model, actually trained
+inside the enclave.**
 
-Read in this order: this file → `docs/SECURITY.md` (threat model, allowed claims) → `docs/PROTOCOL.md` (exact
-schemas) → `docs/ARCHITECTURE.md` (diagrams) → `docs/TASKS.md` (tracker) → the current phase plan in
-`docs/superpowers/plans/`.
-
-Every external fact below was read from official docs, pinned source code or a live call on 2026-11-06. Pinned
-revisions are in §9. Anything unconfirmed is marked **VERIFY** and owned by a task.
+Read in this order: this file → `docs/SECURITY.md` → `docs/PROTOCOL.md` → `docs/ARCHITECTURE.md` → `docs/TASKS.md`
+→ the current phase plan in `docs/superpowers/plans/`. Facts come from official docs, pinned source or live calls
+(pins in §9). Anything unconfirmed is marked **VERIFY** and owned by a task.
 
 ---
 
 ## 1. Product
 
-**Long-term:** a general-purpose marketplace where people privately evaluate and adapt proprietary AI (models,
-prompt pipelines, agents) to their own needs. Neither the platform, nor the host, nor the other party can read
-either side's asset.
+**Long-term:** a general-purpose marketplace where a buyer privately evaluates and customizes a seller's
+proprietary AI model on the buyer's private data. Neither the platform, the compute host, nor the other party can
+read either side's asset.
 
-**The promise:** *"Tell us what you need. We test and adapt a seller's proprietary AI against your private data in a
-bounded, verifiable workflow, while each party controls access to its own asset."*
+**The promise:** *"Tell us what you need. Your data and their model meet only inside an attested enclave that you
+both verified. An AI agent tunes the model to your goal, and you get a model you can use, measured on data it never
+trained on."*
 
-**Three separate roles** (the review's central point):
+**Three separate roles:**
 
-| Role | What it is | In the MVP |
+| Role | What it is | Sees |
 |---|---|---|
-| Seller's asset | The thing being licensed | An `llm-classifier/v1` configuration: prompt templates, label guidelines, optional seller examples. Pure data, no code. |
-| Customization agent | Plans how to adapt the asset to the buyer's goal | A planner LLM on 0G Private Computer that calls structured tools. Deterministic policy validates every action. |
-| Sealed worker + policy gates | Holds both assets, runs only authorized operations, enforces budgets and output rules, signs receipts | Our reviewed worker image in a sealed TEE container that both parties verify before releasing their keys |
+| Seller's asset | A real model: architecture + weights (+ tokenizer and config) | Only the sealed worker |
+| Customization agent | Planner LLM on 0G Private Computer; proposes training recipes via structured tools | Public model card, buyer's goal text, numeric data summary, **aggregate metrics only** (loss, accuracy, F1) |
+| Sealed worker + policy gate | Our reviewed image in a GPU (or CPU) TEE: loads, trains, evaluates and serves the model; enforces every budget and output rule; signs receipts | Both assets, in enclave memory only |
 
-### The MVP transaction (must work end to end)
-1. **Seller lists** an asset: encrypted bundle on 0G Storage, a signed Offer, and a public listing on Arkiv.
-2. **Buyer states a goal and budget.** The planner proposes a plan from the public asset card, a local summary of
-   the buyer's data and the recipe catalog. The buyer approves it.
-3. **A sealed worker is created.** Buyer and seller each verify its evidence (certified image digest, fresh key,
-   approved manifest), then each releases its own key to it (2-of-2).
-4. **The worker runs the loop:** baseline on validation → planner picks an approved recipe → experiment →
-   validation metrics → planner decides the next step or finishes. Max 2 experiments. The best config is frozen and
-   evaluated **once** on the final holdout.
-5. **The buyer gets an encrypted report** (metrics, every planner decision with its 0G request ID, costs, failures,
-   stop reason). The worker submits a signed receipt to escrow and the seller is paid a fixed fee.
-6. **The buyer uses the result:** the customized classifier is served by the same sealed worker for a license window
-   (N calls / D hours), with requests and responses encrypted end to end.
+### The MVP transaction
+1. **Seller lists** a model: encrypted model bundle on 0G Storage, a signed Offer, a public listing on Arkiv.
+2. **Buyer states a goal and budget**; the agent proposes a training plan from the public card, a numeric data
+   summary and the recipe catalog. The buyer approves it.
+3. **A sealed worker starts on TEE hardware.** Each party's own client verifies its evidence (CPU TDX quote + GPU
+   attestation + certified image) and releases its key (2-of-2). No valid evidence → no release. There is no bypass.
+4. **The worker runs the loop inside the enclave:** load the seller model → baseline on the validation split →
+   the agent picks an approved training recipe → train on the train split → validation metrics → the agent decides
+   the next step or finishes. Max 2 training runs. The best checkpoint is frozen and evaluated **once** on the final
+   holdout.
+5. **The buyer gets an encrypted report** (metrics, every agent decision with its 0G request ID, costs, failures,
+   stop reason). The worker submits a signed receipt to escrow; the seller is paid a fixed fee.
+6. **The buyer uses the customized model:** hosted inference inside the enclave for a license window (default, see
+   choice C).
+
+### Data and testing
+Real confidentiality requires real TEE hardware, and **there is no mock mode in the product.** Without valid
+evidence the clients refuse to release keys, full stop. During development, synthetic datasets and small open
+models are used to exercise the ML code and the protocol on this server's RTX A5000. Those runs are *tests*, not a
+product mode: they never produce a release, receipt or report that a client would accept (I12).
 
 ### Non-goals (hackathon)
-Weight training, multiple asset types, arbitrary or generated code, clone sales, outcome-based pricing, pay-per-call
-streaming payments, self-paying agents, our own backend server, x402 or other chains.
+Arbitrary seller code inside the training loop (unless choice B allows it), multi-node training, clone sales,
+outcome-based pricing, pay-per-call, self-paying agents, our own backend server, other chains.
 
-### Anti-goals (a failure even if it "works")
-- Calling anything "attested", "confidential" or "private" without the evidence `docs/SECURITY.md` requires.
-- An LLM that can run shell commands, reach arbitrary hosts, spend money or approve key release.
-- Seller-controlled code or an owner chat channel touching buyer data.
-- A demo fixture that silently redefines the marketplace (the manifest stays general; the fixture is one executor).
+### Anti-goals
+- Any asset byte or buyer row reaching a non-enclave service (including the 0G Router gateway).
+- An "attested/confidential" label without verified CPU **and** GPU evidence.
+- An LLM with authority (shell, network, files, signing, spending, key release).
+- A demo fixture that redefines the marketplace: the manifest stays general (`task`, `format`, `executor`).
 
 ---
 
-## 2. Scope decision for approval (T00): what we promise
+## 2. Final confirmation (T00): open choices
 
-Each guarantee is classified separately, as the review asked. "Confidential mode" exists only when gate **G-RT**
-(a real attested runtime) passes. Until then everything runs in **MOCK mode**, labelled as such everywhere.
-
-| Property | Confidential mode (after G-RT) | MOCK mode (always available) |
-|---|---|---|
-| At rest | AES-256-GCM per object, keys held only by their owner (§3.4) | Same |
-| In transit | App-layer ECIES to the attested worker key, so proxies see ciphertext | Same code, but the worker key isn't attested |
-| Runtime | Sealed TEE worker: certified image, no SSH/exec, fresh per-job key, 2-of-2 release | Local container on a dev machine. **Not confidential. Synthetic data only.** |
-| Third party seeing plaintext | 0G Router gateway (in memory, zero retention per 0G docs) + a TeeML provider see template + buyer text for each inference call. Explicitly trusted and disclosed. | Same |
-| Output integrity | Receipt signed by the attested worker key, bound to the manifest | Signed by the mock key; the verifier labels it MOCK |
-| Answer quality | Objective metrics (accuracy, macro-F1) on a held-out split. The LLM's commentary is advisory only. | Same |
-| Delivery fairness | Fixed fee in ERC-8183 escrow; paid only after the worker submits; refundable on failure or expiry | Same contracts on testnet |
-| Availability | Depends on 0G Chain, Storage, Router, the sandbox provider and Arkiv; static client, no backend of ours | Same |
-
-**Decisions needed from the user (T00):**
-1. Approve this scope: the MVP asset type `llm-classifier/v1`, configuration customization (not weight training),
-   fixed fee, and MOCK mode until G-RT passes.
-2. Runtime route for G-RT, in order of preference (details in §5):
-   **W1** ask 0G to register our worker image as a sealed-sandbox snapshot;
-   **W2** run it under 0G-TAPP on a TDX VM (needs a GCP or Alibaba account and budget);
-   **W4** ship MOCK only and say so.
+| # | Choice | Options | Recommendation |
+|---|---|---|---|
+| **A** | Hardware route and budget | **H1** 0G hosts our worker image on a GPU TEE provider (ask; no documented path) · **H2** GCP Confidential VM `a3-highgpu-1g` (1× H100 + Intel TDX) running 0G-TAPP (supported by the TAPP repo; spot available; quota request needed early) · **H3** Phala Cloud dstack on H100 TEE (third party, **VERIFY** pricing/access) · **H4** CPU-only TEE (0G sealed sandbox or TAPP on a TDX VM) for small models only | Ask 0G for H1 today **and** request GCP H100 confidential quota in parallel. Use H4 if the demo model is small enough to train on CPU (**VERIFY** timing). The user sets the budget before anything is spent. |
+| **B** | Accepted model formats | **B1** standard formats only: Hugging Face `safetensors` + `config.json` for architectures on our allowlist, loaded by our reviewed code · **B2** also seller-supplied model code, sandboxed with no network, with scoring always in our code | **B1** for the hackathon (no seller code executes, so no exfiltration path through code). B2 later as a separate executor. |
+| **C** | What the buyer gets | **C1** hosted inference inside the enclave for a license window (N calls / D hours) · **C2** the trained LoRA adapter file, encrypted to the buyer (usable only with the seller's base weights, so it still needs a license to run) | **C1**: neither party ever holds the combined model, and the usage is enforceable. C2 is an optional add-on the seller can allow in the Offer. |
+| **D** | Model for development runs on the A5000 | e.g. `distilbert-base-uncased` (66M, text classification) · `Qwen2.5-0.5B` (causal LM, LoRA) | Both small and public: distilbert for the classification task adapter (the MVP), Qwen2.5-0.5B to prove LoRA on a causal LM. Synthetic datasets only. |
 
 ---
 
 ## 3. Components
 
 ### 3.1 Reused unchanged
-| Need | Component | Pinned |
+| Need | Component | Pinned / source |
 |---|---|---|
-| Sealed TEE worker (W1) | **0G Private Sandbox, sealed mode**: no SSH or toolbox for the container's lifetime; image digest certified; fresh secp256k1 container key; provider-signed v3 certificate `{chain_id, registry_address, app_id, registered_at, seal_id, pubkey, image_hash, ts, signature}`; egress `networkAllowList` (≤ 10 CIDRs) | `0gfoundation/0g-sandbox@ce187a4` |
-| Sealed TEE worker (W2) | **0G-TAPP** ("malicious deployer" model): `GetEvidence --nonce` → `{quote, cc_eventlog, runtime_data}`, `report_data = sha512(runtime_data)`, app signer in evidence, attested TLS | `0gfoundation/0g-tapp@e0fc4c2` |
-| TDX quote verification (W2) | `@phala/dcap-qvl` 0.7.1 | npm |
-| Escrow | **ERC-8183 reference** incl. `ERC8183WithAuthorization` (EIP-712 signed actions with nonce and deadline) | `erc-8183/base-contracts@142e669` |
-| Test token | `MockUSDC` from the same repo | same |
-| Planner + inference | **0G Private Computer Router**, `X-0G-Provider-Trust-Mode: private`, `0gm-1.0-35b-a3b`; the API key itself set to private-only routing (per the 0G privacy doc) | live `/v1/models` |
-| Encrypted blobs | **0G Storage SDK**, upload/download with Merkle proof. We do **not** use its `aes256` mode (AES-CTR, unauthenticated); we upload our own AES-GCM ciphertext. | `@0gfoundation/0g-storage-ts-sdk` 1.2.13 |
-| Crypto primitives | `@noble/ciphers` (AES-GCM), `@noble/hashes` (scrypt, sha256), `eciesjs` 0.5.0 (secp256k1 ECIES) | npm, exact versions |
-| Public catalog | **Arkiv** `@arkiv-network/sdk` 1.0.1 (Rabdi, chain 7794095) | npm |
+| TEE runtime (H2/H4) | **0G-TAPP**: Docker Compose apps in TDX, "malicious deployer" model, `GetEvidence --nonce` → `{quote, cc_eventlog, runtime_data}`, `report_data = sha512(runtime_data)`, app signer, attested TLS; optional GPU CC build where the evidence carries per-GPU reports bound to the same quote | `0gfoundation/0g-tapp@e0fc4c2` (`README.md`, `cvm/GPU.md`) |
+| TEE runtime (H4 alt) | **0G sealed sandbox**: no SSH/exec, certified image digest, fresh container key, v3 certificate | `0gfoundation/0g-sandbox@ce187a4` |
+| CPU quote verification | `@phala/dcap-qvl` 0.7.1 | npm |
+| GPU attestation verification | NVIDIA device attestation: NRAS (remote) or NVIDIA's local verifier. **VERIFY** the exact package (T01). TAPP doesn't check the GPU report signature itself (`cvm/GPU.md`), so this is ours to add. | NVIDIA |
+| ML stack (inside the worker) | PyTorch, `transformers`, `peft` (LoRA), `safetensors`, `datasets`. Exact versions pinned in the worker image lockfile. | PyPI |
+| Escrow | **ERC-8183 reference** + `ERC8183WithAuthorization` | `erc-8183/base-contracts@142e669` |
+| Agent inference | **0G Private Computer Router**, private tier only, key set to private-only routing; aggregates only. Option: call a TeeML provider directly via the Compute SDK to skip the gateway (**VERIFY** that its TLS ends in the enclave and that it counts for the track; needs a 3 0G ledger deposit). | live `/v1/models` |
+| Blob storage | **0G Storage SDK**, Merkle-proofed upload/download, **SDK encryption off** (its `aes256` is unauthenticated AES-CTR) | 1.2.13 |
+| Crypto | `@noble/ciphers` (AES-GCM), `@noble/hashes` (scrypt, sha256), `eciesjs` 0.5.0 (client) and `eciespy` (worker, the Python sibling of eciesjs). **VERIFY** byte compatibility in T06. | npm / PyPI |
+| Public catalog | **Arkiv** `@arkiv-network/sdk` 1.0.1 | npm |
 
-### 3.2 Ours (proposed boundaries, from the review)
+### 3.2 Ours
 ```
-packages/protocol      EIP-712 types, manifest/offer/receipt schemas, canonical encoding, invariants
-packages/planner       customization agent: tool schemas, policy, budget/stop rules, prompt templates
-packages/client        local keys + vault, evidence verification, key release, report decryption
-packages/worker        the sealed worker: HTTP API, policy gates, executor adapters, receipts
+packages/protocol      EIP-712 types, manifest/offer/receipt schemas, envelope, canonical encoding
+packages/planner       customization agent: tool schemas, policy gate, loop, prompts (TS, runs in the worker)
+packages/client        keystore + recovery, evidence verification (CPU + GPU), key release, report decryption
+packages/worker        worker control plane (TS): ECIES API, policy gate, escrow authorizations, receipts
+worker/ml              ML plane (Python): model loader (allowlisted architectures), task adapters, LoRA
+                       trainer, evaluator, inference server. Talks to the control plane over a local pipe only.
+worker/image           Dockerfile + lockfiles → one image digest; compose file for TAPP
 packages/integrations  0G Storage / Chain / Router and Arkiv adapters (ethers 6.13.1 confined to storage)
-apps/cli               reproducible end-to-end transaction (built before the UI)
-apps/web               goal → plan → approve → experiments timeline → report → use
+apps/cli, apps/web     reproducible end-to-end run first; UI second
 contracts              Foundry: pinned ERC-8183 + deploy/renounce script + adversarial tests
 ```
 
-### 3.3 Executor `llm-classifier/v1` (the first, and only MVP, executor)
-- **Seller asset bundle** (JSON): `templates[]` (≤ 3 prompt variants with `{guidelines}`, `{examples}`, `{input}`
-  slots), `guidelines` (text), `sellerExamples[]` (optional), `labelSet[]`, `defaultConfig`.
-- **Buyer dataset** (JSONL): `{text, label}` rows; labels ⊆ `labelSet`.
-- **Splits:** a seeded hash split, 60/20/20 train/validation/holdout. The seed is committed in the manifest under a
-  random salt. Holdout rows are loaded only after `finish`.
-- **Recipe catalog v1** (reviewed; params are enumerated, never free-form):
-  `fewshot {k ∈ {0,2,4,8}, selection ∈ {random, stratified}}` (examples drawn from the buyer's **train** split),
-  `template {variant ∈ seller template ids}`, `decode {temperature ∈ {0, 0.3}}`,
-  `labelhints {on, off}` (adds the buyer's public label descriptions).
-- **Metrics:** accuracy and macro-F1, computed deterministically by the worker. Per-class metrics are suppressed
-  below 5 samples. A model output outside `labelSet` counts as wrong and is reported.
-- **Output policy:** inference responses are labels from `labelSet` only. Free text never leaves the worker. That
-  bounds what a hostile input can extract per call to log2(|labelSet|) bits (disclosed).
+### 3.3 Model bundle and task adapters (general manifest, MVP scope)
+- **Bundle** (choice B1): `config.json`, `model.safetensors` (or sharded), tokenizer files, and `card.json` (public:
+  name, task, architecture, parameter count, license, allowed recipes, input/output schema). Packed as a
+  deterministic tar, sealed with the AES-GCM envelope, stored on 0G Storage.
+- **Architecture allowlist** (loaded with `trust_remote_code=False`, no pickle; `safetensors` only):
+  MVP `DistilBertForSequenceClassification`, `BertForSequenceClassification`, `Qwen2ForCausalLM`. Extending it is a
+  reviewed code change.
+- **Task adapters:** MVP **`text-classification`** (metrics: accuracy, macro-F1; outputs: labels only). Next:
+  `causal-lm-sft` (metrics: val loss, exact-match on a structured target; outputs: text with a length cap and a
+  disclosed leakage profile).
+- **Splits:** a seeded hash split of the buyer dataset, 60/20/20 train/validation/holdout; the seed is committed
+  (salted) in the manifest; the holdout is loaded only after `finish`.
+- **Recipe catalog v1** (enumerated, never free-form):
+  `lora {r ∈ {8,16}, alpha ∈ {16,32}, dropout ∈ {0.05,0.1}, targets ∈ card.allowedTargets}`,
+  `head_only {}` (train only the classifier head),
+  `optim {lr ∈ {5e-5, 1e-4, 2e-4}, epochs ∈ {1,2,3}, batch ∈ {8,16}, warmup ∈ {0, 0.06}}`,
+  `class_weights {none, balanced}`, `max_len ∈ {128, 256}`.
+  A proposal = one setting per group. Max 2 training runs plus the baseline.
+- **Budgets** (in the manifest): max planner calls, max training runs (≤ 2), max GPU-seconds, max wall clock,
+  max inference calls during the license.
 
 ### 3.4 Keys and data at rest
-- Each object (asset bundle, dataset, report) gets a fresh random 32-byte key and AES-256-GCM with a 12-byte random
-  nonce. AAD = the canonical object header `{schema, objectType, objectId, version, plaintextSha256}`.
-- **Local keystore:** a random master key encrypts the per-object keys. Recovery = an exported file encrypted under
-  scrypt(passphrase) with AES-GCM. A fresh device recovers from file + passphrase, with nothing from us. No
-  wallet-signature-derived secrets (review R08).
-- Key release = ECIES (`eciesjs`) of the object key to the worker's attested pubkey, carried in a signed
-  `KeyRelease` bound to the manifest hash (§`PROTOCOL.md`).
+Per-object random 32-byte keys, AES-256-GCM, header-bound AAD (PROTOCOL §3); a local keystore under a random master
+key; a scrypt passphrase recovery file; no wallet-signature-derived secrets. Key release = ECIES to the attested
+worker key, carried in a signed `KeyRelease` bound to the manifest hash.
 
 ---
 
 ## 4. Flows (diagrams in ARCHITECTURE.md)
-
-**A. List.** Seller encrypts the bundle → 0G Storage root → signs `Offer` (asset commitment, executor, recipe catalog
-hash, worker image digest, price, token, license terms, validity) → Arkiv `listing` entity with the offer hash.
-
-**B. Plan.** Buyer selects a listing (Arkiv query; owner re-validated on chain). The client computes a **local data
-summary** (row count, label histogram, mean length; no text). The planner (Router, private) gets the summary, public
-asset card and catalog, and returns a plan. The buyer approves it; the plan's hash goes into the manifest.
-
-**C. Worker + release.** Buyer creates the sealed worker → gets the certificate/evidence → challenges the worker to
-sign a fresh nonce → builds and signs `JobManifest` → `createJob(provider=worker, evaluator=seller, …)` → relays
-worker-signed `setBudget(offer.price)` and `setPayoutReceiver(seller)` → `fund(expectedToken, expectedBudget)`.
-Seller's client independently verifies evidence + manifest + on-chain job terms, then releases the asset key. Buyer
-releases the dataset key and its Router key. The worker starts only when both releases are valid.
-
-**D. Customize.** The worker runs the bounded loop (§3.3, ARCHITECTURE §7). Every planner call goes through the
-policy gate; every decision and request ID is appended to a hash-chained timeline.
-
-**E. Settle.** Worker uploads the encrypted report → signs `WorkerReceipt` and `SubmitAuthorization(deliverable =
-receipt commitment)` → buyer (or anyone) relays `submit` → seller calls `complete` (or relays a signed completion) →
-payout to seller. No submission by expiry → buyer `claimRefund`. Submitted but seller never completes → refund after
-expiry + 1 h grace (the reference contract's rule; disclosed to sellers).
-
-**F. Use.** For the license window, the buyer sends ECIES-encrypted, signed `/infer` requests; the worker answers
-with labels encrypted to the buyer, counting calls in memory. If the worker restarts, its keys are gone and the
-license window ends (MVP limit, disclosed).
+**A. List.** Seller packs and seals the bundle → 0G root → signs `Offer` (asset commitment, format, task,
+architecture, recipe catalog hash, worker image digest, accepted TEE evidence policy, price, license, validity) →
+Arkiv listing.
+**B. Plan.** Buyer picks a listing; the client computes a numeric data summary (rows, label histogram, token-length
+stats; no text). The agent (Router, private) proposes a plan; the buyer approves; `planHash` goes into the manifest.
+**C. Worker + release.** The worker boots on TEE hardware → evidence (CPU quote + GPU reports + runtime_data with
+the worker key) → each party's client verifies it independently plus a fresh nonce challenge → `createJob`, relay
+worker-signed budget/payout, `fund` → seller releases the model key, buyer releases the dataset key and its Router
+key. The worker requires both.
+**D. Customize.** Baseline → ≤ 2 recipe trainings with validation feedback → freeze → holdout once. Everything stays
+in enclave memory; checkpoints never leave unencrypted.
+**E. Settle.** Encrypted report → worker-signed receipt and `submit` → seller `complete` → payout. Failure or no
+submission → buyer refund after expiry.
+**F. Use.** License window: encrypted, signed `/v1/infer` requests; outputs per the task adapter's policy. Choice C2
+(if the Offer allows): the worker also exports the LoRA adapter encrypted to the buyer.
 
 ---
 
-## 5. Runtime routes and gate G-RT
+## 5. Runtime: gate G-RT (confidential or nothing)
+Clients release keys only if **all** pass: a valid TDX quote under the TCB policy, debug off; `sha512(runtime_data)
+== report_data`; our nonce echoed; the event log/compose shows the approved image digest; the worker key bound in
+runtime_data and proven by signing our nonce; for GPU runs, each GPU attestation report verified against NVIDIA and
+bound to the same evidence (`cvm/GPU.md` binding) with confidential-compute mode on. For H4 sealed sandbox: the v3
+certificate + TappRegistry check instead of the quote (PROTOCOL §9).
+**G-RT passes when** the seller's client independently accepts a worker the buyer created, and a wrong image, a
+stale quote, a swapped key, an unverified GPU report and a replayed release each fail closed.
+Rejected as the worker: AgentDNA agents (owner chat channel), 0G fine-tuning providers (they train only their own
+base models; no way to load the seller's weights).
 
-| Route | What it needs | Evidence a client checks | Status |
-|---|---|---|---|
-| **W1** 0G sealed sandbox | 0G registers our worker image as a snapshot on a provider that accepts sealed creates (snapshot registration is provider-only per `docs/CLI.md`) | v3 certificate signature recovers to the provider address; that provider is an active registered signer for its `app_id` in TappRegistry (**VERIFY getter**); `image_hash` == offer's `workerImageDigest`; fresh `ts`; worker signs our nonce with `pubkey` | Ask 0G on day 1. The public broker `private-sandbox-testnet.0g.ai` answered 404 on documented paths on 2026-11-06 (**VERIFY**). AgentDNA's provider `art-testnet.0g.ai` is `sealed_only` and dedicated to AgentDNA images. |
-| **W2** 0G-TAPP on a TDX VM | GCP (TDX) or Alibaba ECS confidential VM + 0G-TAPP image; we deploy the worker compose | DCAP quote valid (dcap-qvl), TCB policy, `sha512(runtime_data) == report_data`, our nonce echoed, the event log shows our compose/image, the app signer signs the per-job worker key | Needs a cloud account and money (user decision) |
-| **W4** MOCK | Docker on this server (not installed yet) | A mock certificate signed by a local mock-provider key. The verifier accepts it **only** in `mode=mock` and every surface shows MOCK. | Always |
-
-**G-RT passes when:** a sealed worker created by the buyer client produces evidence that the *seller's* client
-verifies independently. A wrong image digest, a stale certificate/quote, a substituted key or a replayed release each
-fail closed. No SSH/exec is possible. Host or proxy capture shows ciphertext only.
-
-Rejected for the worker: **AgentDNA agents.** The owner has a private chat channel and frameworks are LLM-driven,
-not a fixed runner (review R01). AgentDNA stays a reference for its key chain and a roadmap option.
-
----
-
-## 6. Payment design (ERC-8183 reference, unchanged)
-
-| Field | Value | Why |
-|---|---|---|
-| `client` | buyer | pays |
-| `provider` | the worker's address | only the provider can `setBudget` and `submit`, so those become worker-signed and manifest-checked |
-| `evaluator` | seller | `evaluator != provider` is enforced; the seller can only complete (pay themselves) a job the worker submitted, or reject (refund the buyer) |
-| `payoutReceiver` | seller, set by worker signature | money reaches the seller, not the worker key |
-| `budget/token` | `offer.price` / `offer.token`, set by worker signature | the buyer funds with `expectedToken/expectedBudget` (front-running check in the contract) |
-| `description` | `"sealedai:v1:" ‖ manifestHash` | no plaintext; the manifest hash covers salted commitments only (R07) |
-| `hook` | `address(0)` | whitelisted at `initialize` |
-
-The worker has no gas: its actions are EIP-712 authorizations (`setBudgetWithAuthorization`,
-`setPayoutReceiverWithAuthorization`, `submitWithAuthorization`) that the buyer relays. Claims (`submitClaim`,
-`settleClaim`) are **not used**, so `PendingClaimExists` can't block a refund. After deployment we renounce
-`ADMIN_ROLE` and `DEFAULT_ADMIN_ROLE` (upgrade authority) and prove from the `RoleGranted`/`RoleRevoked` event history
-that no holder remains (AccessControl is not enumerable).
-
----
+## 6. Payment (ERC-8183 reference, unchanged)
+`client` = buyer, `provider` = worker (signs `setBudget` / `setPayoutReceiver` / `submit` via `*WithAuthorization`,
+relayed by the buyer), `evaluator` = seller, `payoutReceiver` = seller, budget = `offer.price` in `offer.token`,
+`description` = `"sealedai:v1:" ‖ manifestHash`, `hook` = 0. No claims are used. Admin roles are renounced and
+tested. Fixed fee; GPU costs are the buyer's (they create and pay for the worker VM/sandbox). **VERIFY** in T00
+whether the seller or the buyer pays for hardware in the demo.
 
 ## 7. Sponsors
-
-| Track | How we qualify | Must show |
-|---|---|---|
-| **0G: Build with 0G Private Computer** ($5k, primary) | The customization agent and the classifier inference both run on Private Computer inside the main flow | Request IDs per decision and per call in the timeline; a judge-usable app; a return reason (re-run the vault benchmark when new listings appear); "what breaks without 0G" (§8). Risk: the track asks for a *consumer* app, so we pitch to individuals and small teams choosing AI for their own data. |
-| **Arkiv: Build on Arkiv** ($4k) | Listings + buyer-reported scores, read on the browse page | Writes to testnet; a user-visible read; writer wallets + one query in the README; `/arkiv/schema.md`, `friction.md`, `reach.md`, `why-arkiv.md`, `how-you-use-arkiv.md`; OSS license; AI-use disclosure |
-| **EF: Best CROPS App** ($3.5k) | Lead property **C**, scoped honestly: no backend of ours; the client runs from the repo; a dependency/failure matrix lists what still depends on 0G and Arkiv | README `CROPS` section; ≤ 3-min video; no trackers |
-| Stretch only | 0G Agents That Pay for Themselves; iAI sign-in | Not on the critical path |
-
-**VERIFY (T11):** the ETHGlobal partner-prize limit per project. Also the Arkiv "built from scratch at Mumbai" rule
-against our pre-event commit history: we disclose the history and ask organizers. Moving files doesn't change
-provenance.
+| Track | How we qualify |
+|---|---|
+| 0G Private Computer ($5k, primary) | The customization agent runs on Private Computer in the main flow; every decision shows its request ID. The AI decides how a real model is trained, so removing it changes the product. Risk: "consumer app": pitched to individuals and small teams adapting AI to their own data. |
+| Arkiv ($4k) | Listings and buyer-reported scores read on the browse page; required `/arkiv/*.md` files |
+| EF CROPS ($3.5k) | Independence from us (no backend; client from the repo; refunds need only RPC + contract), with a dependency/failure matrix |
+**VERIFY (T11):** partner-prize limit; pre-event history vs Arkiv's "from scratch" rule.
 
 ## 8. "What breaks without 0G"
-Without 0G there is no attested sealed container to hold both parties' assets, no private TEE inference for the
-customization agent and the classifier, no verifiable storage for encrypted assets and reports, and no escrow chain.
-Buyer and seller would have to trust each other, or us, with their data.
+No attested runtime registry (TappRegistry) or TAPP stack to hold both assets, no private TEE inference for the
+agent that plans the training, no verifiable storage for the encrypted model and data, no escrow chain.
 
 ## 9. Pinned revisions
-| Thing | Pin |
-|---|---|
-| ERC-8183 reference | `erc-8183/base-contracts@142e669c1fd318486a4628395b629f033654dd06` (solc 0.8.28, cancun) |
-| 0G sandbox docs | `0gfoundation/0g-sandbox@ce187a4` |
-| 0G-TAPP | `0gfoundation/0g-tapp@e0fc4c2` |
-| AgentDNA (reference only) | `0gfoundation/0g-agentic-id@e8cd7a4`, SDK 0.4.0 |
-| 0G agent skills | `0gfoundation/0g-agent-skills@04b5a42` (installed by `scripts/setup.sh`) |
-| ethers | exactly 6.13.1 (storage SDK peer) |
+ERC-8183 `142e669` · 0G-TAPP `e0fc4c2` · 0G sandbox `ce187a4` · 0G agent skills `04b5a42` · AgentDNA `e8cd7a4`
+(reference only) · ethers exactly 6.13.1 · storage SDK 1.2.13 · Arkiv SDK 1.0.1 · dcap-qvl 0.7.1.
 
 ## 10. Decisions
 | # | Decision | Status |
 |---|---|---|
-| D1 | MVP asset = `llm-classifier/v1` configuration (data only, no seller code) | **Proposed (T00)** |
-| D2 | Customization = enumerated recipe search with ≤ 2 experiments, by a planner LLM behind a deterministic policy gate | **Proposed (T00)**, restores the original D9 intent |
-| D3 | Worker = our reviewed image in a sealed TEE (W1, else W2), MOCK until G-RT | **Proposed (T00)** |
-| D4 | Escrow = ERC-8183 reference unchanged; worker = provider, seller = evaluator; fixed fee; admin renounced | Proposed |
-| D5 | No backend of ours; static client + CLI | Kept from rev 1 |
-| D6 | Arkiv holds public data only; scores are labelled "buyer-reported" | Revised (R12) |
-| D7 | Our own AES-GCM envelope over 0G Storage; random keys + passphrase recovery file | Revised (R08) |
-| D8 | Clone sales, AgentDNA assets, ERC-8004 feedback: deferred, not on the critical path | Revised (R10, R11) |
-| D9 | ~~No customization~~ **Reopened and reversed**: the customization agent is required | Revised |
-| D10 | viem everywhere except the 0G Storage adapter (ethers 6.13.1) | Kept |
-| D11 | Docs: PLAN, SECURITY, PROTOCOL, ARCHITECTURE, TASKS, per-phase plans | Revised |
+| D1 | Seller asset = a real model (architecture + weights), general manifest; MVP format B1, task `text-classification` | **Rev 3, pending T00** (reverses rev 2's config-only asset) |
+| D2 | Customization = real training (LoRA / head-only) from an enumerated catalog, ≤ 2 runs, agent behind a policy gate | **Rev 3, pending T00** |
+| D3 | The worker runs only on verified TEE hardware; no mock mode; dev tests use synthetic data and never produce acceptable artifacts | **Rev 3, pending T00** |
+| D4 | Escrow: ERC-8183 reference; worker = provider, seller = evaluator; fixed fee; admin renounced | Kept |
+| D5 | No backend of ours | Kept |
+| D6 | Arkiv: public data only; scores "buyer-reported" | Kept |
+| D7 | Our AES-GCM envelope; random keys + recovery file | Kept |
+| D8 | Clone sales, AgentDNA assets, ERC-8004 feedback deferred | Kept |
+| D9 | Customization agent required | Kept |
+| D10 | Router sees aggregates only; all model and data compute in our enclave | **Rev 3** (fixes the gateway flaw) |
+| D11 | Docs set: PLAN, SECURITY, PROTOCOL, ARCHITECTURE, TASKS, per-phase plans | Kept |
 
-## 11. Open questions (owner task in brackets)
-1. 0G: will you register our worker image as a sealed-sandbox snapshot on a testnet provider, and which provider? [T01]
-2. 0G: the TappRegistry getter that proves a sandbox provider address is an active attested signer for its app_id. [T01]
-3. 0G: does the sealed-sandbox certificate or provider record attest the egress policy, or only the image? [T01]
-4. 0G: is a hosted TAPP node available to hackathon teams? [T01]
-5. 0G: the current public broker URL (documented paths returned 404). [T01]
-6. 0G: Router CIDRs or a stable egress target for the worker's 10-CIDR allowlist. [T01]
-7. Arkiv/ETHGlobal: pre-event history and the "from scratch" rule; partner-prize limit. [T11]
+## 11. Open questions (owner task)
+1. 0G: can a provider host our worker image on a GPU TEE (H1)? Is a hosted TAPP node available? [T01]
+2. 0G: the TappRegistry getter for provider and app-signer status. [T01]
+3. GCP: H100 confidential VM quota in a listed zone; the reported "experiment flag" error. [T01]
+4. NVIDIA GPU attestation verifier to use (NRAS vs local) and how it binds to TAPP evidence. [T01]
+5. CPU-TEE training time for distilbert on ~5k rows (decides whether H4 is viable). [T01]
+6. Direct TeeML provider calls: does TLS end in the enclave; does it count for the PC track? [T01]
+7. ETHGlobal: partner-prize limit; pre-event history. [T11]
 
 ## Sources
-0G sandbox `README.md`, `docs/API_REFERENCE.md`, `docs/CLI.md`, `docs/APP_IDENTITY.md`,
-`docs/sandbox-egress-isolation.md`; 0G-TAPP `README.md`; 0G Router privacy doc
-(`docs.0g.ai/.../router/privacy`, updated 2026-09-05); ERC-8183 spec and `contracts/ERC8183.sol`,
-`ERC8183WithAuthorization.sol` at the pin; storage SDK `lib.esm/common/encryption.js`; AgentDNA
-`sealed/TRUST_MODEL.md`; Arkiv `docs.arkiv.network/llms.txt`; ETHGlobal Mumbai prize pages; PR #1 review.
+0G-TAPP `README.md` and `cvm/GPU.md` (GCP `a3-highgpu-1g` with TDX; GPU report signature not checked in the repo);
+0G sandbox `docs/API_REFERENCE.md`, `docs/CLI.md`; 0G Router privacy doc; 0G fine-tuning skill
+(`.0g-skills/skills/compute/fine-tuning/SKILL.md`); ERC-8183 at the pin; storage SDK `encryption.js`; ETHGlobal
+prize pages; PR #1 review; the user's rev-3 decisions (relayed 2026-11-06). GCP and Phala GPU-TEE availability
+come from research relayed by a side session and are **VERIFY** until T01 confirms them.

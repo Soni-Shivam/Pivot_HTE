@@ -16,8 +16,9 @@ Read in order: `docs/PLAN.md` (scope, decisions) → `docs/SECURITY.md` (invaria
 ## Hard rules
 - Reuse first, and never invent an API, field, address or behaviour: read it from docs, pinned source, or a live
   call, and cite where it came from.
-- Nothing is "attested", "confidential" or "verified" without the evidence SECURITY.md requires. MOCK says MOCK, in
-  data and UI.
+- Nothing is "attested", "confidential" or "verified" without the evidence SECURITY.md requires. There is no mock
+  mode: without verified TEE evidence, keys are never released. Synthetic data is for tests only (I12).
+- Model weights and buyer rows never leave the enclave and never go to the 0G Router; the agent sees aggregates only (I9).
 - The LLM never gets authority: no shell, network, files, signing, spending or key release (I5).
 - Router calls are private-tier only; never fall back to another tier (I9). Never use the 0G Storage SDK's
   `encryption` option; use our AES-GCM envelope (I10).

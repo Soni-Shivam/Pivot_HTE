@@ -1,3 +1,5 @@
+> **Superseded for the hackathon by the Faultline spec** (`docs/superpowers/specs/2026-11-06-faultline-0g-architecture-design.md`, plan `docs/superpowers/plans/2026-11-07-faultline-build.md`); SealedAI rev 3 kept for reference.
+
 # Project plan (working name SealedAI; the name is a placeholder)
 
 Status: **REVISION 3, CONFIRMED by the user (T00 done, 2026-11-06): choices A–D as recommended in §2**

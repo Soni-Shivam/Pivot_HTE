@@ -164,3 +164,9 @@ self-paying agents, iAI sign-in, direct-to-TeeML-provider agent calls.
 - 2026-11-07 Faultline Task 10: `ethers` 6.13.1 is now also imported in `packages/episode/src/verify.ts` (the one
   exception the Faultline plan allows): the 0G Compute SDK needs an ethers wallet for `processResponse`; a random
   throwaway wallet on 0G mainnet RPC is used, no funds, no key stored.
+- 2026-11-07 PLAN rev 4 = the Faultline spec (`docs/superpowers/specs/2026-11-06-faultline-0g-architecture-design.md`),
+  built per `docs/superpowers/plans/2026-11-07-faultline-build.md` on branch `build/faultline` (the user directed the
+  build). Faultline Tasks 0–14 done; evidence in `docs/evidence/faultline-*.log` and `faultline-matrix.md`:
+  demo-002 public root `0x03c68b42…7b44`, sealed root `0x3aa3978d…eb6e`, EpisodeRegistry
+  `0x23edb2e37F9a2a2b1DAaF0514b58E278f2FFF46A`, commit tx `0x7cd9a7b5…aefc`, finalize tx `0xd7689a46…fbf3`,
+  8/8 decisions `processResponse` true. SealedAI tasks above are paused, not done.

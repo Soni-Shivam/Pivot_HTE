@@ -16,7 +16,7 @@ export type Run = {
   trajectoryJsonl: string; metricsJson: string
 }
 
-const PUBLIC_FIELDS = ['cp', 'sim_time_s', 'wall_clock_utc', 'action', 'control_decel_mps2', 'source', 'reason', 'model',
+export const PUBLIC_FIELDS = ['cp', 'sim_time_s', 'wall_clock_utc', 'action', 'control_decel_mps2', 'source', 'reason', 'model',
   'request_id', 'provider', 'zg_res_key', 'latency_ms', 'http_status', 'raw_sha256'] as const
 // Not sealed: the sealed blob itself, the upload receipt, and display-only video.
 const NOT_SEALED = (n: string) => n === 'sealed.bin' || n === 'publish.json' || n.endsWith('.mp4')
@@ -47,7 +47,8 @@ export function obsSha256(line: string): string {
   return bytesToHex(sha256(new TextEncoder().encode(line.slice(start, i + 1))))
 }
 
-export function publicJson(run: Run, verification?: unknown): Uint8Array {
+/** `tee` = archived provider signatures + service records + TDX quotes (verify.ts archiveTee). */
+export function publicJson(run: Run, tee?: unknown): Uint8Array {
   return canonical({
     schema: 'faultline.public/v1',
     manifest: run.manifest,
@@ -58,7 +59,7 @@ export function publicJson(run: Run, verification?: unknown): Uint8Array {
     })),
     trajectory_jsonl: run.trajectoryJsonl,
     metrics_json: run.metricsJson,
-    ...(verification ? { verification } : {}),
+    ...(tee ? { tee } : {}),
   })
 }
 

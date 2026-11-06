@@ -1,6 +1,7 @@
 // Faultline static verifier (plan Task 12). Keyless by default; a pasted tenant key never leaves this tab.
-// Signature verification (Compute SDK processResponse) is not run in the browser: the page shows the result embedded
-// at publish time and prints the CLI command that re-checks it independently.
+// Everything shown as ✓ is checked in this browser (audit B1): the download's Merkle root is recomputed, archived
+// provider signatures are recovered and compared with the TEE signer read from the 0G mainnet InferenceServing contract,
+// and the registry address is pinned here, never taken from the downloaded document. Untrusted strings are escaped.
 import { createPublicClient, http, type Hex } from 'viem'
 import { hexToBytes, bytesToHex } from '@noble/hashes/utils.js'
 import { sha256 } from '@noble/hashes/sha2.js'
@@ -9,14 +10,16 @@ import { unpackTar as untar } from '../../../packages/protocol/src/tar.ts'
 import { storage } from '../../../packages/integrations/src/storage.ts'
 import { galileo } from '../../../packages/integrations/src/chain.ts'
 import { chainOk, checkPublic } from '../../../packages/episode/src/check.ts'
-import { episodeRegistryAbi } from '../../../packages/episode/src/abi/episodeRegistry.ts'
+import { EPISODE_REGISTRY, episodeRegistryAbi } from '../../../packages/episode/src/abi/episodeRegistry.ts'
+import { checkTee, readService } from '../../../packages/episode/src/tee.ts'
 
 const RPC = 'https://evmrpc-testnet.0g.ai'
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T
 const esc = (s: unknown) => String(s ?? '—').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
 const tick = (ok: boolean | null | undefined) => (ok === true ? '<span class="ok">✓</span>' : ok === false ? '<span class="bad">✗</span>' : '<span class="muted">—</span>')
 const kv = (rows: [string, string][]) => rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')
-const short = (s: string | null, n = 10) => (s ? `${s.slice(0, n)}…${s.slice(-4)}` : '—')
+const short = (s: unknown, n = 10) => (typeof s === 'string' && s ? esc(`${s.slice(0, n)}…${s.slice(-4)}`) : '—')
+const num = (x: unknown, d?: number) => (typeof x === 'number' && Number.isFinite(x) ? (d === undefined ? String(x) : x.toFixed(d)) : '—')
 const badge = (c: number) => (c >= 0.75 ? 'red' : c >= 0.5 ? 'amber' : 'green')
 const status = (s: string, cls = 'muted') => { $('status').className = cls; $('status').textContent = s }
 const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim()
@@ -29,11 +32,11 @@ async function loadRoot() {
   const root = $<HTMLInputElement>('root').value.trim()
   if (!/^0x[0-9a-fA-F]{64}$/.test(root)) return status('A root is 0x followed by 64 hex characters.', 'bad')
   $<HTMLButtonElement>('load-root').disabled = true
-  status('Downloading from 0G Storage with Merkle proof…')
+  status('Downloading from 0G Storage…')
   try {
     const bytes = await storage({ rpcUrl: RPC, indexerUrl: $<HTMLInputElement>('indexer').value.trim() }).downloadBlob(root)
     loadedRoot = root
-    show(JSON.parse(new TextDecoder().decode(bytes)), `Downloaded ${bytes.length} bytes from 0G Storage, proof checked.`)
+    show(JSON.parse(new TextDecoder().decode(bytes)), `Downloaded ${bytes.length} bytes from 0G Storage; their Merkle root was recomputed here and equals ${root.slice(0, 10)}….`)
   } catch (e) {
     status(`Download failed: ${(e as Error).message}`, 'bad')
   } finally {
@@ -51,55 +54,74 @@ function show(p: any, how: string) {
   $('report').classList.remove('hidden')
   const b = badge(c.metrics.ccs)
   $('badge').className = b
-  $('badge').textContent = `${b} · CCS ${c.metrics.ccs.toFixed(3)}`
+  $('badge').textContent = `${b} · CCS ${num(c.metrics.ccs, 3)}${c.aggregatesOk ? '' : ' (does not follow from the trajectory)'}`
   $('manifest').innerHTML = kv([
     ['episode', `<code>${esc(m.episode_id)}</code>`], ['status', esc(m.status)], ['collision', esc(m.collision)],
     ['world', esc(m.world)], ['model', esc(m.model)], ['trust mode', esc(m.trust_mode)],
-    ['decisions', `${m.decisions_total} total · ${m.decisions_0g} from 0G · ${m.decisions_halt} safe halt`],
+    ['decisions', `${num(m.decisions_total)} total · ${num(m.decisions_0g)} from 0G · ${num(m.decisions_halt)} safe halt`],
     ['prompt hash', `<code>${short(m.prompt_hash, 16)}</code>`], ['scenario hash', `<code>${short(m.scenario_hash, 16)}</code>`],
     ['started', esc(m.started_at)],
+    ...(m.chaos ? [['CHAOS MODE', `<span class="bad">${esc(m.chaos)}: fake Router, not evidence</span>`] as [string, string]] : []),
   ])
-  const sigs = p.verification?.signatures as any[] | undefined
-  const sig0g = sigs?.filter((s) => s.source === '0g') ?? []
   $('checks').innerHTML = kv([
     ['file hashes', `${tick(c.filesOk)} trajectory.jsonl and metrics.json match manifest.files`],
     ['decision log', `${tick(c.decisionsOk)} ${p.decisions.length} entries, every 0G one with request id, provider and response key`],
     ['metrics recomputed', `${tick(c.metricsRecomputedOk)} TTC, THW, DRAC, CCS for ${traj.length} ticks (tolerance 1e-9)`],
-    ['signatures', sigs ? `${tick(sig0g.every((s) => s.verified === true))} ${sig0g.filter((s) => s.verified === true).length}/${sig0g.length} processResponse true at publish` : '<span class="muted">not embedded</span>'],
+    ['headline numbers', `${tick(c.aggregatesOk)} peak CCS, min TTC, min gap, max decel and collision follow from the ticks`],
+    ['signatures', '<span class="muted">checking against 0G mainnet…</span>'],
   ])
   $('decisions').querySelector('tbody')!.innerHTML = p.decisions.map((d: any) => {
-    const s = sigs?.find((x) => x.cp === d.cp)
-    return `<tr><td>${d.cp}</td><td>${Number(d.sim_time_s).toFixed(1)}</td><td>${esc(d.action ?? 'SAFE_HALT')}</td><td>${esc(d.source)}</td><td>${esc(d.reason)}</td>` +
-      `<td><code>${esc(d.request_id)}</code></td><td><code title="${esc(d.provider)}">${short(d.provider, 8)}</code></td><td>${d.latency_ms} ms</td><td>${s ? tick(s.verified) : '—'}</td></tr>`
+    return `<tr><td>${num(d.cp)}</td><td>${num(d.sim_time_s, 1)}</td><td>${esc(d.action ?? 'SAFE_HALT')}</td><td>${esc(d.source)}</td><td>${esc(d.reason)}</td>` +
+      `<td><code>${esc(d.request_id)}</code></td><td><code title="${esc(d.provider)}">${short(d.provider, 8)}</code></td><td>${num(d.latency_ms)} ms</td><td id="sig-${num(d.cp)}">—</td></tr>`
   }).join('')
-  $('sig-note').innerHTML = `Re-check every signature yourself: <code>npm run faultline -- verify ${esc(loadedRoot ?? '&lt;publicRoot&gt;')}</code> (Compute SDK <code>processResponse(provider, Zg-Res-Key)</code> against 0G mainnet).` +
-    (p.verification ? ` Embedded check: ${esc(p.verification.checked_at)}.` : '')
+  $('sig-note').innerHTML = `Each provider signature was archived at publish (providers keep them about 20 minutes) and is recovered here and compared with the TEE signer on 0G mainnet. CLI: <code>npm run faultline -- verify ${esc(loadedRoot ?? '<publicRoot>')}</code>.`
   const met = c.metrics
   $('metrics').innerHTML = kv([
-    ['CCS (peak)', `${met.ccs.toFixed(4)} at tick ${met.peak_step ?? '—'}`], ['min TTC', met.min_ttc_s == null ? '—' : `${met.min_ttc_s.toFixed(2)} s`],
-    ['min gap', met.min_gap_m == null ? '—' : `${met.min_gap_m.toFixed(2)} m`], ['max ego decel', `${met.max_ego_decel_mps2.toFixed(2)} m/s²`],
+    ['CCS (peak)', `${num(met.ccs, 4)} at tick ${num(met.peak_step)}`], ['min TTC', `${num(met.min_ttc_s, 2)} s`],
+    ['min gap', `${num(met.min_gap_m, 2)} m`], ['max ego decel', `${num(met.max_ego_decel_mps2, 2)} m/s²`],
     ['collision', esc(met.collision)],
-    ['LiDAR vs ground truth', `mean ${met.perception.mean_abs_gap_error_m?.toFixed(3) ?? '—'} m · max ${met.perception.max_abs_gap_error_m?.toFixed(3) ?? '—'} m · ${met.perception.scans_without_target} scans without target`],
+    ['LiDAR vs ground truth', `mean ${num(met.perception?.mean_abs_gap_error_m, 3)} m · max ${num(met.perception?.max_abs_gap_error_m, 3)} m · ${num(met.perception?.scans_without_target)} scans without target`],
   ])
   drawChart()
   frame = 0
   drawAnim()
   readChain(m)
+  checkSignatures(p)
+}
+
+async function checkSignatures(p: any) {
+  const row = (html: string) => { const dd = [...$('checks').querySelectorAll('dt')].find((dt) => dt.textContent === 'signatures')?.nextElementSibling; if (dd) dd.innerHTML = html }
+  try {
+    const r = await checkTee(p, { readService: (prov) => readService(prov) })
+    for (const s of r.signatures) { const td = document.getElementById(`sig-${s.cp}`); if (td) { td.innerHTML = tick(s.verified); td.title = s.reason } }
+    const n = r.signatures.filter((s) => s.verified).length
+    const q = Object.values(r.quotes)
+    row(`${tick(r.allTrue)} ${n}/${r.signatures.length} archived signatures recovered to the provider's on-chain TEE signer` +
+      (r.signatures.length ? '' : ' (no 0G decisions)') + (q.length ? ` · TDX quote report_data names the same signer ${tick(q.every(Boolean))}` : ''))
+  } catch (e) {
+    row(`${tick(false)} could not check: ${esc((e as Error).message.split('\n')[0])}`)
+  }
 }
 
 async function readChain(m: any) {
   if (!m.registry) { $('chain').innerHTML = kv([['status', '<span class="muted">episode not anchored on Galileo</span>']]); return }
+  if (String(m.registry).toLowerCase() !== EPISODE_REGISTRY.toLowerCase()) {
+    $('chain').innerHTML = kv([['registry', `${tick(false)} the document names <code>${esc(m.registry)}</code>, not the Faultline registry <code>${EPISODE_REGISTRY}</code>`]]); return
+  }
   $('chain').innerHTML = kv([['status', 'reading 0G Galileo…']])
   try {
     const client = createPublicClient({ chain: galileo(RPC), transport: http(RPC) })
-    const e = await client.readContract({ address: m.registry as Hex, abi: episodeRegistryAbi, functionName: 'getEpisode', args: [`0x${m.episode_id}` as Hex] })
+    const e = await client.readContract({ address: EPISODE_REGISTRY as Hex, abi: episodeRegistryAbi, functionName: 'getEpisode', args: [`0x${m.episode_id}` as Hex] })
     const t = (s: bigint) => (s ? new Date(Number(s) * 1000).toISOString() : '—')
     const firstCall = pub.decisions.find((d: any) => d.request_id)?.wall_clock_utc
+    const committed = e.evaluator !== '0x0000000000000000000000000000000000000000' && e.committedAt > 0n
+    if (!committed) { $('chain').innerHTML = kv([['committed', `${tick(false)} no commitment for this episode on <code>${EPISODE_REGISTRY}</code>`]]); return }
     $('chain').innerHTML = kv([
-      ['registry', `<a href="https://chainscan-galileo.0g.ai/address/${esc(m.registry)}" target="_blank" rel="noopener"><code>${esc(m.registry)}</code></a>`],
+      ['registry', `<a href="https://chainscan-galileo.0g.ai/address/${EPISODE_REGISTRY}" target="_blank" rel="noopener"><code>${EPISODE_REGISTRY}</code></a>`],
+      ['evaluator', `<a href="https://chainscan-galileo.0g.ai/address/${esc(e.evaluator)}" target="_blank" rel="noopener"><code>${esc(e.evaluator)}</code></a>`],
       ['committed', `${t(e.committedAt)} · <a href="https://chainscan-galileo.0g.ai/tx/${esc(m.commit_tx)}" target="_blank" rel="noopener">commit tx</a>` +
-        (firstCall ? ` · ${tick(Number(e.committedAt) * 1000 < Date.parse(firstCall))} before the first 0G call (${esc(firstCall)})` : '')],
-      ['finalized', e.finalizedAt ? `${t(e.finalizedAt)} · status ${e.status === 1 ? 'completed' : 'interrupted'} · collision ${e.collision}` : '<span class="warn">not finalized</span>'],
+        (firstCall ? ` · ${tick(Number(e.committedAt) * 1000 < Date.parse(firstCall))} before the first 0G call <span class="muted">(${esc(firstCall)}, the evaluator's own clock)</span>` : '')],
+      ['finalized', e.finalizedAt ? `${t(e.finalizedAt)} · status ${e.status === 1 ? 'completed' : 'interrupted'} · collision ${esc(e.collision)}` : '<span class="warn">not finalized</span>'],
       ['public root on chain', `<code>${esc(e.publicRoot)}</code> ${loadedRoot ? tick(e.publicRoot.toLowerCase() === loadedRoot.toLowerCase()) + ' matches the downloaded root' : ''}`],
       ['sealed root on chain', `<code>${esc(e.sealedRoot)}</code>`],
       ['scenario commitment', `<code>${esc(e.scenarioCommitment)}</code> <span class="muted">(salted; opens with the sealed bundle)</span>`],

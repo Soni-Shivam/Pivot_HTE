@@ -184,3 +184,9 @@ self-paying agents, iAI sign-in, direct-to-TeeML-provider agent calls.
   settles at the proposed initial gap (time-gap set from it; otherwise every gap was unsafe at 25 m/s); goal G1 runs at
   15 m/s (at 25 m/s the boundary leaves the 80 m range); brake onset fixed at 5 s in G1; designer thinking mode off
   (32–39 s turns, final call exhausted tokens). Result: bisection MAE 0.57 m vs 0G designer 5.57 m (docs/evidence/faultline-hunt.md).
+- 2026-11-07 Faultline trust audit (`docs/faultline-audit.md`): provider signatures expire (~20 min broker cache), so
+  "8/8 processResponse true" was only true at run time; storage SDK 1.2.13 ignores `{proof:true}`, so the "Merkle proof"
+  claim was false until `downloadBlob` started recomputing the root. Fixed on `build/faultline`: signature
+  archive + offline check, Merkle root check, verifier XSS/CSP, pinned registry, fail-closed commit tick, sealed field
+  binding, aggregate recompute (`verify.ts` still loads ethers lazily for the live `sigs` check). Written, not
+  deployed: `EpisodeRegistryV2`. Open: A2 content binding, A3 prompt nonce, public replay, scenario reveal (R7), hosting.

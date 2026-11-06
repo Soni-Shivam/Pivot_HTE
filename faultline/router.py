@@ -3,6 +3,7 @@
 Any failure returns a Decision with action None and a reason; the caller turns that into SAFE_HALT. There is no
 retry on another tier or model; the only retry is one after an HTTP 429.
 """
+import base64
 import hashlib
 import time
 from dataclasses import dataclass
@@ -27,6 +28,9 @@ class Decision:
     raw_sha256: str | None
     content: str | None
     ratelimit_remaining: int | None
+    # Full Router response body (base64), sealed only: the provider signs sha256(response body), so content binding
+    # (audit A2) needs the exact bytes, not just raw_sha256.
+    raw_b64: str | None = None
 
 
 def _int(v):
@@ -74,7 +78,8 @@ class ZgRouter:
                             http_status=r.status_code if r is not None else None,
                             raw_sha256=hashlib.sha256(r.content).hexdigest() if r is not None else None,
                             content=content,
-                            ratelimit_remaining=_int(r.headers.get("X-Ratelimit-Remaining-Requests")) if r is not None else None)
+                            ratelimit_remaining=_int(r.headers.get("X-Ratelimit-Remaining-Requests")) if r is not None else None,
+                            raw_b64=base64.b64encode(r.content).decode() if r is not None else None)
 
         try:
             r = self._post(body)

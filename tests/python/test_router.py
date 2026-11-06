@@ -103,6 +103,8 @@ def test_ok_decision_records_trace(server):
     assert (d.action, d.reason, d.request_id, d.zg_res_key, d.provider) == ("BRAKE_SOFT", "ok", "r1", "k1", "0xabc")
     assert d.latency_ms >= 0 and len(d.raw_sha256) == 64 and d.http_status == 200 and d.ratelimit_remaining == 499
     assert d.content == '{"action":"BRAKE_SOFT","why":"w"}'
+    import base64, hashlib
+    assert hashlib.sha256(base64.b64decode(d.raw_b64)).hexdigest() == d.raw_sha256  # exact body kept for content binding
     assert run(server, "dup_reqid").request_id == "r1"  # x_0g_trace.request_id wins over a repeated header
 
 

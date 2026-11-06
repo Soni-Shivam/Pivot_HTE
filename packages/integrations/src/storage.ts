@@ -16,16 +16,38 @@ export function storage(cfg: StorageConfig) {
       if ('txHash' in res) return { root: res.rootHash, txHash: res.txHash }
       return { root: res.rootHashes[0], txHash: res.txHashes[0] } // fragmented upload: first fragment (not used for envelopes <4 GB)
     },
+    /** Downloads `root` and refuses the bytes unless their recomputed 0G Merkle root equals `root`. SDK 1.2.13 ignores
+     *  `{proof: true}` (Downloader.js `// TODO: add proof check`), so the root check here is the integrity check.
+     *  Tries the indexer's https `GET /file?root=` first (CORS *, works from a hosted page), then `downloadToBlob`. */
     async downloadBlob(root: string): Promise<Uint8Array> {
-      let res: Awaited<ReturnType<Indexer['downloadToBlob']>>
+      let bytes: Uint8Array | null = null
       try {
-        res = await indexer.downloadToBlob(root, { proof: true })
-      } catch (e) {
-        throw new Error(`0G download failed for ${root}: ${(e as Error).message}`)
+        const r = await fetch(`${cfg.indexerUrl.replace(/\/$/, '')}/file?root=${root}`)
+        if (r.ok) bytes = new Uint8Array(await r.arrayBuffer())
+      } catch { /* fall through to the node download */ }
+      if (!bytes) {
+        let res: Awaited<ReturnType<Indexer['downloadToBlob']>>
+        try {
+          res = await indexer.downloadToBlob(root)
+        } catch (e) {
+          throw new Error(`0G download failed for ${root}: ${(e as Error).message}`)
+        }
+        const [blob, err] = res
+        if (err) throw err
+        bytes = new Uint8Array(await blob!.arrayBuffer())
       }
-      const [blob, err] = res
-      if (err) throw err
-      return new Uint8Array(await blob!.arrayBuffer())
+      const got = await merkleRoot(bytes)
+      if (got.toLowerCase() !== root.toLowerCase()) throw new Error(`0G download for ${root} has Merkle root ${got}: refused`)
+      return bytes
     },
   }
+}
+
+/** 0G Storage Merkle root of raw bytes (the same tree the uploader submits on chain). */
+export async function merkleRoot(bytes: Uint8Array): Promise<string> {
+  const [tree, err] = await new MemData(bytes).merkleTree()
+  if (err || !tree) throw err ?? new Error('could not build the Merkle tree')
+  const root = tree.rootHash()
+  if (!root) throw new Error('empty Merkle tree')
+  return root
 }

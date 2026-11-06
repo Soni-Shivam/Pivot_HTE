@@ -2,6 +2,7 @@
 import math
 
 import numpy as np
+import pytest
 
 from faultline.ego.lidar_tracker import LEN_PRIOR, WID_PRIOR, LidarTracker, cluster_bev, fit_box
 
@@ -53,6 +54,7 @@ def test_tracker_velocity_yaw_and_confirmation():
     t = out[0]
     assert abs(t.speed - 9.0) < 0.3 and abs(t.s - adv_s) < 0.3 and abs(t.l - 3.5) < 0.1
     assert abs(t.yaw) < 3 and abs(t.y + 3.5) < 0.1 and t.type_id == "lidar_track"
+    pytest.importorskip("carla")  # the duck-typed carla accessors need the wheel (absent on macOS)
     assert abs(t.get_velocity().length() - t.speed) < 1e-6 and abs(t.bounding_box.extent.x - t.length / 2) < 1e-5
     for k in range(10):  # cut towards the ego lane at 2 m/s lateral
         ego_s, adv_s, adv_l = ego_s + 8 * dt, adv_s + 9 * dt, adv_l - 2.0 * dt

@@ -1,0 +1,24 @@
+# faultline replay of demo-001 — 2026-11-06T19:49:50Z — python -m faultline replay runs/demo-001 --world carla --view --out runs/demo-001-replay
+# Recorded decisions replayed on a fresh CARLA world, then the CARLA recorder log played back. Ground-truth gap and speeds bit-identical; LiDAR gaps differ by up to 1.11 m (CARLA ray-cast is not bit-deterministic), so the trajectory sha256 does not match. Reported, not hidden.
+Version: 1
+Map: Town10HD_Opt
+Date: 11/07/26 01:15:39
+
+Frame 1 at 0 seconds
+ Create 47: spectator (0) at (-17219.7, 18385.9, 2763.81)
+Replaying File: /home/sedrica-w/shivam/eth_hackathon/runs/demo-001/recorder.log
+Total time recorded: 10.45
+Replaying from 0 s - 10.45 s (10.45 s) at 1.0x
+Ignoring Spectator camera
+
+playback ticks 213  vehicles seen 2
+{
+  "decisions_match": true,
+  "max_abs_gap_diff_m": 0.0,
+  "max_abs_lidar_gap_diff_m": 1.1121829999999946,
+  "max_abs_v_diff_mps": 0.0,
+  "playback_ok": true,
+  "ticks_original": 209,
+  "ticks_replay": 209,
+  "trajectory_sha256_match": false
+}

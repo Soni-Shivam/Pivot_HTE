@@ -81,6 +81,29 @@ def cmd_run(a) -> int:
     return 0
 
 
+def cmd_replay(a) -> int:
+    import json
+
+    from faultline.replay import playback, replay
+    out = Path(a.out or f"{a.run_dir.rstrip('/')}-replay-{a.world}")
+    if out.exists() and any(out.iterdir()):
+        sys.exit(f"refusing to overwrite {out}")
+    out.mkdir(parents=True, exist_ok=True)
+    r = replay(Path(a.run_dir), make_world(a.world, out, a.view, a.display), out)
+    if a.world == "carla":
+        r["playback_ok"] = playback(Path(a.run_dir))
+        (out / "replay.json").write_text(json.dumps(r, sort_keys=True, separators=(",", ":")) + "\n")
+    print(json.dumps(r, indent=2, sort_keys=True))
+    return 0 if r["decisions_match"] else 1
+
+
+def cmd_playback(a) -> int:
+    from faultline.replay import playback
+    ok = playback(Path(a.run_dir))
+    print(f"playback_ok {ok}")
+    return 0 if ok else 1
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="faultline")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -95,5 +118,15 @@ def main(argv=None) -> int:
     r.add_argument("--view", action="store_true", help="chase-camera window + screen.mp4 (CARLA only)")
     r.add_argument("--display", default=":2", help="X display for --view (the VNC desktop)")
     r.set_defaults(fn=cmd_run)
+    rp = sub.add_parser("replay")
+    rp.add_argument("run_dir")
+    rp.add_argument("--world", choices=["carla", "kinematic"], default="kinematic")
+    rp.add_argument("--out")
+    rp.add_argument("--view", action="store_true")
+    rp.add_argument("--display", default=":2")
+    rp.set_defaults(fn=cmd_replay)
+    pb = sub.add_parser("playback", help="play runs/<id>/recorder.log on the CARLA server")
+    pb.add_argument("run_dir")
+    pb.set_defaults(fn=cmd_playback)
     a = p.parse_args(argv)
     return a.fn(a)

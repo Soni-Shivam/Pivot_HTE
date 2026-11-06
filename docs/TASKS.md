@@ -55,8 +55,8 @@ Acceptance:
 - [ ] `/v1/infer` (via the ML server) returns only labels from the label set.
 
 ## T03 · Escrow: pinned contracts, deploy + renounce, adversarial tests. Needs: T01. Status: `todo`
-Acceptance (Foundry, local): buyer `setBudget` reverts; worker-signed `setBudgetWithAuthorization` and
-`setPayoutReceiverWithAuthorization` succeed; wrong token or budget at `fund` reverts; payout to the seller with
+Acceptance (Foundry, local): buyer `setBudget` reverts; only the worker can `setBudget` / `setPayoutReceiver` /
+`submit`; payout receiver locked after funding; wrong token or budget at `fund` reverts; payout to the seller with
 exact conservation; Funded→Expired refund after `expiredAt` by an outsider; the Submitted grace boundary (+1 h);
 seller reject → refund; authorization replay and expired deadline revert; atomic proxy init, unpaused, token allowed,
 then both admin roles renounced, after which grant/pause/`emergencyWithdraw`/`upgradeToAndCall` all revert and a
@@ -129,6 +129,9 @@ self-paying agents, iAI sign-in, direct-to-TeeML-provider agent calls.
   aggregates only, fixing the rev-2 flaw where classifier calls carried seller templates and buyer text through the
   0G gateway. Added T13 (ML plane) and T14 (evidence verifiers); MOCK removed everywhere. Pending: T00 confirmation
   of choices A–D.
+- 2026-11-06 build: `ERC8183WithAuthorization` is 27,574 bytes, over the EIP-170 limit 0G enforces (deploy reverted
+  twice). We deploy the unchanged base `ERC8183` instead; the worker sends its own provider txs, and the buyer
+  funds its gas. Deployed and verified on Galileo (`docs/evidence/T03-galileo-deploy.log`).
 - 2026-11-06 build: the ML plane does no crypto (the control plane decrypts into enclave tmpfs), so eciespy and the
   TS↔Python ECIES compatibility test are removed.
 - 2026-11-06 T00 done: the user confirmed rev 3 with the recommended choices: A = ask 0G for a hosted GPU TEE

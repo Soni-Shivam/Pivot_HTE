@@ -84,7 +84,7 @@ outcome-based pricing, pay-per-call, self-paying agents, our own backend server,
 | CPU quote verification | `@phala/dcap-qvl` 0.7.1 | npm |
 | GPU attestation verification | NVIDIA device attestation: NRAS (remote) or NVIDIA's local verifier. **VERIFY** the exact package (T01). TAPP doesn't check the GPU report signature itself (`cvm/GPU.md`), so this is ours to add. | NVIDIA |
 | ML stack (inside the worker) | PyTorch, `transformers`, `peft` (LoRA), `safetensors`, `datasets`. Exact versions pinned in the worker image lockfile. | PyPI |
-| Escrow | **ERC-8183 reference** + `ERC8183WithAuthorization` | `erc-8183/base-contracts@142e669` |
+| Escrow | **ERC-8183 reference**, base `ERC8183` (the authorization extension is over 0G's contract size limit) | `erc-8183/base-contracts@142e669`; Galileo proxy `0x0E28A6Cb4A7B7De38Cc626E8E1E80A95cD0e070a` |
 | Agent inference | **0G Private Computer Router**, private tier only, key set to private-only routing; aggregates only. Option: call a TeeML provider directly via the Compute SDK to skip the gateway (**VERIFY** that its TLS ends in the enclave and that it counts for the track; needs a 3 0G ledger deposit). | live `/v1/models` |
 | Blob storage | **0G Storage SDK**, Merkle-proofed upload/download, **SDK encryption off** (its `aes256` is unauthenticated AES-CTR) | 1.2.13 |
 | Crypto | `@noble/ciphers` (AES-GCM), `@noble/hashes` (scrypt, sha256), `eciesjs` 0.5.0 (client and worker control plane; the Python ML plane does no crypto). | npm / PyPI |
@@ -139,8 +139,8 @@ Arkiv listing.
 **B. Plan.** Buyer picks a listing; the client computes a numeric data summary (rows, label histogram, token-length
 stats; no text). The agent (Router, private) proposes a plan; the buyer approves; `planHash` goes into the manifest.
 **C. Worker + release.** The worker boots on TEE hardware → evidence (CPU quote + GPU reports + runtime_data with
-the worker key) → each party's client verifies it independently plus a fresh nonce challenge → `createJob`, relay
-worker-signed budget/payout, `fund` → seller releases the model key, buyer releases the dataset key and its Router
+the worker key) → each party's client verifies it independently plus a fresh nonce challenge → `createJob`, the
+worker sets budget/payout from its own key (the buyer sends it gas), `fund` → seller releases the model key, buyer releases the dataset key and its Router
 key. The worker requires both.
 **D. Customize.** Baseline → ≤ 2 recipe trainings with validation feedback → freeze → holdout once. Everything stays
 in enclave memory; checkpoints never leave unencrypted.
@@ -163,8 +163,8 @@ Rejected as the worker: AgentDNA agents (owner chat channel), 0G fine-tuning pro
 base models; no way to load the seller's weights).
 
 ## 6. Payment (ERC-8183 reference, unchanged)
-`client` = buyer, `provider` = worker (signs `setBudget` / `setPayoutReceiver` / `submit` via `*WithAuthorization`,
-relayed by the buyer), `evaluator` = seller, `payoutReceiver` = seller, budget = `offer.price` in `offer.token`,
+`client` = buyer, `provider` = worker (sends `setPayoutReceiver` / `setBudget` / `submit` from its enclave key; the
+buyer funds its gas), `evaluator` = seller, `payoutReceiver` = seller, budget = `offer.price` in `offer.token`,
 `description` = `"sealedai:v1:" ‖ manifestHash`, `hook` = 0. No claims are used. Admin roles are renounced and
 tested. Fixed fee; GPU costs are the buyer's (they create and pay for the worker VM/sandbox). **VERIFY** in T00
 whether the seller or the buyer pays for hardware in the demo.

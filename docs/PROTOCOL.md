@@ -46,9 +46,9 @@ WorkerReceipt(
   int32 baselineValMetric, int32 selectedValMetric, int32 holdoutMetric,   // macro-F1 x 1e4
   uint8 trainingRuns, uint8 stopReason, bytes32 timelineHead, bytes32 evidenceHash, uint8 runtime)
 ```
-The ERC-8183 authorizations (`SetBudgetAuthorization`, `SetPayoutReceiverAuthorization`, `SubmitAuthorization`,
-`CompleteAuthorization`) use the escrow's domain `{name: "ERC8183", version: "1"}` and the typehashes in
-`ERC8183WithAuthorization.sol@142e669`.
+Escrow calls go to the base `ERC8183` at `@142e669` (`ERC8183WithAuthorization` exceeds the EIP-170 size limit on
+0G; see `contracts/src/SealedEscrowSetup.sol`). The worker is the provider and sends its own `setPayoutReceiver`,
+`setBudget` and `submit` transactions from its enclave key; the buyer funds that address with a little 0G for gas.
 
 ## 3. Encrypted object envelope
 ```
@@ -88,11 +88,11 @@ Bodies are `ECIES(workerPubKey, canonical({payload, sig, ts, nonce}))`; replies 
 |---|---|---|---|
 | GET | `/v1/identity` | anyone | Evidence bundle: TDX quote, event log, runtime_data, GPU reports (runtime 1/4) or v3 certificate (runtime 3); worker pubkey; image digest. Public JSON. |
 | POST | `/v1/challenge` | anyone | Signs `keccak256("sealedai.challenge", nonce)`; for runtimes 1/2, also returns fresh TAPP evidence with that nonce |
-| POST | `/v1/manifest` | buyer | Loads manifest + buyer sig + Offer + seller sig; returns worker-signed `setBudget`/`setPayoutReceiver` authorizations if price, token, image, evidence policy and expiry match |
+| POST | `/v1/manifest` | buyer | Loads manifest + buyer sig + Offer + seller sig; sends `setPayoutReceiver(seller)` and `setBudget(offer.price)` on chain itself if price, token, image, evidence policy and expiry match |
 | POST | `/v1/release` | seller, buyer | Key release (§5); the buyer's release also carries its Router key |
 | POST | `/v1/run` | buyer | Starts when both releases are valid and the escrow job is Funded with exactly the manifest's terms |
 | GET | `/v1/timeline?after=n` | buyer | Encrypted timeline events |
-| GET | `/v1/result` | buyer | Report root, receipt, worker-signed `SubmitAuthorization` |
+| GET | `/v1/result` | buyer | Report root, receipt, and the worker's `submit` tx hash |
 | POST | `/v1/infer` | buyer | Task-adapter input → output per policy, during the license; counted |
 | GET | `/v1/adapter` | buyer | Only if the Offer's license has `adapterExport: true` (C2): the LoRA adapter sealed to the buyer |
 

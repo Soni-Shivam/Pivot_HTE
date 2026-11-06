@@ -3,3 +3,6 @@ node_modules/
 .0g-skills/
 examples/.state.json
 examples/.g2-transcript.txt
+contracts/out/
+contracts/cache/
+contracts/broadcast/*/31337/

@@ -100,7 +100,7 @@ in (T02B, Phase 2).
 `contracts/test/SealedFlow.t.sol`, `contracts/test/Renounce.t.sol`.
 
 **Interfaces:** `Deploy.run() returns (address escrowProxy, address token)`. Order: deploy the
-`ERC8183WithAuthorization` impl → `ERC1967Proxy(impl, abi.encodeCall(initialize, (treasury, deployer)))` → deploy
+base `ERC8183` impl (the authorization extension exceeds EIP-170 on 0G) → `ERC1967Proxy(impl, abi.encodeCall(initialize, (treasury, deployer)))` → deploy
 `MockUSDC` → `setPaymentTokenAllowed(token, true)` → fees stay 0 → `renounceRole(ADMIN_ROLE)` →
 `renounceRole(DEFAULT_ADMIN_ROLE)`.
 

@@ -15,7 +15,7 @@ import carla
 import numpy as np
 
 from faultline.carla_world import LIDAR_ATTRS, LIDAR_X, LIDAR_Z, ROUTE_STEP_M, CarlaWorld, _yaw_diff
-from faultline.cutin import CutInAdversary, CutInScenario, CutInTickState, gt_fields
+from faultline.cutin import CutInAdversary, CutInScenario, CutInTickState, check_environment, gt_fields
 from faultline.ego.lidar_tracker import LidarTracker
 from faultline.ego.pdm_lite import PDMLite
 from faultline.perception import GapTracker, corridor_gap
@@ -34,7 +34,15 @@ class CutInCarlaWorld(CarlaWorld):
 
     def reset(self, s: CutInScenario) -> None:
         assert s.cut_in_side == "left", "the road 7 layout puts the adversary in the left lane"
+        assert check_environment(s) is None, check_environment(s)
         self._acquire(s)
+        self._weather0 = None
+        if s.env_params:  # shared server: the original weather is put back in close()
+            self._weather0 = self.world.get_weather()
+            w = self.world.get_weather()
+            for k, v in s.env_params["weather"].items():
+                setattr(w, k, v)
+            self.world.set_weather(w)
         m = self.world.get_map()
         wp = m.get_waypoint(EGO_START, project_to_road=True, lane_type=carla.LaneType.Driving)
         assert (wp.road_id, wp.lane_id) == (EGO_ROAD, EGO_LANE), (wp.road_id, wp.lane_id)
@@ -58,6 +66,11 @@ class CutInCarlaWorld(CarlaWorld):
         t.location.z += 0.3
         self.ego = self.world.spawn_actor(bl.find("vehicle.lincoln.mkz"), t)
         self.actors.append(self.ego)
+        if s.env_params:  # road friction: the ego's tyres (CARLA physics); the adversary's brake clamp uses s.friction_mu
+            pc = self.ego.get_physics_control()
+            for wh in pc.wheels:
+                wh.friction_force_multiplier = s.friction_mu / 0.8
+            self.ego.apply_physics_control(pc)
         eb = self.ego.bounding_box
         self.ego_len, self.ego_wid = 2 * eb.extent.x, 2 * eb.extent.y
         self.adv = None
@@ -71,6 +84,10 @@ class CutInCarlaWorld(CarlaWorld):
         lbp = bl.find("sensor.lidar.ray_cast")
         for k, v in LIDAR_ATTRS.items():
             lbp.set_attribute(k, v)
+        for k, v in (s.env_params or {}).get("lidar", {}).items():
+            lbp.set_attribute(k, str(v))
+        if s.env_params:
+            lbp.set_attribute("noise_seed", str(s.seed))
         self.lidar = self.world.spawn_actor(lbp, carla.Transform(carla.Location(x=LIDAR_X, z=LIDAR_Z)),
                                             attach_to=self.ego)
         self.scans = queue.Queue()
@@ -107,6 +124,15 @@ class CutInCarlaWorld(CarlaWorld):
         self.tracks, self.control = [], carla.VehicleControl()
         if self.view:
             self.view.attach(self)
+
+    def close(self) -> None:
+        try:
+            if getattr(self, "_weather0", None) is not None:
+                self.world.set_weather(self._weather0)
+                self.world.tick()  # sync mode: apply it before close() switches back to async
+                self._weather0 = None
+        finally:
+            super().close()
 
     @property
     def t_s(self) -> float:

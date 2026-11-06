@@ -63,6 +63,66 @@ class CutInScenario:
     checkpoint_s: float = 1.0
     runup_s: float = 2.0
     dt_s: float = 0.05
+    # Attack lever (with_environment): an ENVIRONMENTS menu key and its frozen params (weather + LiDAR atmosphere),
+    # copied in so scenario.json and its hash carry the values. None = leave the world's weather and LiDAR as they are.
+    environment: str | None = None
+    env_params: dict | None = None
+
+
+# Allowlisted environment menu. `weather`: carla.WeatherParameters fields (names from the live API). `lidar`: only
+# attributes the live CARLA 0.10 sensor.lidar.ray_cast blueprint has (read 2026-11-07; defaults: attenuation 0.004,
+# dropoff 0.45 / 0.8 / 0.4, noise 0). CARLA's weather does not degrade the ray-cast LiDAR by itself, so rain/fog act on
+# it only through these attributes. `mu`: friction for the adversary's brake clamp (0.8*g*mu) and, in CARLA, the ego's
+# wheel friction_force_multiplier = mu / 0.8 (assumption: CARLA's default tyre ~ dry mu 0.8).
+_NOON, _NIGHT = {"sun_altitude_angle": 70.0}, {"sun_altitude_angle": -90.0}
+_W0 = {"cloudiness": 0.0, "precipitation": 0.0, "precipitation_deposits": 0.0, "wind_intensity": 0.0,
+       "sun_azimuth_angle": 0.0, "fog_density": 0.0, "fog_distance": 0.0, "fog_falloff": 0.0, "wetness": 0.0}
+_L0 = {"atmosphere_attenuation_rate": 0.004, "dropoff_general_rate": 0.45, "dropoff_intensity_limit": 0.8,
+       "dropoff_zero_intensity": 0.4, "noise_stddev": 0.0}
+ENVIRONMENTS = {
+    "clear_noon": {"weather": {**_W0, **_NOON}, "lidar": _L0, "mu": 0.8},
+    "clear_night": {"weather": {**_W0, **_NIGHT}, "lidar": _L0, "mu": 0.8},
+    "wet_noon": {"weather": {**_W0, **_NOON, "cloudiness": 60.0, "precipitation_deposits": 50.0, "wetness": 100.0},
+                 "lidar": {**_L0, "noise_stddev": 0.01}, "mu": 0.6},
+    "hard_rain_night": {"weather": {**_W0, **_NIGHT, "cloudiness": 100.0, "precipitation": 100.0,
+                                    "precipitation_deposits": 90.0, "wind_intensity": 100.0, "wetness": 100.0},
+                        "lidar": {**_L0, "atmosphere_attenuation_rate": 0.03, "dropoff_general_rate": 0.65,
+                                  "noise_stddev": 0.03}, "mu": 0.5},
+    "dense_fog": {"weather": {**_W0, **_NOON, "cloudiness": 90.0, "fog_density": 90.0, "fog_distance": 2.0,
+                              "fog_falloff": 1.0, "wetness": 30.0},
+                  "lidar": {**_L0, "atmosphere_attenuation_rate": 0.06, "dropoff_general_rate": 0.75,
+                            "dropoff_intensity_limit": 0.9, "noise_stddev": 0.02}, "mu": 0.7},
+}
+LIDAR_BOUNDS = {"atmosphere_attenuation_rate": (0.0, 0.1), "dropoff_general_rate": (0.0, 0.9),
+                "dropoff_intensity_limit": (0.0, 1.0), "dropoff_zero_intensity": (0.0, 1.0), "noise_stddev": (0.0, 0.1)}
+MU_BOUNDS = (0.3, 1.0)
+
+
+def with_environment(s: "CutInScenario", name: str) -> "CutInScenario":
+    """The scenario under menu environment `name` (friction follows the environment)."""
+    from dataclasses import replace
+    if name not in ENVIRONMENTS:
+        raise ValueError(f"environment {name!r} not in {sorted(ENVIRONMENTS)}")
+    e = ENVIRONMENTS[name]
+    return replace(s, environment=name, env_params={"weather": dict(e["weather"]), "lidar": dict(e["lidar"])},
+                   friction_mu=e["mu"])
+
+
+def check_environment(s: "CutInScenario") -> str | None:
+    """None if the scenario's environment is runnable (unset, or exactly a menu entry within bounds), else why not."""
+    if s.environment is None and s.env_params is None:
+        return None
+    e = ENVIRONMENTS.get(s.environment)
+    if e is None:
+        return f"environment {s.environment!r} not in the menu"
+    if s.env_params != {"weather": e["weather"], "lidar": e["lidar"]} or s.friction_mu != e["mu"]:
+        return "env_params / friction_mu differ from the menu entry"
+    if not MU_BOUNDS[0] <= s.friction_mu <= MU_BOUNDS[1]:
+        return "friction_mu out of bounds"
+    for k, v in s.env_params["lidar"].items():
+        if k not in LIDAR_BOUNDS or not LIDAR_BOUNDS[k][0] <= v <= LIDAR_BOUNDS[k][1]:
+            return f"lidar {k}={v} out of bounds"
+    return None
 
 
 def quintic(tau: float) -> float:

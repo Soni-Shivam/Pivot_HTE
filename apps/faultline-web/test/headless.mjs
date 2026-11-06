@@ -1,5 +1,5 @@
 // Headless check of the built verifier page: serves dist/, pastes the fixture public JSON, checks the rendering.
-// node apps/faultline-web/test/headless.mjs [--root <publicRoot> --shot <png>]   (pre-installed Playwright)
+// node apps/faultline-web/test/headless.mjs [--root <publicRoot> [--strict] --shot <png>]   (pre-installed Playwright)
 import { createServer } from 'node:http'
 import { readFileSync, existsSync } from 'node:fs'
 import { join, extname } from 'node:path'
@@ -43,7 +43,20 @@ try {
   check(/metrics recomputed\s*✓/.test(checks) && /file hashes\s*✓/.test(checks), `checks: ${checks.replace(/\s+/g, ' ').trim()}`)
   check(await page.locator('#chart').isVisible() && await page.locator('#anim').isVisible(), 'chart and animation canvases visible')
   // capture before playing: the headless shell fails to capture once the replay animation has run
-  if (root) await page.waitForTimeout(4000) // chain read
+  if (root) { // wait for the signature and chain checks, then print them
+    await page.waitForFunction(() => !/checking against|reading 0G/.test(document.body.textContent), null, { timeout: 120000 })
+    console.log(`checks: ${(await page.textContent('#checks')).replace(/\s+/g, ' ')}`)
+    console.log(`chain: ${(await page.textContent('#chain')).replace(/\s+/g, ' ')}`)
+  }
+  if (process.argv.includes('--strict')) { // a new (V2, archived, revealed) episode: every trust check must be green
+    const c = await page.textContent('#checks'), ch = await page.textContent('#chain')
+    const m = c.match(/signatures\s*✓\s*(\d+)\/(\d+)/)
+    check(!!m && m[1] === m[2] && Number(m[2]) > 0, `signatures ✓ ${m ? m[1] + '/' + m[2] : 'missing'}`)
+    check(/replay\s*(✓|—\s*cut_in replay is not ported)/.test(c), 'replay ✓ (or cut-in: not ported, said so)')
+    for (const k of ['before the first 0G call', 'commit-block nonce', 'config hash', 'scenario reveal', 'matches the downloaded root'])
+      check(new RegExp(k === 'before the first 0G call' || k === 'matches the downloaded root' ? `✓ ${k}` : `${k}\\s*✓`).test(ch), `chain: ${k} ✓`)
+    check(/result commitment ✓/.test(ch), 'chain: result commitment ✓')
+  }
   if (arg('--shot')) { // the headless shell cannot capture a 2x full page; size the viewport to the page instead
     await page.setViewportSize({ width: 1200, height: await page.evaluate(() => document.body.scrollHeight) })
     await page.screenshot({ path: arg('--shot') })

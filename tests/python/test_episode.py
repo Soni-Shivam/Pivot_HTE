@@ -126,3 +126,10 @@ def test_history_grows_and_reaction_delay_is_estimated(tmp_run_dir):
     assert hist[3]["ego_observed_reaction_delay_s"] is None
     assert 0.4 <= hist[4]["ego_observed_reaction_delay_s"] <= 1.0
     assert hist[4]["ego_min_ttc_so_far_s"] is not None and entries[4]["history"] == hist[4]
+
+
+def test_bad_nonce_is_a_safe_halt_and_new_fields_go_last(tmp_run_dir):
+    m, d, ls, _ = run(tmp_run_dir, ["MAINTAIN", dec(None, "bad_nonce", 1)])
+    assert [e["source"] for e in ls] == ["0g", "none"] and ls[1]["reason"] == "bad_nonce" and m["status"] == "interrupted"
+    keys = list(json.loads((tmp_run_dir / "decisions.jsonl").read_text().splitlines()[0]).keys())
+    assert "nonce" in keys and "raw_b64" in keys

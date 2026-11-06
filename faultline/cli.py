@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 import time
+from urllib.parse import urlparse
 from dataclasses import asdict
 from pathlib import Path
 
@@ -100,7 +101,7 @@ def cmd_run(a) -> int:
         sys.exit(f"refusing to overwrite {out}")
     out.mkdir(parents=True, exist_ok=True)
     extra, fake = {}, None
-    from faultline.policy import SYSTEM_PROMPT
+    from faultline.policy import SYSTEM_PROMPT, prompt_hash
     prompt = cutin.SYSTEM_PROMPT if a.family == "cut_in" else SYSTEM_PROMPT
     if a.decider == "maintain":
         decider = MaintainBaseline()
@@ -108,13 +109,15 @@ def cmd_run(a) -> int:
         print(f"\033[31mCHAOS MODE: {a.chaos} (fake router, test only)\033[0m")
         fake = FakeRouter(a.chaos).__enter__()
         decider, extra = ZgRouter(fake.url, "chaos-test", model=a.model, timeout_s=CHAOS_TIMEOUT_S,
-                                  system_prompt=prompt), {"chaos": a.chaos}
+                                  system_prompt=prompt), {"chaos": a.chaos, "router_host": "in-process fake router"}
+        decider.source = "chaos-fake"  # never "0g": any answer this fake gives is not a 0G decision (audit A4)
     else:
         url = UNREACHABLE_URL if a.chaos == "unreachable" else (a.router_url or os.environ.get("ZG_ROUTER_URL"))
         key = os.environ.get("ZG_API_KEY")
         if not url or not key:
             sys.exit("ZG_ROUTER_URL and ZG_API_KEY must be set in .env")
         decider = ZgRouter(url, key, model=a.model, system_prompt=prompt)
+        extra["router_host"] = urlparse(url).hostname  # provenance (audit A4); host only, never the key
     s = cutin.CutInScenario(seed=a.seed) if a.family == "cut_in" else Scenario(seed=a.seed)
     mk = lambda: make_world(a.world, out, a.view, a.display, a.family, ros=a.ros)
     if not a.anchor:
@@ -131,12 +134,23 @@ def cmd_run(a) -> int:
     started_at = _iso(time.time())
     (out / "scenario.json").write_text(canonical(asdict(s)) + "\n")
     episode_id = hashlib.sha256(f"{scenario_hash(s)}:{s.seed}:{started_at}".encode()).hexdigest()
+    git = lambda *c: subprocess.run(["git", *c], cwd=ROOT, capture_output=True, text=True).stdout.strip()
+    # configHash = keccak256(abi.encode(bytes32 prompt_hash, string model, string git_commit)), public on chain
+    config = {"prompt_hash": cutin.prompt_hash() if a.family == "cut_in" else prompt_hash(),
+              "model": getattr(decider, "model", None) or "", "git_commit": git("rev-parse", "HEAD"),
+              "git_dirty": bool(git("status", "--porcelain", "--untracked-files=no"))}
     (out / "manifest.json").write_text(json.dumps({"episode_id": episode_id, "scenario_hash": scenario_hash(s),
-                                                    "started_at": started_at, "preliminary": True}) + "\n")
+                                                    "started_at": started_at, "preliminary": True, "config": config}) + "\n")
     npm("commit", out)
     anc = json.loads((out / "anchor.json").read_text())
+    # Audit A3: every prompt carries the episode id and blockhash(commitBlock); the model must echo the nonce.
+    binding = {"episode_id": episode_id, "commit_block": anc["commitBlock"], "commit_blockhash": anc["commitBlockHash"],
+               "nonce": anc["commitBlockHash"][2:10]}
+    if isinstance(decider, ZgRouter):
+        decider.binding = binding
     m = run_episode(mk(), decider, s, out, started_at=started_at,
-                    extra={"registry": anc["registry"], "commit_tx": anc["commitTx"]})
+                    extra={**extra, "registry": anc["registry"], "commit_tx": anc["commitTx"], "evaluator": anc["evaluator"],
+                           "config": config, "config_hash": anc["configHash"], "seq": anc["seq"], "binding": binding})
     print_summary(out, m)
     npm("publish", out)
     npm("finalize", out)

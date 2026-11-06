@@ -49,6 +49,8 @@ class Handler(BaseHTTPRequestHandler):
         trace_hdr = {"X-Request-Id": "r1", "Zg-Res-Key": "k1", "X-Ratelimit-Remaining-Requests": "499"}
         if MODE == "ok":
             return self._send(200, _chat('{"action":"BRAKE_SOFT","why":"w"}'), trace_hdr)
+        if MODE == "nonce_ok":
+            return self._send(200, _chat('{"action":"BRAKE_SOFT","why":"w","nonce":"ab12cd34"}'), trace_hdr)
         if MODE == "prose":
             return self._send(200, _chat('Sure! {"action":"COAST"}'), trace_hdr)
         if MODE == "out_of_set":
@@ -150,3 +152,18 @@ def test_family_prompt_is_sent_and_parser_stays_strict(server):
     assert BODIES[-1]["messages"][0]["content"] == cutin.SYSTEM_PROMPT
     assert (d.action, d.reason, d.request_id) == (None, "out_of_set", "r1")
     assert SEEN[-1] == ("0gm-1.0-35b-a3b", "private")
+
+
+def test_binding_goes_into_the_prompt_and_a_missing_nonce_echo_is_a_failure(server):
+    global MODE
+    b = {"episode_id": "e" * 64, "commit_block": 7, "commit_blockhash": "0xab12cd34" + "0" * 56, "nonce": "ab12cd34"}
+    MODE = "ok"  # answers without a nonce
+    d = ZgRouter(server, "sk-test", binding=b).decide(OBS, [], ACTIONS)
+    assert (d.action, d.reason, d.nonce, d.request_id) == (None, "bad_nonce", "ab12cd34", "r1")
+    user = json.loads(BODIES[-1]["messages"][1]["content"])
+    assert user["binding"] == b and user["observation"] == OBS
+    MODE = "nonce_ok"
+    d = ZgRouter(server, "sk-test", binding=b).decide(OBS, [], ACTIONS)
+    assert (d.action, d.reason, d.nonce) == ("BRAKE_SOFT", "ok", "ab12cd34")
+    d = ZgRouter(server, "sk-test").decide(OBS, [], ACTIONS)  # unbound: no binding key, nonce None
+    assert "binding" not in json.loads(BODIES[-1]["messages"][1]["content"]) and d.nonce is None

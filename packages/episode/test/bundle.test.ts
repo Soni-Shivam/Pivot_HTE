@@ -2,7 +2,11 @@ import { test } from 'node:test'
 import { existsSync, readFileSync } from 'node:fs'
 import assert from 'node:assert/strict'
 import { randomBytes } from '@noble/hashes/utils.js'
-import { open, unpackTar } from '@sealedai/protocol'
+import { mkdtempSync, cpSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { open, seal, unpackTar } from '@sealedai/protocol'
+import { episodeKey, openEpisode } from '../src/key.ts'
 import { obsSha256, publicJson, readRun, sealedTar, sealRun } from '../src/bundle.ts'
 
 const DIR = new URL('./fixtures/run-kinematic', import.meta.url).pathname
@@ -13,7 +17,7 @@ const keysDeep = (v: unknown, out = new Set<string>()): Set<string> => {
   return out
 }
 
-test('public json carries no observations, history, content, scenario or salt', () => {
+test('public json of an unanchored run carries no observations, history, content, scenario or salt', () => {
   const bytes = publicJson(run)
   const pub = JSON.parse(new TextDecoder().decode(bytes))
   const keys = keysDeep(pub)
@@ -29,16 +33,32 @@ test('observation hash matches the Python-side obs_sha256 (raw canonical bytes, 
   for (let i = 0; i < run.decisions.length; i++) assert.equal(obsSha256(run.decisionLines[i]), run.decisions[i].obs_sha256)
 })
 
-test('sealed tar round-trips with the right key and fails with another or a flipped byte', () => {
+test('sealed tar round-trips with the per-episode key and fails with another key, episode or a flipped byte', () => {
   const key = randomBytes(32)
-  const blob = sealRun(sealedTar(DIR), key, run.manifest.episode_id)
-  const { plaintext } = open(blob, key, { objectType: 'episode', objectId: run.manifest.episode_id })
+  const id = run.manifest.episode_id
+  const blob = sealRun(sealedTar(DIR), key, id)
+  const { plaintext, keyVersion } = openEpisode(blob, key, id)
+  assert.equal(keyVersion, 2)
   const names = unpackTar(plaintext).map((f) => f.name)
   assert.ok(names.includes('manifest.json') && names.includes('decisions.jsonl') && names.includes('scenario.json'))
-  assert.throws(() => open(blob, randomBytes(32)))
+  assert.throws(() => open(blob, key)) // the tenant key itself no longer opens it
+  assert.ok(open(blob, episodeKey(key, id)).plaintext.length > 0)
+  assert.throws(() => openEpisode(blob, randomBytes(32), id))
+  assert.throws(() => openEpisode(blob, key, 'f'.repeat(64)))
   const bad = blob.slice()
   bad[bad.length - 20] ^= 1
-  assert.throws(() => open(bad, key))
+  assert.throws(() => openEpisode(bad, key, id))
+  // bundles sealed before HKDF (envelope version 1, raw tenant key) still open
+  const old = seal(sealedTar(DIR), { objectType: 'episode', objectId: id, version: 1 }, key).blob
+  assert.equal(openEpisode(old, key, id).keyVersion, 1)
+})
+
+test('sealedTar packs only the allowlisted evidence files', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'fl-'))
+  cpSync(DIR, dir, { recursive: true })
+  for (const f of ['verification.json', 'screen.mp4', 'publish.json', 'notes.txt']) writeFileSync(join(dir, f), 'x')
+  const names = unpackTar(sealedTar(dir)).map((f) => f.name).sort()
+  assert.deepEqual(names, ['decisions.jsonl', 'manifest.json', 'metrics.json', 'scenario.json', 'trajectory.jsonl'])
 })
 
 // Tenant isolation on the real demo-002 bundle (runs/ is local, so this skips on a fresh clone).

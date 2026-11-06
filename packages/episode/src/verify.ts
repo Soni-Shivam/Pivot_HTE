@@ -3,7 +3,10 @@
 // 0G mainnet InferenceServing contract holds (audit A1). Downloads are refused unless their Merkle root matches (S1).
 import { sha256 } from '@noble/hashes/sha2.js'
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js'
-import { open, unpackTar } from '@sealedai/protocol'
+import { unpackTar } from '@sealedai/protocol'
+import { openEpisode } from './key.ts'
+import { checkOnchain } from './onchain.ts'
+import { checkReplay } from './replay.ts'
 import { storage } from '@sealedai/integrations'
 import { chainOk, checkPublic } from './check.ts'
 import { obsSha256, PUBLIC_FIELDS } from './bundle.ts'
@@ -61,7 +64,8 @@ export async function verifySignatures(decisions: any[], pr: ProcessResponse): P
 
 export type VerifyConfig = { rpcUrl: string; indexerUrl: string; mainnetRpc?: string; tenantKeyHex?: string; sealedRoot?: string }
 
-export async function verify(publicRoot: string, cfg: VerifyConfig, deps: { download?: (root: string) => Promise<Uint8Array>; tee?: Pick<TeeDeps, 'readService'> } = {}) {
+export async function verify(publicRoot: string, cfg: VerifyConfig, deps: { download?: (root: string) => Promise<Uint8Array>; tee?: Pick<TeeDeps, 'readService'>
+  onchain?: typeof checkOnchain } = {}) {
   const download = deps.download ?? storage({ rpcUrl: cfg.rpcUrl, indexerUrl: cfg.indexerUrl }).downloadBlob
   const pubBytes = await download(publicRoot) // throws unless the recomputed Merkle root equals publicRoot
   const pub = JSON.parse(new TextDecoder().decode(pubBytes))
@@ -71,18 +75,22 @@ export async function verify(publicRoot: string, cfg: VerifyConfig, deps: { down
     publicRoot, publicRootOk: true, episode_id: pub.manifest.episode_id, status: pub.manifest.status,
     filesOk: c.filesOk, decisionsWellFormed: c.decisionsOk, metricsRecomputedOk: c.metricsRecomputedOk, aggregatesOk: c.aggregatesOk,
     signatures: tee.signatures, signaturesAllTrue: tee.allTrue, quoteSignerMatchesChain: tee.quotes,
+    // A2 (docs/faultline-audit.md 2026-11-07): the signed hashes cover the Router↔enclave ciphertext, not our body
+    contentBinding: 'not checkable: provider signs the sealed (E2EE) Router turn, see audit A2',
+    onchain: await (deps.onchain ?? checkOnchain)(pub, publicRoot),
+    replay: checkReplay(pub),
     checked_at: new Date().toISOString(),
   }
   if (cfg.sealedRoot && cfg.tenantKeyHex) {
     const blob = await download(cfg.sealedRoot)
-    const { plaintext } = open(blob, hexToBytes(cfg.tenantKeyHex), { objectType: 'episode', objectId: pub.manifest.episode_id })
+    const { plaintext, keyVersion } = openEpisode(blob, hexToBytes(cfg.tenantKeyHex), pub.manifest.episode_id)
     const files = Object.fromEntries(unpackTar(plaintext).map((f) => [f.name, f.data]))
     const td = (n: string) => new TextDecoder().decode(files[n])
     const manifest = JSON.parse(td('manifest.json'))
     const lines = td('decisions.jsonl').split('\n').filter(Boolean)
     const sealedDecisions = lines.map((l) => JSON.parse(l))
     out.sealed = {
-      sealedRoot: cfg.sealedRoot, opened: true,
+      sealedRoot: cfg.sealedRoot, opened: true, keyVersion,
       manifestMatchesPublic: JSON.stringify(manifest) === JSON.stringify(pub.manifest),
       filesHashesMatchManifest: Object.entries(manifest.files as Record<string, string>).every(([n, h]) => files[n] && bytesToHex(sha256(files[n])) === h),
       chainOk: chainOk(td('decisions.jsonl'), manifest.log_head),

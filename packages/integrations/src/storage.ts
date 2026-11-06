@@ -8,13 +8,13 @@ export type StorageConfig = { rpcUrl: string; indexerUrl: string; privateKey?: s
 export function storage(cfg: StorageConfig) {
   const indexer = new Indexer(cfg.indexerUrl)
   return {
-    async uploadBlob(blob: Uint8Array): Promise<{ root: string; txHash: string }> {
+    async uploadBlob(blob: Uint8Array): Promise<{ root: string; txHash: string; txSeq: number }> {
       if (!cfg.privateKey) throw new Error('uploading needs a signer key')
       const signer = new ethers.Wallet(cfg.privateKey, new ethers.JsonRpcProvider(cfg.rpcUrl))
       const [res, err] = await indexer.upload(new MemData(blob), cfg.rpcUrl, signer)
       if (err) throw err
-      if ('txHash' in res) return { root: res.rootHash, txHash: res.txHash }
-      return { root: res.rootHashes[0], txHash: res.txHashes[0] } // fragmented upload: first fragment (not used for envelopes <4 GB)
+      if ('txHash' in res) return { root: res.rootHash, txHash: res.txHash, txSeq: res.txSeq }
+      return { root: res.rootHashes[0], txHash: res.txHashes[0], txSeq: res.txSeqs[0] } // fragmented upload: first fragment (not used for envelopes <4 GB)
     },
     /** Downloads `root` and refuses the bytes unless their recomputed 0G Merkle root equals `root`. SDK 1.2.13 ignores
      *  `{proof: true}` (Downloader.js `// TODO: add proof check`), so the root check here is the integrity check.

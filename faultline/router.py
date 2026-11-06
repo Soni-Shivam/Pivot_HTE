@@ -31,6 +31,8 @@ class Decision:
     # Full Router response body (base64), sealed only: the provider signs sha256(response body), so content binding
     # (audit A2) needs the exact bytes, not just raw_sha256.
     raw_b64: str | None = None
+    # Nonce sent in this request's binding (anchored runs); an "ok" decision echoed exactly this (parse_decision).
+    nonce: str | None = None
 
 
 def _int(v):
@@ -42,7 +44,8 @@ def _int(v):
 
 class ZgRouter:
     def __init__(self, base_url: str, api_key: str, model: str = DEFAULT_MODEL, timeout_s: float = 8.0, http=requests,
-                 system_prompt: str = SYSTEM_PROMPT):
+                 system_prompt: str = SYSTEM_PROMPT, binding: dict | None = None):
+        self.binding = binding  # set by `run --anchor` after the Galileo commit (audit A3)
         self.system_prompt = system_prompt  # per scenario family (policy / cutin); the parser stays strict for all
         self.url = base_url.rstrip("/") + "/chat/completions"
         self._key = api_key
@@ -63,7 +66,7 @@ class ZgRouter:
         body = {
             "model": self.model,
             "messages": [{"role": "system", "content": self.system_prompt},
-                         {"role": "user", "content": build_user_message(obs, history)}],
+                         {"role": "user", "content": build_user_message(obs, history, self.binding)}],
             "response_format": {"type": "json_object"},
             "chat_template_kwargs": {"enable_thinking": False},
             "temperature": 0,
@@ -79,7 +82,8 @@ class ZgRouter:
                             raw_sha256=hashlib.sha256(r.content).hexdigest() if r is not None else None,
                             content=content,
                             ratelimit_remaining=_int(r.headers.get("X-Ratelimit-Remaining-Requests")) if r is not None else None,
-                            raw_b64=base64.b64encode(r.content).decode() if r is not None else None)
+                            raw_b64=base64.b64encode(r.content).decode() if r is not None else None,
+                            nonce=self.binding["nonce"] if self.binding else None)
 
         try:
             r = self._post(body)
@@ -115,6 +119,7 @@ class ZgRouter:
             content = j["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError):
             content = None
-        action, reason = parse_decision(content if isinstance(content, str) else "", available)
+        action, reason = parse_decision(content if isinstance(content, str) else "", available,
+                                        self.binding["nonce"] if self.binding else None)
         return out(reason, r, action=action, request_id=request_id, provider=provider,
                    content=content if isinstance(content, str) else None)

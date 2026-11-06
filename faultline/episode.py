@@ -127,7 +127,7 @@ def run_episode(world, decider, scenario, out_dir: Path, clock=time, started_at:
                 if hazard and not lead_decelerating:
                     onset_t = last.t_s
                 lead_decelerating = hazard
-                decels[source] += 1
+                decels[source] = decels.get(source, 0) + 1
                 entry = {"cp": k, "sim_time_s": obs["sim_time_s"], "wall_clock_utc": _iso(clock.time()),
                          "observation": obs, "obs_sha256": hashlib.sha256(canonical(obs).encode()).hexdigest(),
                          "history": history, **ctl, "source": source, **asdict(d)}

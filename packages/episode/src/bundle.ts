@@ -1,11 +1,12 @@
-// Episode bundles (plan Task 10): the public JSON (no observations, history, model text, scenario or salt) and the
-// sealed tar of the whole run dir. Hashes are always over raw bytes written by Python: JCS (canonical.ts) prints 35.0
+// Episode bundles (plan Task 10): the public JSON (no observations, history or model text; anchored runs reveal
+// scenario.json and the salt, audit R7) and the sealed tar of the run's evidence files. Hashes are always over raw bytes written by Python: JCS (canonical.ts) prints 35.0
 // as 35, Python prints 35.0, so nothing Python hashed is ever re-serialized here.
-import { readdirSync, readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { sha256 } from '@noble/hashes/sha2.js'
 import { bytesToHex } from '@noble/hashes/utils.js'
 import { canonical, packTar, seal } from '@sealedai/protocol'
+import { EPISODE_KEY_VERSION, episodeKey } from './key.ts'
 
 export type Decision = Record<string, unknown> & {
   cp: number; source: string; reason: string; action: string | null; request_id: string | null
@@ -17,9 +18,9 @@ export type Run = {
 }
 
 export const PUBLIC_FIELDS = ['cp', 'sim_time_s', 'wall_clock_utc', 'action', 'control_decel_mps2', 'source', 'reason', 'model',
-  'request_id', 'provider', 'zg_res_key', 'latency_ms', 'http_status', 'raw_sha256'] as const
-// Not sealed: the sealed blob itself, the upload receipt, and display-only video.
-const NOT_SEALED = (n: string) => n === 'sealed.bin' || n === 'publish.json' || n.endsWith('.mp4')
+  'request_id', 'provider', 'zg_res_key', 'latency_ms', 'http_status', 'raw_sha256', 'nonce'] as const
+// Sealed: exactly these files when present (audit R12: no stale extras such as an old verification.json, no subdirs).
+export const SEALED_FILES = ['manifest.json', 'scenario.json', 'decisions.jsonl', 'trajectory.jsonl', 'metrics.json', 'anchor.json', 'recorder.log'] as const
 
 const text = (dir: string, f: string) => readFileSync(join(dir, f), 'utf8')
 
@@ -47,8 +48,15 @@ export function obsSha256(line: string): string {
   return bytesToHex(sha256(new TextEncoder().encode(line.slice(start, i + 1))))
 }
 
+/** Anchored runs: scenario.json (raw bytes as text) and the commitment salt, so anyone can recompute the scenario and
+ *  result commitments and replay the episode (audit R7/B2). Unanchored runs reveal nothing. */
+export function revealOf(dir: string): { scenario_json: string; salt: string } | undefined {
+  if (!existsSync(join(dir, 'anchor.json'))) return undefined
+  return { scenario_json: text(dir, 'scenario.json'), salt: JSON.parse(text(dir, 'anchor.json')).salt }
+}
+
 /** `tee` = archived provider signatures + service records + TDX quotes (verify.ts archiveTee). */
-export function publicJson(run: Run, tee?: unknown): Uint8Array {
+export function publicJson(run: Run, tee?: unknown, reveal?: { scenario_json: string; salt: string }): Uint8Array {
   return canonical({
     schema: 'faultline.public/v1',
     manifest: run.manifest,
@@ -60,14 +68,16 @@ export function publicJson(run: Run, tee?: unknown): Uint8Array {
     trajectory_jsonl: run.trajectoryJsonl,
     metrics_json: run.metricsJson,
     ...(tee ? { tee } : {}),
+    ...(reveal ? { reveal } : {}),
   })
 }
 
 export function sealedTar(dir: string): Uint8Array {
-  const names = readdirSync(dir).filter((n) => !NOT_SEALED(n) && existsSync(join(dir, n)))
+  const names = SEALED_FILES.filter((n) => existsSync(join(dir, n)))
   return packTar(names.map((name) => ({ name, data: new Uint8Array(readFileSync(join(dir, name))) })))
 }
 
-export function sealRun(tar: Uint8Array, key: Uint8Array, episodeId: string): Uint8Array {
-  return seal(tar, { objectType: 'episode', objectId: episodeId, version: 1 }, key).blob
+/** Sealed with the per-episode key derived from the tenant key (key.ts); open with openEpisode. */
+export function sealRun(tar: Uint8Array, tenantKey: Uint8Array, episodeId: string): Uint8Array {
+  return seal(tar, { objectType: 'episode', objectId: episodeId, version: EPISODE_KEY_VERSION }, episodeKey(tenantKey, episodeId)).blob
 }

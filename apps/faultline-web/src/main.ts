@@ -2,18 +2,18 @@
 // Everything shown as ✓ is checked in this browser (audit B1): the download's Merkle root is recomputed, archived
 // provider signatures are recovered and compared with the TEE signer read from the 0G mainnet InferenceServing contract,
 // and the registry address is pinned here, never taken from the downloaded document. Untrusted strings are escaped.
-import { createPublicClient, http, type Hex } from 'viem'
 import { hexToBytes, bytesToHex } from '@noble/hashes/utils.js'
 import { sha256 } from '@noble/hashes/sha2.js'
-import { open } from '../../../packages/protocol/src/envelope.ts'
 import { unpackTar as untar } from '../../../packages/protocol/src/tar.ts'
 import { storage } from '../../../packages/integrations/src/storage.ts'
-import { galileo } from '../../../packages/integrations/src/chain.ts'
 import { chainOk, checkPublic } from '../../../packages/episode/src/check.ts'
-import { EPISODE_REGISTRY, episodeRegistryAbi } from '../../../packages/episode/src/abi/episodeRegistry.ts'
+import { EPISODE_REGISTRY, EPISODE_REGISTRY_V2 } from '../../../packages/episode/src/abi/episodeRegistry.ts'
 import { checkTee, readService } from '../../../packages/episode/src/tee.ts'
+import { openEpisode } from '../../../packages/episode/src/key.ts'
+import { checkOnchain, GALILEO_RPC } from '../../../packages/episode/src/onchain.ts'
+import { checkReplay } from '../../../packages/episode/src/replay.ts'
 
-const RPC = 'https://evmrpc-testnet.0g.ai'
+const RPC = GALILEO_RPC
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T
 const esc = (s: unknown) => String(s ?? '—').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
 const tick = (ok: boolean | null | undefined) => (ok === true ? '<span class="ok">✓</span>' : ok === false ? '<span class="bad">✗</span>' : '<span class="muted">—</span>')
@@ -69,6 +69,8 @@ function show(p: any, how: string) {
     ['metrics recomputed', `${tick(c.metricsRecomputedOk)} TTC, THW, DRAC, CCS for ${traj.length} ticks (tolerance 1e-9)`],
     ['headline numbers', `${tick(c.aggregatesOk)} peak CCS, min TTC, min gap, max decel and collision follow from the ticks`],
     ['signatures', '<span class="muted">checking against 0G mainnet…</span>'],
+    ['content binding', `${tick(null)} not checkable: the provider signs the Router's sealed (E2EE) turn, not the bytes we log (audit A2)`],
+    ['replay', replayRow(p)],
   ])
   $('decisions').querySelector('tbody')!.innerHTML = p.decisions.map((d: any) => {
     return `<tr><td>${num(d.cp)}</td><td>${num(d.sim_time_s, 1)}</td><td>${esc(d.action ?? 'SAFE_HALT')}</td><td>${esc(d.source)}</td><td>${esc(d.reason)}</td>` +
@@ -89,6 +91,16 @@ function show(p: any, how: string) {
   checkSignatures(p)
 }
 
+function replayRow(p: any): string {
+  const r: any = checkReplay(p)
+  if (!r) return `${tick(null)} scenario not revealed (episode published before the reveal), nothing to replay`
+  if (r.skipped) return `${tick(null)} ${esc(r.skipped)}`
+  if (r.error) return `${tick(false)} ${esc(r.error)}`
+  const what = r.kinematic ? 'every field' : 'ground-truth fields only (CARLA LiDAR ray-casts are not bit-deterministic; collision taken from the CARLA sensor)'
+  return `${tick(r.ok)} re-ran ${num(r.replayedTicks)} ticks in this browser from the revealed scenario and the public control decels: ${what} ` +
+    (r.ok ? 'bit-exact' : r.firstMismatch ? `differ first at tick ${num(r.firstMismatch.tick)} (${esc(r.firstMismatch.field)})` : `tick count ${num(r.replayedTicks)} vs ${num(r.ticks)}`)
+}
+
 async function checkSignatures(p: any) {
   const row = (html: string) => { const dd = [...$('checks').querySelectorAll('dt')].find((dt) => dt.textContent === 'signatures')?.nextElementSibling; if (dd) dd.innerHTML = html }
   try {
@@ -96,7 +108,9 @@ async function checkSignatures(p: any) {
     for (const s of r.signatures) { const td = document.getElementById(`sig-${s.cp}`); if (td) { td.innerHTML = tick(s.verified); td.title = s.reason } }
     const n = r.signatures.filter((s) => s.verified).length
     const q = Object.values(r.quotes)
+    const schemes = [...new Set(r.signatures.map((s) => s.scheme).filter(Boolean))]
     row(`${tick(r.allTrue)} ${n}/${r.signatures.length} archived signatures recovered to the provider's on-chain TEE signer` +
+      (schemes.length ? ` <span class="muted">(scheme ${esc(schemes.join(', '))})</span>` : '') +
       (r.signatures.length ? '' : ' (no 0G decisions)') + (q.length ? ` · TDX quote report_data names the same signer ${tick(q.every(Boolean))}` : ''))
   } catch (e) {
     row(`${tick(false)} could not check: ${esc((e as Error).message.split('\n')[0])}`)
@@ -105,28 +119,31 @@ async function checkSignatures(p: any) {
 
 async function readChain(m: any) {
   if (!m.registry) { $('chain').innerHTML = kv([['status', '<span class="muted">episode not anchored on Galileo</span>']]); return }
-  if (String(m.registry).toLowerCase() !== EPISODE_REGISTRY.toLowerCase()) {
-    $('chain').innerHTML = kv([['registry', `${tick(false)} the document names <code>${esc(m.registry)}</code>, not the Faultline registry <code>${EPISODE_REGISTRY}</code>`]]); return
-  }
   $('chain').innerHTML = kv([['status', 'reading 0G Galileo…']])
   try {
-    const client = createPublicClient({ chain: galileo(RPC), transport: http(RPC) })
-    const e = await client.readContract({ address: EPISODE_REGISTRY as Hex, abi: episodeRegistryAbi, functionName: 'getEpisode', args: [`0x${m.episode_id}` as Hex] })
-    const t = (s: bigint) => (s ? new Date(Number(s) * 1000).toISOString() : '—')
-    const firstCall = pub.decisions.find((d: any) => d.request_id)?.wall_clock_utc
-    const committed = e.evaluator !== '0x0000000000000000000000000000000000000000' && e.committedAt > 0n
-    if (!committed) { $('chain').innerHTML = kv([['committed', `${tick(false)} no commitment for this episode on <code>${EPISODE_REGISTRY}</code>`]]); return }
+    const c = await checkOnchain(pub, loadedRoot, RPC)
+    if (!c.registryPinned) { $('chain').innerHTML = kv([['registry', `${tick(false)} the document names <code>${esc(m.registry)}</code>, not a Faultline registry (<code>${EPISODE_REGISTRY_V2}</code> or v1 <code>${EPISODE_REGISTRY}</code>)`]]); return }
+    const link = (kind: string, v: unknown) => `<a href="https://chainscan-galileo.0g.ai/${kind}/${esc(v)}" target="_blank" rel="noopener"><code>${esc(v)}</code></a>`
+    if (!c.committed) { $('chain').innerHTML = kv([['committed', `${tick(false)} no commitment for this episode on ${link('address', c.registry)}`]]); return }
+    const t = (s: number) => (s ? new Date(s * 1000).toISOString() : '—')
+    const rv = c.reveal
     $('chain').innerHTML = kv([
-      ['registry', `<a href="https://chainscan-galileo.0g.ai/address/${EPISODE_REGISTRY}" target="_blank" rel="noopener"><code>${EPISODE_REGISTRY}</code></a>`],
-      ['evaluator', `<a href="https://chainscan-galileo.0g.ai/address/${esc(e.evaluator)}" target="_blank" rel="noopener"><code>${esc(e.evaluator)}</code></a>`],
-      ['committed', `${t(e.committedAt)} · <a href="https://chainscan-galileo.0g.ai/tx/${esc(m.commit_tx)}" target="_blank" rel="noopener">commit tx</a>` +
-        (firstCall ? ` · ${tick(Number(e.committedAt) * 1000 < Date.parse(firstCall))} before the first 0G call <span class="muted">(${esc(firstCall)}, the evaluator's own clock)</span>` : '')],
-      ['finalized', e.finalizedAt ? `${t(e.finalizedAt)} · status ${e.status === 1 ? 'completed' : 'interrupted'} · collision ${esc(e.collision)}` : '<span class="warn">not finalized</span>'],
-      ['public root on chain', `<code>${esc(e.publicRoot)}</code> ${loadedRoot ? tick(e.publicRoot.toLowerCase() === loadedRoot.toLowerCase()) + ' matches the downloaded root' : ''}`],
-      ['sealed root on chain', `<code>${esc(e.sealedRoot)}</code>`],
-      ['scenario commitment', `<code>${esc(e.scenarioCommitment)}</code> <span class="muted">(salted; opens with the sealed bundle)</span>`],
+      ['registry', `${link('address', c.registry)} <span class="muted">(${c.version === 'v2' ? 'EpisodeRegistryV2' : 'v1'}, pinned in this page)</span>`],
+      ['evaluator', link('address', c.evaluator)],
+      ...(c.version === 'v2' ? [['evaluator record', `run #${num(c.seq)} of ${num(c.stats.committed)} committed · ${num(c.stats.completed)} completed · ${num(c.stats.interrupted)} interrupted · ${num(c.stats.aborted)} aborted · ${num(c.stats.committed - c.stats.completed - c.stats.interrupted - c.stats.aborted)} never finalized`] as [string, string]] : []),
+      ['committed', `${t(c.committedAt)} · <a href="https://chainscan-galileo.0g.ai/tx/${esc(c.commitTx)}" target="_blank" rel="noopener">commit tx</a>` +
+        (c.firstCall ? ` · ${tick(c.committedBeforeFirstCall)} before the first 0G call <span class="muted">(${esc(c.firstCall)}, the evaluator's own clock)</span>` : '')],
+      ...(c.version === 'v2' ? [
+        ['commit-block nonce', `${tick(c.bindingOk && c.noncesEchoed === c.nonces0g && c.nonces0g > 0)} block ${num(c.commitBlock)} hash <code>${short(c.commitBlockHash, 12)}</code> was in every prompt; ${num(c.noncesEchoed)}/${num(c.nonces0g)} accepted 0G answers echoed nonce <code>${esc(String(c.commitBlockHash).slice(2, 10))}</code> <span class="muted">(parser-enforced; not covered by the provider signature, see A2)</span>`],
+        ['config hash', `${tick(c.configHashOk)} keccak(prompt hash, model, git commit) = <code>${short(c.configHash, 12)}</code> on chain <span class="muted">(${esc(m.config?.model)} @ ${short(m.config?.git_commit, 8)}${m.config?.git_dirty ? ', dirty tree' : ''})</span>`],
+      ] as [string, string][] : []),
+      ['finalized', c.finalizedAt ? `${t(c.finalizedAt)} · status ${c.status === 1 ? 'completed' : c.status === 2 ? 'interrupted' : c.status === 3 ? 'aborted' : esc(c.status)} · collision ${esc(c.collision)}` : '<span class="warn">not finalized</span>'],
+      ['public root on chain', `<code>${esc(c.publicRoot)}</code> ${c.publicRootMatches === null ? '' : tick(c.publicRootMatches) + ' matches the downloaded root'}`],
+      ['sealed root on chain', `<code>${esc(c.sealedRoot)}</code>`],
+      ['scenario reveal', rv ? `${tick(rv.scenarioFileOk && rv.scenarioCommitmentOk)} keccak(salt, sha256(scenario.json)) from the revealed scenario equals the on-chain commitment` +
+        ` · result commitment ${tick(rv.resultCommitmentOk)}` : `<span class="muted">not revealed (published before reveals); commitment <code>${short(c.scenarioCommitment, 12)}</code> opens with the sealed bundle</span>`],
     ])
-    if (!$<HTMLInputElement>('sroot').value) $<HTMLInputElement>('sroot').value = e.sealedRoot
+    if (!$<HTMLInputElement>('sroot').value) $<HTMLInputElement>('sroot').value = c.sealedRoot
   } catch (err) {
     $('chain').innerHTML = kv([['status', `<span class="bad">chain read failed: ${esc((err as Error).message.split('\n')[0])}</span>`]])
   }
@@ -139,11 +156,11 @@ async function loadSealed() {
   out.innerHTML = '<p class="muted">Downloading and opening…</p>'
   try {
     const blob = await storage({ rpcUrl: RPC, indexerUrl: $<HTMLInputElement>('indexer').value.trim() }).downloadBlob(root)
-    const { plaintext } = open(blob, hexToBytes(key.replace(/^0x/, '')), { objectType: 'episode', objectId: pub.manifest.episode_id })
+    const { plaintext, keyVersion } = openEpisode(blob, hexToBytes(key.replace(/^0x/, '')), pub.manifest.episode_id)
     const files = untar(plaintext)
     const m = pub.manifest
     const dec = files.find((f) => f.name === 'decisions.jsonl')
-    out.innerHTML = `<p class="ok">Opened: GCM tag valid, ${files.length} files.</p><dl class="kv">` + kv([
+    out.innerHTML = `<p class="ok">Opened: GCM tag valid, ${files.length} files, ${keyVersion === 2 ? 'per-episode key (HKDF of the tenant key)' : 'tenant key (pre-HKDF bundle)'}.</p><dl class="kv">` + kv([
       ['log chain', `${tick(dec ? chainOk(new TextDecoder().decode(dec.data), m.log_head) : false)} decisions.jsonl links to log_head`],
       ...files.map((f) => [f.name, `${m.files[f.name] ? tick(bytesToHex(sha256(f.data)) === m.files[f.name]) : '<span class="muted">not in manifest</span>'} ${f.data.length} bytes`] as [string, string]),
     ]) + '</dl>'

@@ -1,6 +1,6 @@
 # Project plan (working name SealedAI; the name is a placeholder)
 
-Status: **REVISION 3, awaiting final confirmation (T00)** · 2026-11-06
+Status: **REVISION 3, CONFIRMED by the user (T00 done, 2026-11-06): choices A–D as recommended in §2**
 History: rev 1 (reuse-first) dropped the customization agent. Rev 2 restored it after the PR #1 review
 (`docs/REVIEW-RESPONSE.md`) but kept a config-only asset whose prompts passed through the 0G Router gateway. Rev 3
 applies the user's decisions: **everything confidential, no mock mode, a real seller model, actually trained
@@ -188,9 +188,9 @@ ERC-8183 `142e669` · 0G-TAPP `e0fc4c2` · 0G sandbox `ce187a4` · 0G agent skil
 ## 10. Decisions
 | # | Decision | Status |
 |---|---|---|
-| D1 | Seller asset = a real model (architecture + weights), general manifest; MVP format B1, task `text-classification` | **Rev 3, pending T00** (reverses rev 2's config-only asset) |
-| D2 | Customization = real training (LoRA / head-only) from an enumerated catalog, ≤ 2 runs, agent behind a policy gate | **Rev 3, pending T00** |
-| D3 | The worker runs only on verified TEE hardware; no mock mode; dev tests use synthetic data and never produce acceptable artifacts | **Rev 3, pending T00** |
+| D1 | Seller asset = a real model (architecture + weights), general manifest; MVP format B1, task `text-classification` | **Rev 3, confirmed** (reverses rev 2's config-only asset) |
+| D2 | Customization = real training (LoRA / head-only) from an enumerated catalog, ≤ 2 runs, agent behind a policy gate | **Rev 3, confirmed** |
+| D3 | The worker runs only on verified TEE hardware; no mock mode; dev tests use synthetic data and never produce acceptable artifacts | **Rev 3, confirmed** |
 | D4 | Escrow: ERC-8183 reference; worker = provider, seller = evaluator; fixed fee; admin renounced | Kept |
 | D5 | No backend of ours | Kept |
 | D6 | Arkiv: public data only; scores "buyer-reported" | Kept |

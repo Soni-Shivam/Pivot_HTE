@@ -1,4 +1,4 @@
-"""CARLA world and runner for the swarm_v2 prototype: CutInCarlaWorld (PDM-Lite ego on its own LiDAR; the taxi is
+"""CARLA world and runner for the swarm prototype (swarm_v3): CutInCarlaWorld (PDM-Lite ego on its own LiDAR; the taxi is
 car B) plus cars A, C, D, all kinematic (physics off), coloured per car, placed every tick on the route shifted by
 their lateral offset. The episode loop, parser, guard and planner are faultline.swarm's; the director video, ROS
 bridge and desktop recording are display only.
@@ -15,9 +15,8 @@ import carla
 
 from faultline import cutin
 from faultline.carla_cutin import CutInCarlaWorld
-from faultline.cutin import CutInAdversary
 from faultline.director import BLUEPRINTS, COLORS
-from faultline.swarm import guard, nearest_state
+from faultline.swarm import SwarmCar, guard, nearest_state
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -36,8 +35,8 @@ class SwarmCarlaWorld(CutInCarlaWorld):
         self.dim, self.off = {"B": (self.adv_len, self.adv_wid)}, {"B": self.adv_off}
         self.car_actors, self.advs = {}, {}
         for c, lat, dx, v in s.cars:
-            if c == "B":
-                self.adv.arc, self.adv.v, self.adv.lat = ego_arc + dx, v, lat
+            if c == "B":  # the base world's taxi, driven by a SwarmCar (swarm_v3 primitives)
+                self.adv = SwarmCar(s, arc=ego_arc + dx, v=v, lat=lat)
                 self.advs[c] = self.adv
                 continue
             bp = bl.find(BLUEPRINTS[c][0])
@@ -50,7 +49,7 @@ class SwarmCarlaWorld(CutInCarlaWorld):
             a.set_simulate_physics(False)
             bb = a.bounding_box
             self.car_actors[c], self.dim[c], self.off[c] = a, (2 * bb.extent.x, 2 * bb.extent.y), -bb.location.x
-            self.advs[c] = CutInAdversary(s, arc=ego_arc + dx, v=v, lat=lat)
+            self.advs[c] = SwarmCar(s, arc=ego_arc + dx, v=v, lat=lat)
         self._place_all()
         self.guarded = []
         if self.director:
@@ -75,6 +74,8 @@ class SwarmCarlaWorld(CutInCarlaWorld):
     def tick(self):
         prev = {c: a.v for c, a in self.advs.items()}
         ego_arc, ego_lat = self._ego_sl()
+        for c, a in self.advs.items():
+            a.steer(ego_arc, self.ego.get_velocity().length(), self.ego_len, self.dim[c][0])
         saved = guard(self.advs, -cutin.action_accel("BRAKE_HARD", self.s),
                       (ego_arc, ego_lat, self.ego.get_velocity().length()))
         for c, a in self.advs.items():

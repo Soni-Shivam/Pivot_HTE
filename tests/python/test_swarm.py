@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from faultline import swarm
 
 
@@ -98,7 +100,8 @@ def test_available_sets_per_car():
     assert "CUT_IN" not in av["C"]  # alongside: gap < 3 m
     obs = swarm.observation(w, last, s, 0)
     assert "cannot cut in now: gap below 3 m" in obs["cars"]["C"]["state"]
-    assert obs["reply_schema"]["actions"]["A"] == "<one of: KEEP_LANE|ACCELERATE|SLOW_DOWN|BRAKE_HARD>"
+    assert obs["reply_schema"]["actions"]["A"] == \
+        "<one of: KEEP_LANE|ACCELERATE|SLOW_DOWN|BRAKE_HARD|BRAKE_PULSE|SLOW_ROLL|PULL_AWAY>"
     w.advs["A"].v = 0.0
     assert "BRAKE_HARD" not in swarm.available_for("A", w.advs, last.ego_x, 0.0, w.dims)  # stopped: no braking
     w.advs["A"].arc = w.advs["B"].arc  # A beside B in the ego lane -> B's slot is busy
@@ -146,8 +149,94 @@ def test_forecast_skips_rear_car_and_sorts():
     w.reset(s)
     last = w.tick()
     av = swarm.available_map(swarm.observation(w, last, s, 0))
-    f = swarm.forecast(w, last, s, av, rows=500)
-    assert len(f) == len(av["A"]) * len(av["B"]) * len(av["C"]) and "D" not in f[0]
+    f = swarm.forecast(w, last, s, av, rows=1000)
+    assert len(av["A"]) * len(av["B"]) * len(av["C"]) > swarm.FORECAST_MAX_COMBOS  # -> classic actions only
+    classic = lambda c: len([x for x in av[c] if x in swarm.cutin.ACTIONS])
+    assert len(f) == classic("A") * classic("B") * classic("C") and "D" not in f[0]
+    two = {"A": av["A"], "B": av["B"], "C": ("KEEP_LANE",)}
+    assert len(swarm.forecast(w, last, s, two, rows=1000)) == len(av["A"]) * len(av["B"])  # small: every primitive
     key = [(r["collision"], r["adversaries_touch"]) for r in f]
     assert key == sorted(key)
     assert len(swarm.forecast(w, last, s, av)) <= swarm.FORECAST_ROWS
+
+
+def _world(s=None):
+    w = swarm.KinematicSwarmWorld()
+    s = s or swarm.SwarmScenario(seed=0)
+    w.reset(s)
+    return w, s, w.tick()
+
+
+def test_primitive_availability_and_strict_parse():
+    w, s, last = _world()
+    av = swarm.available_map(swarm.observation(w, last, s, 0))
+    assert "TAILGATE" in av["D"] and all("TAILGATE" not in av[c] for c in "ABC")  # rear car in the ego lane only
+    assert "BLOCK_ALONGSIDE" in av["C"] and "BLOCK_ALONGSIDE" in av["B"] and "BLOCK_ALONGSIDE" not in av["A"]
+    assert "WEAVE" in av["B"] and "WEAVE" not in av["C"] and "WEAVE" not in av["A"]  # cut-in conditions
+    assert all(p in av["A"] for p in ("BRAKE_PULSE", "SLOW_ROLL", "PULL_AWAY"))
+    bad = json.dumps({"actions": {"A": "TAILGATE", "B": "WEAVE", "C": "KEEP_LANE", "D": "TAILGATE"}})
+    assert swarm.parse_joint(bad, av) == (None, "out_of_set")  # A is ahead: no tailgate -> every car halts
+    w.advs["A"].v = 0.0
+    a = swarm.available_for("A", w.advs, last.ego_x, 0.0, w.dims)
+    assert "BRAKE_PULSE" not in a and "SLOW_ROLL" not in a  # stopped
+
+
+def test_primitives_execute_within_bounds():
+    w, s, _ = _world()
+    a, b, c, d = (w.advs[k] for k in "ABCD")
+    a.command("BRAKE_PULSE")
+    vs = []
+    for _ in range(40):
+        w.tick()
+        vs.append(a.v)
+    assert vs[0] < 8.0 and abs(vs[-1] - vs[20]) < 1e-9 and 8.0 - vs[-1] == pytest.approx(6.0 * 0.8, abs=0.31)
+    w, s, _ = _world()
+    a = w.advs["A"]
+    a.command("SLOW_ROLL")
+    for _ in range(200):
+        w.tick()
+    assert a.v == pytest.approx(s.crawl_speed_mps, abs=0.06)
+    w, s, _ = _world()
+    a = w.advs["A"]
+    a.command("PULL_AWAY")
+    for _ in range(100):
+        w.tick()
+    assert a.v == pytest.approx(w.ego_v + 3.0, abs=0.1)
+    w, s, _ = _world()
+    c, d = w.advs["C"], w.advs["D"]
+    c.command("BLOCK_ALONGSIDE")
+    d.command("TAILGATE")
+    for _ in range(160):
+        st = w.tick()
+        assert not st.collision and not st.adv_contact
+    assert abs(c.arc - w.ego_x) < 1.0 and abs(c.v - w.ego_v) < 0.2  # beside the ego, same speed
+    gap = (w.ego_x - 4.9 / 2) - (d.arc + 4.7 / 2)
+    assert gap == pytest.approx(max(3.0, 0.5 * w.ego_v), abs=0.6)
+    w, s, _ = _world()
+    b = w.advs["B"]
+    lats = []
+    b.command("WEAVE")
+    for _ in range(80):
+        st = w.tick()
+        lats.append(b.lat)
+        assert not st.collision
+    assert min(lats) == pytest.approx(0.0, abs=1e-6) and lats[-1] == pytest.approx(3.5)  # in and back out
+
+
+def test_sample_scenario_varied_and_frozen():
+    from faultline.config import scenario_hash
+    seen = set()
+    for seed in range(40):
+        sc = swarm.sample_scenario(seed)
+        assert sc == swarm.sample_scenario(seed) and 2 <= len(sc.cars) <= 4 and sc.layout in swarm.LAYOUTS
+        seen.add(sc.layout)
+        for i, p in enumerate(sc.cars):
+            assert 6.5 <= p[3] <= 9.5
+            for q in sc.cars[i + 1:]:
+                assert p[1] != q[1] or abs(p[2] - q[2]) > 4.7  # same lane: never overlapping
+        w = swarm.KinematicSwarmWorld()
+        w.reset(sc)
+        for _ in range(40):
+            assert not w.tick().adv_contact
+    assert len(seen) == len(swarm.LAYOUTS)
+    assert scenario_hash(swarm.sample_scenario(1)) != scenario_hash(swarm.sample_scenario(2))

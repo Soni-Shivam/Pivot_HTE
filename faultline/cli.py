@@ -43,7 +43,17 @@ class MaintainBaseline:
 
 
 def make_world(name: str, out: Path, view: bool, display: str = ":2", family: str = "lead_brake", degrade=None,
-               record: bool = True):
+               record: bool = True, ros: bool = False):
+    w = _make_world(name, out, view, display, family, degrade, record)
+    if ros:  # publish to ROS 2 (source viz/env.sh first): attach after reset, close with the world
+        from faultline.rosbridge import RosBridge
+        bridge, reset, close = RosBridge(), w.reset, w.close
+        w.reset = lambda s: (reset(s), bridge.attach(w))
+        w.close = lambda: (bridge.close(), close())
+    return w
+
+
+def _make_world(name, out, view, display, family, degrade, record):
     if name == "kinematic":
         if family == "cut_in":
             return cutin.KinematicCutInWorld()
@@ -106,7 +116,7 @@ def cmd_run(a) -> int:
             sys.exit("ZG_ROUTER_URL and ZG_API_KEY must be set in .env")
         decider = ZgRouter(url, key, model=a.model, system_prompt=prompt)
     s = cutin.CutInScenario(seed=a.seed) if a.family == "cut_in" else Scenario(seed=a.seed)
-    mk = lambda: make_world(a.world, out, a.view, a.display, a.family)
+    mk = lambda: make_world(a.world, out, a.view, a.display, a.family, ros=a.ros)
     if not a.anchor:
         try:
             m = run_episode(mk(), decider, s, out, extra=extra)
@@ -187,6 +197,7 @@ def main(argv=None) -> int:
     r.add_argument("--decider", choices=["0g", "maintain"], default="0g")
     r.add_argument("--family", choices=["lead_brake", "cut_in"], default="lead_brake")
     r.add_argument("--view", action="store_true", help="chase-camera window + screen.mp4 (CARLA only)")
+    r.add_argument("--ros", action="store_true", help="publish LiDAR, boxes, map and HMI topics to ROS 2 (source viz/env.sh)")
     r.add_argument("--anchor", action="store_true", help="Galileo commit before the loop, publish + finalize after")
     r.add_argument("--display", default=":2", help="X display for --view (the VNC desktop)")
     r.set_defaults(fn=cmd_run)

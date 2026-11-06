@@ -121,18 +121,21 @@ Seller-code executor (choice B2), `causal-lm-sft` task adapter, licensed clones,
 self-paying agents, iAI sign-in, direct-to-TeeML-provider agent calls.
 
 ## Build status (2026-11-06, branch build/phase1)
-- T03 `done`: 24 forge tests; escrow proxy 0x0E28A6Cb4A7B7De38Cc626E8E1E80A95cD0e070a on Galileo, admin renounced (docs/evidence/T03-*).
-- T06 `done`: envelope/chunks/vault tests; real 3-chunk 0G round trip (docs/evidence/07-*).
-- T02A `done`: 23 planner tests; live agent on 0G Private Computer (docs/evidence/08-*).
-- T13 `done`: 21 pytest on RTX A5000 (kernel netns isolation skipped: AppArmor blocks it on this host).
-- T02B `done`: live agent + real LoRA training, baseline 0.807 → 0.982 val, holdout 0.987 (docs/evidence/09-*).
-- T08 `done` for example 03 (private-only) and the Router adapter.
-- T14 `doing`: TAPP verifier built and tested on real Intel TDX quotes; NVIDIA GPU verifier and sealed-sandbox
-  path not implemented (both reject); TAPP evidence provider in the worker not implemented (needs hardware).
-- T04 `doing`: worker control plane written and typechecked; no integration test yet.
-- T01 `doing`: hardware answers from 0G / GCP quota still needed (user).
-- Not started: T05 receipt acceptance in client, client seller/buyer flows, T07 listing flow, T09 CLI e2e,
-  T10 web app, T11 submission docs, T02 (needs TEE hardware).
+- `done` T03: 24 forge tests; escrow `0x0E28A6Cb4A7B7De38Cc626E8E1E80A95cD0e070a`, admin renounced (docs/evidence/T03-*).
+- `done` T06: envelope/chunks/vault tests; real 3-chunk 0G round trip (07-*).
+- `done` T02A: 23 planner tests; live agent (08-*). `done` T13: 21 pytest (kernel netns skipped: AppArmor).
+- `done` T02B: live agent + real LoRA (09-*). `done` T08: private-only Router (03, router tests).
+- `done` T05: `acceptResult` (receipt signature, manifest/job/evidence binding, report commitment, timeline head,
+  holdout metric, escrow state) exercised in examples/10.
+- `done` T07: Arkiv listings with full re-verification; impostor hidden (11-*).
+- `done` T09 as a TEST RUN: full transaction on testnet with a test-only verifier (10-*). Confidential T09 needs T02.
+  Not yet run: the worker-failure → refund-after-expiry scenario.
+- `done` T10: static web app, tested in headless Chromium (catalog, agent plan, verifier refusal).
+- `done` T11 (docs part): README with CROPS, LICENSE (MIT), `/arkiv/*.md`, `.env.example`. Video and forms remain.
+- `doing` T14: TAPP verifier tested on real Intel TDX quotes; NVIDIA GPU verifier and sealed-sandbox path missing
+  (both reject); TAPP evidence provider in the worker missing.
+- `blocked` T02: needs TEE hardware (0G-hosted or GCP `a3-highgpu-1g`) and a budget decision.
+- `doing` T01: hardware answers from 0G / GCP quota (user).
 
 ## Change log
 - 2026-11-06 rev 1: tracker created.

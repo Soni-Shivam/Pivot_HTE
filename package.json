@@ -1,7 +1,7 @@
 {
   "name": "sealedai",
   "version": "1.0.0",
-  "description": "",
+  "description": "Confidential AI model customization marketplace on 0G",
   "scripts": {
     "test": "tsx --test \"packages/*/test/*.test.ts\"",
     "typecheck": "tsc -p tsconfig.json",
@@ -10,7 +10,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "module",
   "private": true,
   "dependencies": {

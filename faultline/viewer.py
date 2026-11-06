@@ -77,7 +77,7 @@ class ChaseView:
         self.cv.itemconfig(self.hud1, text=f"t {st.t_s:5.2f} s   LiDAR gap {gap} m   TTC {ttc} s   ego {st.ego_v:5.2f} m/s"
                                             f"   adversary {st.lead_v:5.2f} m/s   control {ctl}"
                                             + ("   COLLISION" if st.collision else ""))
-        self.cv.itemconfig(self.hud2, text="0G " + self.last)
+        self.cv.itemconfig(self.hud2, text="decision " + self.last)
         self.root.lift()
         self.root.update()
 

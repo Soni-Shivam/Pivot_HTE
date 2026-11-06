@@ -102,7 +102,10 @@ class CutInAdversary:
 
     def available(self) -> tuple[str, ...]:
         own_lane = self.lc is None and abs(self.lat - self.start_lat) < 1e-9
-        return ACTIONS if own_lane else tuple(a for a in ACTIONS if a not in CUT_INS)
+        acts = ACTIONS if own_lane else tuple(a for a in ACTIONS if a not in CUT_INS)
+        if self.v < 0.3:  # braking a stopped car does nothing; don't offer it (wasted checkpoints in cutin-001)
+            acts = tuple(a for a in acts if a not in ("SLOW_DOWN", "BRAKE_HARD"))
+        return acts
 
     def _lane_change(self, to: float, duration: float) -> None:
         self.lc = (self.t, duration, self.lat, to)

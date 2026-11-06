@@ -66,7 +66,7 @@ def ground_truth_metrics(rows: list[dict], collision: bool) -> dict:
             "first_tracked_t_s": first(lambda r: r["n_tracks"] > 0),
             "first_lidar_in_lane_t_s": first(lambda r: r["lidar_gap"] is not None),
             # the first 0.25 s are the spawn transient (CARLA sets the ego's speed, its Chaos wheels spin up)
-            "max_ego_decel_mps2": max([max(-r["ego_a"], 0.0) for r in rows if r["t_s"] > 0.25] or [0.0]),
+            "max_ego_decel_mps2": max([max(-r["ego_a"], 0.0) for r in rows if r["t_s"] > 0.25 and r["ego_v"] > 0.1] or [0.0]),
             "max_ego_brake": max([r["ego_brake"] for r in rows] or [0.0])}
 
 
@@ -172,7 +172,7 @@ def run_episode(world, decider, scenario, out_dir: Path, clock=time, started_at:
     metrics = {**ep, "min_ttc_s": min(ttcs) if ttcs else None,
                "min_gap_m": min(r["lidar_gap"] for r in ok) if ok else None,
                # the first 0.25 s are the spawn transient (CARLA sets the ego's speed, its Chaos wheels spin up)
-            "max_ego_decel_mps2": max([max(-r["ego_a"], 0.0) for r in rows if r["t_s"] > 0.25] or [0.0]), "collision": collision,
+            "max_ego_decel_mps2": max([max(-r["ego_a"], 0.0) for r in rows if r["t_s"] > 0.25 and r["ego_v"] > 0.1] or [0.0]), "collision": collision,
                "perception": {"mean_abs_gap_error_m": sum(errs) / len(errs) if errs else None,
                               "max_abs_gap_error_m": max(errs) if errs else None,
                               "scans_without_target": len(rows) - len(ok)}}

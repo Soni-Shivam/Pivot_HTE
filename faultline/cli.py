@@ -91,7 +91,7 @@ def print_summary(out: Path, m: dict) -> None:
 
 
 def npm(cmd: str, out: Path) -> None:
-    subprocess.run(["bash", "-c", f". ~/.nvm/nvm.sh >/dev/null && npm run -s faultline -- {cmd} {out}"], cwd=ROOT, check=True)
+    subprocess.run(["npm", "run", "-s", "faultline", "--", cmd, str(out)], cwd=ROOT, check=True)
 
 
 def cmd_run(a) -> int:

@@ -13,6 +13,31 @@ import requests
 from faultline.policy import SYSTEM_PROMPT, build_user_message, parse_decision
 
 DEFAULT_MODEL = "0gm-1.0-35b-a3b"
+# USD per million (input, output) tokens. Source: live 0G Router model card, recorded in
+# docs/superpowers/specs/2026-11-06-faultline-0g-architecture-design.md (§5.3 facts table): 0GM $0.08/M in, $0.48/M out.
+# The Router's own x_0g_trace.billing.total_cost_usd_micro wins when present (cost_usd below).
+PRICE_USD_PER_M = {"0gm-1.0-35b-a3b": (0.08, 0.48)}
+
+
+def cost_usd(usage, billing=None, model: str = DEFAULT_MODEL) -> float | None:
+    """Cost of one call: the Router's billed micro-USD if it sent it, else tokens x PRICE_USD_PER_M, else None."""
+    try:
+        return int((billing or {})["total_cost_usd_micro"]) / 1e6
+    except (KeyError, TypeError, ValueError):
+        pass
+    if not isinstance(usage, dict) or model not in PRICE_USD_PER_M:
+        return None
+    pin, pout = PRICE_USD_PER_M[model]
+    return ((usage.get("prompt_tokens") or 0) * pin + (usage.get("completion_tokens") or 0) * pout) / 1e6
+
+
+def usage_of(raw_json) -> tuple[dict | None, float | None]:
+    """(usage, cost_usd) from a parsed Router response body."""
+    j = raw_json if isinstance(raw_json, dict) else {}
+    usage = j.get("usage") if isinstance(j.get("usage"), dict) else None
+    trace = j.get("x_0g_trace") if isinstance(j.get("x_0g_trace"), dict) else {}
+    return usage, cost_usd(usage, trace.get("billing") if isinstance(trace.get("billing"), dict) else None,
+                           j.get("model") if j.get("model") in PRICE_USD_PER_M else DEFAULT_MODEL)
 
 
 @dataclass
@@ -33,6 +58,9 @@ class Decision:
     raw_b64: str | None = None
     # Nonce sent in this request's binding (anchored runs); an "ok" decision echoed exactly this (parse_decision).
     nonce: str | None = None
+    # Token usage as the Router reported it and the call's cost (cost_usd()); appended last, never reordered.
+    usage: dict | None = None
+    cost_usd: float | None = None
 
 
 def _int(v):
@@ -75,6 +103,10 @@ class ZgRouter:
         t0 = time.monotonic()
 
         def out(reason, r=None, action=None, request_id=None, provider=None, content=None):
+            try:
+                usage, cost = usage_of(r.json()) if r is not None else (None, None)
+            except ValueError:
+                usage, cost = None, None
             return Decision(action=action, reason=reason, request_id=request_id, provider=provider,
                             zg_res_key=r.headers.get("Zg-Res-Key") if r is not None else None, model=self.model,
                             latency_ms=int((time.monotonic() - t0) * 1000),
@@ -83,7 +115,7 @@ class ZgRouter:
                             content=content,
                             ratelimit_remaining=_int(r.headers.get("X-Ratelimit-Remaining-Requests")) if r is not None else None,
                             raw_b64=base64.b64encode(r.content).decode() if r is not None else None,
-                            nonce=self.binding["nonce"] if self.binding else None)
+                            nonce=self.binding["nonce"] if self.binding else None, usage=usage, cost_usd=cost)
 
         try:
             r = self._post(body)

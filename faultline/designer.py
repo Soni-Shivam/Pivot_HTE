@@ -9,7 +9,7 @@ import time
 import requests
 
 from faultline.config import canonical
-from faultline.router import DEFAULT_MODEL, ZgRouter, _int
+from faultline.router import DEFAULT_MODEL, ZgRouter, _int, cost_usd
 
 SYSTEM_PROMPT = (
     "You are a safety test engineer designing experiments for a car-following controller (the ego) in a simulator. "
@@ -118,6 +118,7 @@ class Designer:
         rec.update(request_id=trace.get("request_id") or r.headers.get("X-Request-Id"), provider=trace.get("provider"),
                    billing=trace.get("billing"),
                    usage=j.get("usage") if isinstance(j.get("usage"), dict) else None)
+        rec["cost_usd"] = cost_usd(rec["usage"], rec["billing"] if isinstance(rec["billing"], dict) else None, self.model)
         try:
             msg = j["choices"][0]["message"]
             content = msg["content"]

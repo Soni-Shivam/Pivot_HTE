@@ -49,6 +49,15 @@ class Handler(BaseHTTPRequestHandler):
         trace_hdr = {"X-Request-Id": "r1", "Zg-Res-Key": "k1", "X-Ratelimit-Remaining-Requests": "499"}
         if MODE == "ok":
             return self._send(200, _chat('{"action":"BRAKE_SOFT","why":"w"}'), trace_hdr)
+        if MODE == "billed":
+            b = _chat('{"action":"BRAKE_SOFT","why":"w"}')
+            b["usage"] = {"prompt_tokens": 1095, "completion_tokens": 152}
+            b["x_0g_trace"]["billing"] = {"total_cost_usd_micro": "161"}
+            return self._send(200, b, trace_hdr)
+        if MODE == "usage_only":
+            b = _chat('{"action":"BRAKE_SOFT","why":"w"}')
+            b["usage"] = {"prompt_tokens": 1000000, "completion_tokens": 1000000}
+            return self._send(200, b, trace_hdr)
         if MODE == "nonce_ok":
             return self._send(200, _chat('{"action":"BRAKE_SOFT","why":"w","nonce":"ab12cd34"}'), trace_hdr)
         if MODE == "prose":
@@ -167,3 +176,12 @@ def test_binding_goes_into_the_prompt_and_a_missing_nonce_echo_is_a_failure(serv
     assert (d.action, d.reason, d.nonce) == ("BRAKE_SOFT", "ok", "ab12cd34")
     d = ZgRouter(server, "sk-test").decide(OBS, [], ACTIONS)  # unbound: no binding key, nonce None
     assert "binding" not in json.loads(BODIES[-1]["messages"][1]["content"]) and d.nonce is None
+
+
+def test_usage_and_cost_are_recorded(server):
+    d = run(server, "billed")
+    assert d.usage["prompt_tokens"] == 1095 and d.cost_usd == 161e-6  # the Router's billed micro-USD wins
+    assert abs(run(server, "usage_only").cost_usd - 0.56) < 1e-12  # else tokens x PRICE_USD_PER_M
+    assert run(server, "ok").cost_usd is None and run(server, "ok").usage is None
+    from faultline.router import cost_usd
+    assert cost_usd(None) is None and abs(cost_usd({"prompt_tokens": 10}, {"total_cost_usd_micro": "x"}) - 8e-7) < 1e-15

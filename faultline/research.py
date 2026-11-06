@@ -518,7 +518,8 @@ class Agent:
         usage = [c["usage"] for c in self.calls if c["usage"]]
         return {"inference_calls": len(self.calls), "request_ids": [c["request_id"] for c in self.calls if c["request_id"]],
                 "latency_ms": [c["latency_ms"] for c in self.calls], "providers": sorted({c["provider"] for c in self.calls if c["provider"]}),
-                "tokens": {k: sum(u.get(k) or 0 for u in usage) for k in ("prompt_tokens", "completion_tokens")} if usage else None}
+                "tokens": {k: sum(u.get(k) or 0 for u in usage) for k in ("prompt_tokens", "completion_tokens")} if usage else None,
+                "cost_usd": round(sum(c.get("cost_usd") or 0 for c in self.calls), 6)}
 
 
 def user_msg(lab: Lab, lib_summary: list, tool_log: list) -> dict:
@@ -845,7 +846,7 @@ def cmd_bench(a) -> int:
     old_d = next(r for r in old["results"] if r["method"] == "D-0G")
     lab, agent, res, final, log = _hybrid_run(goal, out, budget, known=(), lib_summary=[])
     hyb = {"method": "E-0G+tools", "status": res["status"], "experiments": lab.hist, "wall_s": res["wall_s"],
-           **{k: v for k, v in agent.stats().items() if k in ("inference_calls", "tokens")},
+           **{k: v for k, v in agent.stats().items() if k in ("inference_calls", "tokens", "cost_usd")},
            "estimate": [b for b in (final or {}).get("boundary", []) if b["min_safe_gap_m"] is not None] if a.goal == "g1" and final else None}
     metrics = [method_metrics(r["method"], r["experiments"], posthoc_fps(r["experiments"])) for r in classical + [old_d]]
     metrics.append(method_metrics("E-0G+tools", lab.hist))

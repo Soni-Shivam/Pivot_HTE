@@ -180,6 +180,7 @@ def run_designer(goal, designer: Designer, log: ChainLog, budget=None, on_step=N
             "inference_calls": len(calls), "request_ids": [c["request_id"] for c in calls if c["request_id"]],
             "latency_ms": [c["latency_ms"] for c in calls],
             "tokens": {k: sum(u.get(k) or 0 for u in usage) for k in ("prompt_tokens", "completion_tokens")} if usage else None,
+            "cost_usd": round(sum(c.get("cost_usd") or 0 for c in calls), 6),
             "estimate": [b for b in (out["final"] or {}).get("boundary", []) if b["min_safe_gap_m"] is not None]
             if goal["id"] == "g1" and out["final"] else None}
 

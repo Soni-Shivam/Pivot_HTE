@@ -18,7 +18,7 @@ NOTE = ("forecast rows: our local model of THIS ego (observation.ego_model, iden
         "available_actions; ranked by criticality, novel = not used earlier this episode")
 
 
-def run(world, router, s, out_dir, mode: str = "tactics", plan_entry=None) -> dict:
+def run(world, router, s, out_dir, mode: str = "tactics", plan_entry=None, _episode=None) -> dict:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     rec, pending, audits, used = [], {}, [], set()
@@ -61,7 +61,7 @@ def run(world, router, s, out_dir, mode: str = "tactics", plan_entry=None) -> di
 
     world.tick, swarm.forecast, router.decide_joint = tick, forecast, decide_joint
     try:
-        manifest = swarm.run_swarm_episode(world, router, s, out_dir, lookahead=True, plan_entry=plan_entry)
+        manifest = (_episode or swarm.run_swarm_episode)(world, router, s, out_dir, lookahead=True, plan_entry=plan_entry)
     finally:
         swarm.forecast = orig_forecast
     with (out_dir / "tactics.jsonl").open("w") as f:
@@ -71,6 +71,18 @@ def run(world, router, s, out_dir, mode: str = "tactics", plan_entry=None) -> di
     summ = {"mode": mode, **tactics.summarize(audits, traj, s.checkpoint_s)}
     (out_dir / "tactics_summary.json").write_text(json.dumps(summ, indent=2, sort_keys=True) + "\n")
     return {**manifest, "tactics": summ}
+
+
+def carla_main(argv) -> int:
+    """faultline.carla_swarm (planner, director video, stitch) with the tactics layer in the executor loop."""
+    from faultline import carla_swarm
+    orig = swarm.run_swarm_episode
+    swarm.run_swarm_episode = lambda world, router, s, out_dir, lookahead=True, plan_entry=None: \
+        run(world, router, s, out_dir, "tactics", plan_entry, _episode=orig)
+    try:
+        return carla_swarm.main(argv)
+    finally:
+        swarm.run_swarm_episode = orig
 
 
 def main(argv=None) -> int:
@@ -94,4 +106,5 @@ def main(argv=None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    import sys
+    raise SystemExit(carla_main(sys.argv[2:]) if sys.argv[1:2] == ["carla"] else main())

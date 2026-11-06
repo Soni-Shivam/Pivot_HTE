@@ -73,3 +73,20 @@ def test_smart_episode_filters_menu_and_logs_audit(tmp_path):
     assert "ego_model" in d[0]["observation"] and d[0]["observation"]["forecast"][0]["escape"] in ("brake", "left_lane")
     a = [json.loads(x) for x in (tmp_path / "tactics.jsonl").read_text().splitlines()]
     assert len(a) == len(d) and m["tactics"]["decisions"] == len(d) and swarm.forecast.__module__ == "faultline.swarm"
+
+
+def test_offered_menus_form_a_product_of_fair_joints():
+    import itertools
+    for seed in (0, 3):
+        s = swarm.sample_scenario(seed)
+        w = swarm.KinematicSwarmWorld()
+        w.reset(s)
+        for _ in range(round(s.runup_s / s.dt_s)):
+            last = w.tick()
+        obs = swarm.observation(w, last, s, 0)
+        cands, allowed = tactics.evaluate(w, last, s, swarm.available_map(obs), tactics.identify([]))
+        cars = list(cands[0]["actions"])
+        fair = {tuple(x["actions"][c] for c in cars) for x in cands if x["fair"]}
+        seen = {c: {x["actions"][c] for x in cands} for c in cars}  # evaluated (combo cap: classic actions only)
+        assert fair and all(j in fair for j in itertools.product(*([a for a in allowed[c] if a in seen[c]]
+                                                                      for c in cars)))

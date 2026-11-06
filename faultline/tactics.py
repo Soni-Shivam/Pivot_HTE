@@ -159,12 +159,23 @@ def evaluate(world, last, s, available: dict, model: dict, used=(), horizon_s: f
     for c_ in cands:
         c_["criticality"] = criticality(c_)
     cands.sort(key=lambda c_: (not c_["fair"], -(c_["criticality"] + 0.25 * c_["novel"])))
+    # per-car menus cannot express joint constraints (run smart-tac-0x v1: 15/70 chosen joints were unfair although
+    # each action was fair in some joint). Shrink the evaluated sets to a product of fair joints only: drop the action
+    # in the most unfair joints, never one of the best fair candidate's actions (so the product never empties).
+    fair = {tuple(x["actions"][c] for c in cars) for x in cands if x["fair"]}
+    sets = [list(o) for o in opts]
+    if fair:
+        keep = next(tuple(x["actions"][c] for c in cars) for x in cands if x["fair"])
+        while True:
+            bad = [j for j in itertools.product(*sets) if j not in fair]
+            if not bad:
+                break
+            i, act = max(((i, a) for i, ss in enumerate(sets) for a in ss if a != keep[i]),
+                         key=lambda ia: sum(j[ia[0]] == ia[1] for j in bad))
+            sets[i].remove(act)
     allowed = {c: tuple(available[c]) for c in available}
-    for i, c in enumerate(cars):
-        evaluated = set(opts[i])
-        fair_acts = {x["actions"][c] for x in cands if x["fair"]}
-        if fair_acts:  # never empty a car's menu; if nothing is fair, nothing is filtered (flagged by the caller)
-            allowed[c] = tuple(a for a in available[c] if a not in evaluated or a in fair_acts)
+    for i, c in enumerate(cars):  # if nothing is fair, nothing is filtered (the ego cannot escape anything)
+        allowed[c] = tuple(a for a in available[c] if a not in opts[i] or a in sets[i]) if fair else allowed[c]
     return cands, allowed
 
 

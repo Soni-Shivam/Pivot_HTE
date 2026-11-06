@@ -15,7 +15,7 @@ class _Resp:
         return self._j
 
 
-KEEP4 = '{"A":"KEEP_LANE","B":"KEEP_LANE","C":"KEEP_LANE","D":"KEEP_LANE"}'
+KEEP4 = '{"actions":{"A":"KEEP_LANE","B":"KEEP_LANE","C":"KEEP_LANE","D":"KEEP_LANE"}}'
 
 
 class _Http:
@@ -32,12 +32,13 @@ AV = {"A": ("KEEP_LANE", "BRAKE_HARD"), "B": ("KEEP_LANE", "CUT_IN")}
 
 
 def test_parse_joint_strict():
-    assert swarm.parse_joint('{"A":"BRAKE_HARD","B":"CUT_IN","why":"x"}', AV) == (
-        {"A": "BRAKE_HARD", "B": "CUT_IN"}, "ok")
-    assert swarm.parse_joint('{"A":"CUT_IN","B":"CUT_IN"}', AV) == (None, "out_of_set")  # A has no cut-in
-    assert swarm.parse_joint('{"A":"KEEP_LANE"}', AV) == (None, "out_of_set")  # one car missing -> all halt
-    assert swarm.parse_joint('{"A":"KEEP_LANE","B":"FLY"}', AV) == (None, "out_of_set")  # one bad car -> all halt
-    assert swarm.parse_joint('```json\n{"A":"KEEP_LANE","B":"KEEP_LANE"}```', AV) == (None, "invalid_json")
+    j = lambda a: json.dumps({"actions": a, "phase": "p", "why": "x"})
+    assert swarm.parse_joint(j({"A": "BRAKE_HARD", "B": "CUT_IN"}), AV) == ({"A": "BRAKE_HARD", "B": "CUT_IN"}, "ok")
+    assert swarm.parse_joint(j({"A": "CUT_IN", "B": "CUT_IN"}), AV) == (None, "out_of_set")  # A has no cut-in
+    assert swarm.parse_joint(j({"A": "KEEP_LANE"}), AV) == (None, "out_of_set")  # one car missing -> all halt
+    assert swarm.parse_joint(j({"A": "KEEP_LANE", "B": "FLY"}), AV) == (None, "out_of_set")  # one bad car -> all halt
+    assert swarm.parse_joint('{"A":"KEEP_LANE","B":"KEEP_LANE"}', AV) == (None, "out_of_set")  # flat: no "actions"
+    assert swarm.parse_joint('```json\n{"actions":{}}```', AV) == (None, "invalid_json")
     assert swarm.parse_joint('[1]', AV) == (None, "invalid_json")
 
 
@@ -49,8 +50,9 @@ def test_parse_plan():
 
 
 def test_episode_joint_actions_then_one_bad_car_halts_all(tmp_path):
-    good = '{"phase":"squeeze","A":"KEEP_LANE","B":"CUT_IN_AGGRESSIVE","C":"ACCELERATE","D":"KEEP_LANE","why":"box"}'
-    bad = '{"A":"KEEP_LANE","B":"KEEP_LANE","C":"KEEP_LANE","D":"CUT_IN"}'  # D (ego lane, behind) has no cut-in
+    good = ('{"actions":{"A":"KEEP_LANE","B":"CUT_IN_AGGRESSIVE","C":"ACCELERATE","D":"KEEP_LANE"},'
+            '"phase":"squeeze","why":"box"}')
+    bad = '{"actions":{"A":"KEEP_LANE","B":"KEEP_LANE","C":"KEEP_LANE","D":"CUT_IN"}}'  # D (ego lane) has no cut-in
     http = _Http([good, bad])
     r = swarm.JointRouter("http://x", "k", http=http)
     m = swarm.run_swarm_episode(swarm.KinematicSwarmWorld(), r, swarm.SwarmScenario(seed=0), tmp_path)
@@ -94,8 +96,11 @@ def test_available_sets_per_car():
     assert "CUT_IN" not in av["A"] and "CUT_IN" not in av["D"]  # ego lane cars never cut in
     assert "CUT_IN_AGGRESSIVE" in av["B"]  # left lane, 4 m ahead, slot free
     assert "CUT_IN" not in av["C"]  # alongside: gap < 3 m
+    obs = swarm.observation(w, last, s, 0)
+    assert "cannot cut in now: gap below 3 m" in obs["cars"]["C"]["state"]
+    assert obs["reply_schema"]["actions"]["A"] == "<one of: KEEP_LANE|ACCELERATE|SLOW_DOWN|BRAKE_HARD>"
     w.advs["A"].v = 0.0
-    assert "BRAKE_HARD" not in swarm.available_for("A", w.advs, last.ego_x, 0.0, w.dims)
+    assert "BRAKE_HARD" not in swarm.available_for("A", w.advs, last.ego_x, 0.0, w.dims)  # stopped: no braking
     w.advs["A"].arc = w.advs["B"].arc  # A beside B in the ego lane -> B's slot is busy
     assert "CUT_IN" not in swarm.available_for("B", w.advs, last.ego_x, 0.0, w.dims)
 
@@ -119,6 +124,13 @@ def test_guard_keeps_cars_apart_and_off_the_ego():
         guarded += "B" in w.guarded
         assert not st.adv_contact
     assert w.advs["B"].v < 0.01 and b.a == 0.0 and guarded  # stopped by the guard; commanded accel untouched
+    w.reset(s)  # kin-006: B cuts in behind a slowing A; the guard must brake B from the start of its lane change
+    a, b = w.advs["A"], w.advs["B"]
+    b.arc, b.v, a.arc, a.v, a.a = a.arc - 14.0, 10.0, a.arc, 3.0, -1.25
+    b.command("CUT_IN")
+    for _ in range(80):
+        st = w.tick()
+        assert not st.adv_contact
     w.reset(s)
     d = w.advs["D"]
     d.v, d.a = 14.0, 1.5  # rear car charging at the ego

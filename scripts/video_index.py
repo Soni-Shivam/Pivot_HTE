@@ -28,7 +28,8 @@ def describe(run: Path) -> str:
         return f"REPLAY of recorded decisions (no new 0G calls) · {m.get('status')} · collision {m.get('collision')}"
     src = "0G" if m.get("decisions_0g") else ("scripted" if m.get("status") == "completed" else "halt")
     return (f"{m.get('family', 'lead_brake')} · {m.get('status')} · {m.get('decisions_0g', 0)} 0G decisions "
-            f"({src}) · collision {m.get('collision')} · CCS {met.get('ccs', 0):.2f}")
+            f"({src}) · collision {m.get('collision')} · " + (f"CCS {met['ground_truth']['ccs']:.2f} (ground truth)"
+            if isinstance(met.get("ground_truth"), dict) else f"CCS {met.get('ccs', 0):.2f}"))
 
 
 rows = []

@@ -157,3 +157,7 @@ self-paying agents, iAI sign-in, direct-to-TeeML-provider agent calls.
   (H1) + request GCP `a3-highgpu-1g` confidential quota (H2) in parallel, budget set by the user before any spend,
   H4 for small models if CPU timing allows; B = B1 standard formats only; C = C1 hosted inference (C2 adapter export
   only if the Offer allows); D = distilbert-base-uncased + Qwen2.5-0.5B on synthetic data.
+- 2026-11-06 scope change (PROPOSED, awaiting T00 rev 4): the user is pivoting to **Faultline**, a 0G-powered
+  adversarial traffic agent for the ETHGlobal Physical AI track. Verified architecture and pipeline:
+  `docs/superpowers/specs/2026-11-06-faultline-0g-architecture-design.md`. PLAN rev 3 (SealedAI) stays authoritative
+  until the user approves; no product code changed.

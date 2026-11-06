@@ -7,3 +7,4 @@ contracts/out/
 contracts/cache/
 contracts/broadcast/*/31337/
 apps/web/dist/
+.venv

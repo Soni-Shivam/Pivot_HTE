@@ -6,7 +6,7 @@ import { sha256 } from '@noble/hashes/sha2.js'
 import { bytesToHex, concatBytes, randomBytes } from '@noble/hashes/utils.js'
 import { canonical } from './canonical.ts'
 
-export type ObjectType = 'model' | 'dataset' | 'report' | 'timeline' | 'adapter' | 'vault'
+export type ObjectType = 'model' | 'dataset' | 'report' | 'timeline' | 'adapter' | 'vault' | 'episode'
 export const ENVELOPE_SCHEMA = 'sealedai.obj/v1'
 export type ObjectHeader = {
   schema: typeof ENVELOPE_SCHEMA

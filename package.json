@@ -6,7 +6,8 @@
     "test": "tsx --test \"packages/*/test/*.test.ts\"",
     "typecheck": "tsc -p tsconfig.json",
     "web:build": "esbuild apps/web/src/main.ts --bundle --format=esm --platform=browser --target=es2022 --minify --sourcemap --outfile=apps/web/dist/app.js --external:fs --external:path --external:os --external:'node:*' --define:process.env.NODE_ENV='\"production\"' && cp apps/web/index.html apps/web/dist/index.html",
-    "web:serve": "python3 -m http.server 5173 -d apps/web/dist"
+    "web:serve": "python3 -m http.server 5173 -d apps/web/dist",
+    "faultline": "tsx packages/episode/src/cli.ts"
   },
   "keywords": [],
   "author": "",

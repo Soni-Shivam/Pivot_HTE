@@ -161,3 +161,6 @@ self-paying agents, iAI sign-in, direct-to-TeeML-provider agent calls.
   adversarial traffic agent for the ETHGlobal Physical AI track. Verified architecture and pipeline:
   `docs/superpowers/specs/2026-11-06-faultline-0g-architecture-design.md`. PLAN rev 3 (SealedAI) stays authoritative
   until the user approves; no product code changed.
+- 2026-11-07 Faultline Task 10: `ethers` 6.13.1 is now also imported in `packages/episode/src/verify.ts` (the one
+  exception the Faultline plan allows): the 0G Compute SDK needs an ethers wallet for `processResponse`; a random
+  throwaway wallet on 0G mainnet RPC is used, no funds, no key stored.

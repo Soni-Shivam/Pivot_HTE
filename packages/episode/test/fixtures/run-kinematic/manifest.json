@@ -1,0 +1,23 @@
+{
+  "collision": false,
+  "decisions_0g": 27,
+  "decisions_halt": 0,
+  "decisions_total": 27,
+  "episode_id": "f4ffb1fdabd310f2456a80cbfa8b20919c9d80861a226a75c8a5657660ae649d",
+  "files": {
+    "decisions.jsonl": "9ad31f72d31b6909cd44539a004d87b9bc21d32a7cf9e7dac309b5e163e72461",
+    "metrics.json": "561175e1c9bd1926126a672827ce4731b2af284367c747c04777dc4a7a7887a6",
+    "scenario.json": "22cde7367a1724a5196e30e1b07e4e425111f815e169e0934d97f8b9f187a3b4",
+    "trajectory.jsonl": "93ec2416d745f4279ff0f22fa86e6542ea1973a2705a6bab5e46fd521b9f2e12"
+  },
+  "finished_at": "2027-01-15T08:00:00.028Z",
+  "log_head": "893ed55206164c8c7aa7bc5f2095786487ad874199c8474c5d35d414a1d9e18c",
+  "model": "0gm-1.0-35b-a3b",
+  "prompt_hash": "a16a7420bcc9c5bbd90198151a1ae2d5d2d3d9c376adf6fe311dde9594fe1ac0",
+  "scenario_hash": "2a98c9bc713d9256f1fc66ff96a11dec7ac003e7eedb58b3e09f6c51693f5e7f",
+  "schema": "faultline.episode/v1",
+  "started_at": "2027-01-15T08:00:00.001Z",
+  "status": "completed",
+  "trust_mode": "private",
+  "world": "kinematic"
+}

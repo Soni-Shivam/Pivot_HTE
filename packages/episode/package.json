@@ -1,0 +1,1 @@
+{"name":"@sealedai/episode","version":"0.1.0","private":true,"type":"module","exports":{".":"./src/index.ts"},"dependencies":{"@0gfoundation/0g-compute-ts-sdk":"0.9.0","circomlibjs":"0.1.7","crypto-js":"4.2.0"}}

@@ -1,0 +1,29 @@
+# faultline publish + verify — 2026-11-06T19:59:08Z
+# npm run faultline -- publish runs/<id>; npm run faultline -- verify <publicRoot> --sealed <sealedRoot> --key env --out runs/<id>/verification.json
+## demo-001
+{
+  "episode_id": "206583160206ff1a7bf083b97acb7661daf3756e5ab9e02784bba7c5f9a485c9",
+  "publicRoot": "0x2df958855d480161d9ccbf4545d4b70d7e90e439bd5e27092e46f94018e4b50d",
+  "publicTx": "0xcb2029ab47c4606cbd96c20849add7fc873c8a1bc370fd66bce7324d50aa39f2",
+  "sealedRoot": "0x1956476210578eea5db6fc0969981269b99a0a43f1076ef34f0fd745a365e7da",
+  "sealedTx": "0x5a3359e0453b84cb48b019d814e105451e94488467eb1af44b61221dd12b7a28",
+  "publicBytes": 82377,
+  "sealedBytes": 228624,
+  "signatures_true": 8,
+  "signatures_0g": 8
+}
+{"publicRootOk":true,"filesOk":true,"chainOk":true,"metricsRecomputedOk":true,"signaturesAllTrue":true,"sealed":{"sealedRoot":"0x1956476210578eea5db6fc0969981269b99a0a43f1076ef34f0fd745a365e7da","opened":true,"manifestMatchesPublic":true,"filesHashesMatchManifest":true,"chainOk":true,"observationsMatchPublic":true},"signatures":[{"cp":0,"request_id":"ee9d5579-6941-4864-98d6-89a251d181b4","verified":true},{"cp":1,"request_id":"2ec401fa-3d21-46b3-93d1-727668cd8cd6","verified":true},{"cp":2,"request_id":"8ad6a57a-3609-4329-ae7e-0be4a7bdbe22","verified":true},{"cp":3,"request_id":"cef6f504-913f-4a73-a9de-306b1a3ec364","verified":true},{"cp":4,"request_id":"845492f3-5a01-450d-82a4-144a5f3a276e","verified":true},{"cp":5,"request_id":"f237c06e-8e52-49e5-b794-c65a852aade7","verified":true},{"cp":6,"request_id":"5bc6cd53-65b1-4bb8-83e6-e9b37f75caac","verified":true},{"cp":7,"request_id":"9c1e6db3-8986-4b92-87b4-5a10d9edf449","verified":true}]}
+## halt-001
+{
+  "episode_id": "d8c4427eddbf23de52b4a6675ca53231693d181eb4be29311073db374d2409a9",
+  "publicRoot": "0x52d041c8533bb69330174eebefad0f3498adb8d3dacb4594b2af6439d7df8307",
+  "publicTx": "0x0ad834bab7b653641b5035fa56284d32d1995086f3dcfb2a5c7d5cad99333390",
+  "sealedRoot": "0x60bcb2b9b36cc4cf6f72f9f2da1c968cc9d632faf3dcbe709d4e08e41a8e7b74",
+  "sealedTx": "0x3768a88c20e57f468b258647f6715b7c6c9eb4593408955d55063f67a9d242c3",
+  "publicBytes": 81149,
+  "sealedBytes": 225040,
+  "signatures_true": 0,
+  "signatures_0g": 0
+}
+{"publicRootOk":true,"filesOk":true,"chainOk":true,"metricsRecomputedOk":true,"signaturesAllTrue":true,"sealed":{"sealedRoot":"0x60bcb2b9b36cc4cf6f72f9f2da1c968cc9d632faf3dcbe709d4e08e41a8e7b74","opened":true,"manifestMatchesPublic":true,"filesHashesMatchManifest":true,"chainOk":true,"observationsMatchPublic":true},"signatures":[{"cp":0,"request_id":null,"verified":null}]}
+storagescan: https://storagescan-galileo.0g.ai/tx/<tx>

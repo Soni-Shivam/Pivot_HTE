@@ -97,7 +97,8 @@ def run_episode(world, decider, scenario: Scenario, out_dir: Path, clock=time) -
                 lead_decelerating = bool(control)
                 decels[source] += 1
                 log.append({"cp": k, "sim_time_s": obs["sim_time_s"], "wall_clock_utc": _iso(clock.time()),
-                            "observation": obs, "history": history, "control_decel_mps2": control, "source": source,
+                            "observation": obs, "obs_sha256": hashlib.sha256(canonical(obs).encode()).hexdigest(),
+                            "history": history, "control_decel_mps2": control, "source": source,
                             **asdict(d)})
                 items.append({"cp": k, "your_action": d.action, "gap_m": obs["gap_m"],
                               "ego_speed_mps": obs["ego_speed_mps"], "ego_accel_mps2": obs["ego_accel_mps2"],

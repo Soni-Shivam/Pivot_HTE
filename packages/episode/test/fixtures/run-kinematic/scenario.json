@@ -1,0 +1,1 @@
+{"checkpoint_s":1.0,"dt_s":0.05,"ego_speed_mps":20.0,"family":"lead_brake","friction_mu":0.8,"horizon_s":30.0,"initial_gap_m":35.0,"lead_max_brake_mps2":6.0,"lead_speed_mps":20.0,"runup_s":3.0,"seed":42,"version":"lead_brake_demo_v1"}

@@ -1,0 +1,537 @@
+[
+ {
+  "tag": "after2",
+  "family": "cut_in",
+  "decisions": 30,
+  "bad_nonce": 0,
+  "episodes": 3,
+  "reasons": {
+   "ok": 30
+  },
+  "request_ids": [
+   "8f41423c-0da9-4cb0-8cbd-8d788306c2f5",
+   "b0c2edeb-bee0-47df-8bea-218cd88bc031",
+   "d2bdce3d-ab94-40c9-82d1-809161faade9",
+   "5f2b5c59-ce37-4a76-90c8-d3e867be1292",
+   "3a382059-c48d-4c69-854d-2166e8177df5",
+   "3d63b4f6-e301-4375-8666-812758e9f80a",
+   "3cd09854-0139-4402-adb6-c7d899034a74",
+   "3f36fb1d-1601-4ca4-87a4-2a0eeb504fc4",
+   "54908cbd-b97e-40bb-86fb-224ad7bcae23",
+   "9e10f2ac-5023-4d78-8b55-e8e1e36e166c",
+   "e34aa011-28eb-4faf-8245-68ff9891d482",
+   "a197b991-5bc6-4b80-b4bc-a887ce8e6494",
+   "cf3aeafb-cc7a-480e-9111-b3163cf644af",
+   "f76deb09-2844-4682-b2b8-95774dd4457c",
+   "4767f6b3-57ae-4ab6-ba63-b2ba50100877",
+   "74bfa4ac-6029-4c7d-b9ca-95bded343358",
+   "ac087bc1-e298-4d88-be9d-b18ebabe4a32",
+   "27bb605e-4c47-468f-b312-ddf649a67769",
+   "be3c4ec6-d3b6-4c4e-b4cc-6ca538debd47",
+   "c429adb2-48d7-4a19-9e99-ff4ce4249a77",
+   "8dfdbd30-e4a9-4004-879e-65dd2bdb28fc",
+   "07fe1b05-7e30-4848-98e2-04a9ceb0a49a",
+   "5539929c-c355-4d51-bf2f-47a1755f3a03",
+   "7f29fa48-50b4-458c-9bf4-16eef4098392",
+   "6eac46d7-6219-4c5f-8db5-5838468ccc7c",
+   "4dbcbf1a-d929-428e-a6d1-816afbcd4e3b",
+   "622ed294-a195-4818-9c88-b0fe061e04b5",
+   "af3cf7db-6067-45b7-a11c-367e70959c2c",
+   "4b176fc1-cef1-448d-b2e2-ac464ebe0ab5",
+   "726ba424-b481-4829-ab95-35bfe03ece97"
+  ]
+ },
+ {
+  "tag": "after",
+  "family": "cut_in",
+  "decisions": 32,
+  "bad_nonce": 0,
+  "episodes": 6,
+  "reasons": {
+   "out_of_set": 4,
+   "ok": 32
+  },
+  "request_ids": [
+   "496632a9-56e5-4fe0-ac90-1d49106e4699",
+   "f3e83301-3562-4106-b92e-827dbc00fabf",
+   "f46bee4a-2473-46bd-b795-535f065b36a7",
+   "e2a120ad-59ff-4eaf-8476-383c5104a145",
+   "a1bd3fd6-6e24-46a7-9cf8-d57df37bc788",
+   "6416a1b0-4f0d-4940-a92a-78f0a8bc0334",
+   "641ed65a-8ef1-4f09-aeba-e10aedb66d4a",
+   "8a696f2a-46ec-4827-a736-ff2076b24c8a",
+   "6462c436-7755-47bd-9b87-eb0bfddc4bab",
+   "c6e0a9f2-2336-4f50-a3fe-bbd987bd3fc1",
+   "96a693f6-8970-44d2-a677-363e343f1720",
+   "85749452-5602-4623-87e8-d7e4c7479989",
+   "76fdf7bc-3099-44be-860e-7b5596f86b2f",
+   "fd9e87e2-c286-4bda-9c76-6e9c2e420d8d",
+   "2f90d79c-a364-4f9c-995e-f36bd2a260ac",
+   "4cb53096-84f6-42ad-b316-716113ededae",
+   "ae0d7b7b-1d46-45f4-ba3a-1a9e61f6f30b",
+   "478f9bf4-6c80-49c9-9d42-e8d5f2f9fbc4",
+   "89804cd1-44bd-400f-b4a9-7faee68ae3ee",
+   "b45b3103-2ab1-493a-95ec-0a69026396f8",
+   "60e00af7-f315-458a-9392-307c640e9770",
+   "743ad185-4677-4ea7-974a-16a981207118",
+   "a39898c1-797b-4f58-8eeb-e3692a9bfa57",
+   "9ade8b5e-b93f-46df-b31b-440171629ea6",
+   "762eedfb-762e-4548-9409-04731630e515",
+   "94cc8cbb-5d67-4795-b466-38f7f51fb6e5",
+   "acc46800-020c-4e55-86a4-41c25c34e963",
+   "dd9ea203-599c-4ae6-82f7-a6d06f791f29",
+   "837d03a3-a01e-42a0-ac41-af03a88a9102",
+   "6a362838-c6a1-42fd-936a-17971e2ec91d",
+   "d452b823-9dac-458a-be98-8c1f1e76b5cb",
+   "2640a088-fda3-4342-b67d-4364870bfa1f",
+   "d773b10d-33e4-4d2b-9774-2715488c703d",
+   "f87a8971-6418-4039-ac36-edf144b9036d",
+   "4cd2b50c-d885-46aa-8279-5b6150225b0d",
+   "43d14b35-e025-4d22-8025-c9a51f6b5643"
+  ]
+ },
+ {
+  "tag": "after",
+  "family": "lead_brake",
+  "decisions": 24,
+  "bad_nonce": 0,
+  "episodes": 3,
+  "reasons": {
+   "ok": 24
+  },
+  "request_ids": [
+   "fe5cfbe5-1793-4c1b-9225-8125a60a8278",
+   "5431e3b7-1951-4fc9-8d57-8309572a5d9a",
+   "b4d3173e-1f5e-4ef6-b833-3c58fa5cc5e7",
+   "1a85dd2d-4daa-43f7-aaae-e5fe5d8e02e8",
+   "765a7c7e-b797-4cf2-9085-4edd8b0e4a6c",
+   "efe70401-7ca2-45f2-8a7c-d059d973ebb4",
+   "7561850e-1689-4327-bd65-db1484eaf05c",
+   "e8d921af-c441-49f9-8258-1c3e74f90ace",
+   "fab513e2-7914-4720-8732-b7417ab7abca",
+   "4a07262b-e031-448d-bd29-d4649e91a615",
+   "185dbfe1-e947-41d8-afd1-de189fc43111",
+   "8e7ec688-f2ba-47c1-ac2d-f6e2203868d7",
+   "3c3880a9-1c4c-43b3-9c67-c635c427af09",
+   "45dd74a3-f862-4939-9f33-afdd62880c9c",
+   "e9738e07-18da-4fd2-95c5-e7ed0265cd21",
+   "4dea56fe-3971-4057-8c73-071ac5acf94c",
+   "9b57f55a-8a93-4d32-8475-f8af8d668e27",
+   "7ae901bb-45d1-4aa1-808b-f8bc5340dc26",
+   "761728dd-3aa7-42f3-a248-6a98beba7fb0",
+   "4915e3cf-a38f-4ddb-81e3-26b1436b549a",
+   "986e179e-f4f8-4e6f-8228-a7dacef4c1e0",
+   "30664949-5f97-41c0-b043-7f29f453984f",
+   "68909a3a-8b41-424e-9864-b81e6bb7d3ad",
+   "0ddfdba8-e785-45e8-ae3f-0ed4cc422701"
+  ]
+ },
+ {
+  "tag": "before",
+  "family": "cut_in",
+  "decisions": 30,
+  "bad_nonce": 4,
+  "episodes": 5,
+  "reasons": {
+   "bad_nonce": 4,
+   "ok": 26,
+   "timeout": 1
+  },
+  "request_ids": [
+   "b2148432-7afc-4828-b3fe-82dedbd26863",
+   "93bc660b-0aa8-4b42-8a93-555e81a87e8c",
+   "7e033dd1-94ba-4287-b474-7868f4ccdc4f",
+   "6b898bd6-c394-4909-af6d-e9e884ac8e80",
+   "73203ac2-578c-4c30-9901-c11f9b0ebdd1",
+   "2a2ea3b6-42f5-441a-a641-ba9509f22151",
+   "4b80df45-633a-41af-b2ba-122e1ac93b02",
+   "5affc18a-4f9a-43bf-bc9b-5bfa1d56f47d",
+   "b60011e5-3fba-403b-aa1d-63a17a18840e",
+   "7390592e-7ce9-47b6-a236-c6ef9337c9df",
+   "02eb178a-ab3e-4f28-b1a5-51489478d4f1",
+   "828d4a14-8671-4283-8709-2eb7fe6295b7",
+   "a037537d-3747-4f8e-aace-f448fc6bf5e3",
+   "e8b6cc90-32be-4489-9bd3-814de55c3d21",
+   "f0142f28-8290-4bdb-87b9-734a45c8c9c2",
+   "c8701189-ef94-4e92-a681-fc42b5cecf1f",
+   "0073f8aa-bc8b-49bd-8b98-c5469dab972e",
+   "f16d177e-44b3-4a00-ba83-504be555a5f5",
+   "c043e123-14a2-4b96-ae53-42f7bbefc308",
+   "89894912-f4b7-4524-b42f-a331f99ef813",
+   "815762e0-c2bc-4b8c-b36c-7a2dc65b7381",
+   "f70c4ce6-20f0-438b-92c0-d81348152ff9",
+   "6de9f702-736a-40a6-b0d1-1d509884fe5e",
+   "6229bafa-2a6f-4957-884f-2f7178ddff2f",
+   "37452683-87b8-404d-be50-6479117fceeb",
+   "5175872b-4493-4d76-88c1-f4334d7a6845",
+   "d5a2f198-0ecc-4680-a1b1-4edadad73ca9",
+   "18aed6e6-3e60-4faf-9ac9-1132e35cb25b",
+   "45789b60-e0a4-48ae-a4a9-b9dc44c3b011",
+   "03a9fee0-dee4-4e3a-b70e-0b6cd758a9b8",
+   null
+  ]
+ },
+ {
+  "tag": "before",
+  "family": "lead_brake",
+  "decisions": 26,
+  "bad_nonce": 2,
+  "episodes": 4,
+  "reasons": {
+   "bad_nonce": 2,
+   "ok": 24
+  },
+  "request_ids": [
+   "d34236d8-6ca9-46fd-87d6-f6a2267c7773",
+   "9a857685-caae-449f-b6be-ee11956076ae",
+   "022db3c4-17cb-453d-ad71-e174075e8a0e",
+   "2835c2ab-b7de-42c2-af3e-38d22d2e82b6",
+   "66dba4a6-d605-4465-a7e4-d80f4161942c",
+   "a0cebced-e682-42fd-8a8c-6a669b72d07c",
+   "2c725399-c391-412e-b224-b423db1b8adf",
+   "e7df5f96-4277-456d-b1e7-cd44cc3c8e9b",
+   "26c2d1e9-63ab-4e54-8dda-3fc23fc8a269",
+   "e64a685f-c627-4b55-9926-44b1535457db",
+   "738a2a56-e369-403f-9372-5a28447f714b",
+   "697b3e9f-72c0-4ee3-ada5-422024c2d787",
+   "602e976e-b6ab-4c6b-af2a-a2733c7a820e",
+   "4f6ddbfe-8fc3-40e3-a814-35430cc1f7f6",
+   "2c9bc971-9c1e-4b9f-8550-ee4ad74ebb6a",
+   "91ab75ae-4402-441a-9462-182b6e789555",
+   "96efe15f-fcdf-4751-ba8f-050e628fc9eb",
+   "87013ad9-029c-4020-9106-62b5f2da13df",
+   "4ffbed56-3cef-4186-9ed7-3fec3b72d746",
+   "208451f7-db99-4761-99b3-74bca9d1673f",
+   "fa77fc9c-d448-4d69-83b6-13f453ed0e43",
+   "f2b9dc80-e475-4599-94b6-224c306c7add",
+   "36644ea3-4c25-47b3-b550-40e56c0b8589",
+   "f042e817-1ac5-4f07-9208-69e1c7bcea7b",
+   "9b19c8a7-aa15-4730-bee3-6ea72570abb8",
+   "c2d95c7a-d261-4730-bba2-61672dd38cfe"
+  ]
+ },
+ {
+  "configById": {
+   "Indicator!mode": {
+    "path": "/faultline/mode.data",
+    "style": "background",
+    "fontSize": 18,
+    "fallbackColor": "#808080",
+    "fallbackLabel": "mode -",
+    "rules": [
+     {
+      "operator": "=",
+      "rawValue": "EXECUTING",
+      "color": "#2e9e4f",
+      "label": "EXECUTING"
+     },
+     {
+      "operator": "=",
+      "rawValue": "AWAITING_0G",
+      "color": "#2f7fd8",
+      "label": "AWAITING_0G"
+     },
+     {
+      "operator": "=",
+      "rawValue": "SAFE_HALT",
+      "color": "#d03030",
+      "label": "SAFE_HALT"
+     },
+     {
+      "operator": "=",
+      "rawValue": "RUNUP",
+      "color": "#808080",
+      "label": "RUNUP"
+     }
+    ]
+   },
+   "Indicator!halt": {
+    "path": "/faultline/safe_halt.data",
+    "style": "background",
+    "fontSize": 18,
+    "fallbackColor": "#2e9e4f",
+    "fallbackLabel": "no halt",
+    "rules": [
+     {
+      "operator": "=",
+      "rawValue": "true",
+      "color": "#d03030",
+      "label": "SAFE_HALT"
+     }
+    ]
+   },
+   "RawMessages!decision": {
+    "topicPath": "/faultline/decision.data",
+    "diffEnabled": false,
+    "diffMethod": "custom",
+    "diffTopicPath": "",
+    "showFullMessageForDiff": false,
+    "fontSize": 13,
+    "defaultExpanded": true,
+    "foxglovePanelTitle": "adversary decision (cp \u00b7 action \u00b7 source \u00b7 request \u00b7 latency)"
+   },
+   "3D!scene": {
+    "cameraState": {
+     "distance": 45,
+     "perspective": true,
+     "phi": 50,
+     "thetaOffset": 90,
+     "target": [
+      0,
+      0,
+      0
+     ],
+     "targetOffset": [
+      10,
+      0,
+      0
+     ],
+     "targetOrientation": [
+      0,
+      0,
+      0,
+      1
+     ],
+     "fovy": 45,
+     "near": 0.5,
+     "far": 5000
+    },
+    "followMode": "follow-pose",
+    "followTf": "ego",
+    "scene": {
+     "enableStats": false,
+     "backgroundColor": "#161a20",
+     "transforms": {
+      "showLabel": false,
+      "lineColor": "#ffffff00",
+      "lineWidth": 0.0
+     }
+    },
+    "transforms": {},
+    "topics": {
+     "/faultline/lidar": {
+      "visible": true,
+      "pointSize": 2,
+      "pointShape": "circle",
+      "colorMode": "colormap",
+      "colorMap": "turbo",
+      "colorField": "z",
+      "decayTime": 0
+     },
+     "/faultline/lanelet_map": {
+      "visible": true
+     },
+     "/faultline/gt": {
+      "visible": true
+     },
+     "/faultline/tracks": {
+      "visible": true
+     }
+    },
+    "layers": {
+     "grid": {
+      "visible": true,
+      "frameLocked": true,
+      "label": "Grid (10 m)",
+      "instanceId": "grid",
+      "layerId": "foxglove.Grid",
+      "size": 200,
+      "divisions": 20,
+      "lineWidth": 1,
+      "color": "#ffffff20",
+      "position": [
+       0,
+       0,
+       0
+      ],
+      "rotation": [
+       0,
+       0,
+       0
+      ],
+      "order": 1
+     }
+    },
+    "imageMode": {},
+    "foxglovePanelTitle": "3D: LiDAR (turbo by z), lanelet map, GT boxes (green ego / orange adversary), tracks (cyan)"
+   },
+   "Plot!speed": {
+    "foxglovePanelTitle": "speed [m/s]: ego vs adversary",
+    "paths": [
+     {
+      "value": "/faultline/ego/speed.data",
+      "label": "ego",
+      "enabled": true,
+      "timestampMethod": "receiveTime",
+      "showLine": true
+     },
+     {
+      "value": "/faultline/adversary/speed.data",
+      "label": "adversary",
+      "enabled": true,
+      "timestampMethod": "receiveTime",
+      "showLine": true
+     }
+    ],
+    "showXAxisLabels": true,
+    "showYAxisLabels": true,
+    "showYAxisGridLines": true,
+    "showLegend": true,
+    "legendDisplay": "floating",
+    "floatingLegendPosition": "top-left",
+    "showPlotValuesInLegend": true,
+    "isSynced": false,
+    "xAxisVal": "timestamp",
+    "timeWindowMode": "sliding",
+    "followingViewWidth": 30
+   },
+   "Plot!gap": {
+    "foxglovePanelTitle": "gap [m]: LiDAR vs ground truth",
+    "paths": [
+     {
+      "value": "/faultline/gap_lidar.data",
+      "label": "LiDAR",
+      "enabled": true,
+      "timestampMethod": "receiveTime",
+      "showLine": true
+     },
+     {
+      "value": "/faultline/gap_gt.data",
+      "label": "GT",
+      "enabled": true,
+      "timestampMethod": "receiveTime",
+      "showLine": true
+     }
+    ],
+    "showXAxisLabels": true,
+    "showYAxisLabels": true,
+    "showYAxisGridLines": true,
+    "showLegend": true,
+    "legendDisplay": "floating",
+    "floatingLegendPosition": "top-left",
+    "showPlotValuesInLegend": true,
+    "isSynced": false,
+    "xAxisVal": "timestamp",
+    "timeWindowMode": "sliding",
+    "followingViewWidth": 30
+   },
+   "Plot!ttc": {
+    "foxglovePanelTitle": "TTC from LiDAR [s]",
+    "paths": [
+     {
+      "value": "/faultline/ttc.data",
+      "label": "TTC",
+      "enabled": true,
+      "timestampMethod": "receiveTime",
+      "showLine": true
+     }
+    ],
+    "showXAxisLabels": true,
+    "showYAxisLabels": true,
+    "showYAxisGridLines": true,
+    "showLegend": true,
+    "legendDisplay": "floating",
+    "floatingLegendPosition": "top-left",
+    "showPlotValuesInLegend": true,
+    "isSynced": false,
+    "xAxisVal": "timestamp",
+    "timeWindowMode": "sliding",
+    "followingViewWidth": 30
+   },
+   "Plot!ctl": {
+    "foxglovePanelTitle": "ego accel [m/s2] and steer [-1..1]",
+    "paths": [
+     {
+      "value": "/faultline/ego/accel.data",
+      "label": "accel",
+      "enabled": true,
+      "timestampMethod": "receiveTime",
+      "showLine": true
+     },
+     {
+      "value": "/faultline/ego/steer.data",
+      "label": "steer",
+      "enabled": true,
+      "timestampMethod": "receiveTime",
+      "showLine": true
+     }
+    ],
+    "showXAxisLabels": true,
+    "showYAxisLabels": true,
+    "showYAxisGridLines": true,
+    "showLegend": true,
+    "legendDisplay": "floating",
+    "floatingLegendPosition": "top-left",
+    "showPlotValuesInLegend": true,
+    "isSynced": false,
+    "xAxisVal": "timestamp",
+    "timeWindowMode": "sliding",
+    "followingViewWidth": 30
+   },
+   "StateTransitions!action": {
+    "foxglovePanelTitle": "adversary action and mode over time",
+    "paths": [
+     {
+      "value": "/faultline/adversary_action.data",
+      "timestampMethod": "receiveTime",
+      "label": "action"
+     },
+     {
+      "value": "/faultline/mode.data",
+      "timestampMethod": "receiveTime",
+      "label": "mode"
+     }
+    ],
+    "isSynced": false,
+    "showPoints": true,
+    "xAxisRange": 30
+   }
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+   "speed": 1
+  },
+  "layout": {
+   "first": {
+    "first": {
+     "first": "Indicator!mode",
+     "second": "Indicator!halt",
+     "direction": "row",
+     "splitPercentage": 60.0
+    },
+    "second": "RawMessages!decision",
+    "direction": "column",
+    "splitPercentage": 40.0
+   },
+   "second": {
+    "first": "3D!scene",
+    "second": {
+     "first": {
+      "first": "Plot!speed",
+      "second": "Plot!gap",
+      "direction": "column",
+      "splitPercentage": 50.0
+     },
+     "second": {
+      "first": "Plot!ttc",
+      "second": {
+       "first": "Plot!ctl",
+       "second": "StateTransitions!action",
+       "direction": "column",
+       "splitPercentage": 50.0
+      },
+      "direction": "column",
+      "splitPercentage": 33.0
+     },
+     "direction": "column",
+     "splitPercentage": 50.0
+    },
+    "direction": "column",
+    "splitPercentage": 40.0
+   },
+   "direction": "column",
+   "splitPercentage": 19.0
+  }
+ }
+]

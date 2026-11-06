@@ -180,3 +180,7 @@ self-paying agents, iAI sign-in, direct-to-TeeML-provider agent calls.
   `0x4e13bd17…d0f2`, sealed `0x757f4195…f7c2`, commit tx `0x8ba47d24…633a`, finalize tx `0x34fae933…64f6`, 10/10
   `processResponse` true; cutin-halt-001 interrupted on a refused connection; `docs/evidence/faultline-occlusion.md`.
   Deviations: tracker ROI/priors, PDM-Lite throttle ×0.35 on CARLA 0.10, signals/walkers disabled on the segment.
+- 2026-11-07 Faultline hunter (adaptive experiment design) deviations, each forced by a measurement: the IDM ego now
+  settles at the proposed initial gap (time-gap set from it; otherwise every gap was unsafe at 25 m/s); goal G1 runs at
+  15 m/s (at 25 m/s the boundary leaves the 80 m range); brake onset fixed at 5 s in G1; designer thinking mode off
+  (32–39 s turns, final call exhausted tokens). Result: bisection MAE 0.57 m vs 0G designer 5.57 m (docs/evidence/faultline-hunt.md).

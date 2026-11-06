@@ -30,7 +30,8 @@ class RecordedDecider:
         self.n += 1
         return Decision(action=e["action"], reason=e["reason"], request_id=e["request_id"], provider=e["provider"],
                         zg_res_key=e["zg_res_key"], model=e["model"], latency_ms=0, http_status=e["http_status"],
-                        raw_sha256=e["raw_sha256"], content=e["content"], ratelimit_remaining=e["ratelimit_remaining"])
+                        raw_sha256=e["raw_sha256"], content=e["content"], ratelimit_remaining=e["ratelimit_remaining"],
+                        raw_b64=e.get("raw_b64"))
 
 
 def replay(run_dir: Path, world, out_dir: Path) -> dict:

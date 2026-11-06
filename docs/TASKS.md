@@ -180,3 +180,9 @@ self-paying agents, iAI sign-in, direct-to-TeeML-provider agent calls.
   `0x4e13bd17…d0f2`, sealed `0x757f4195…f7c2`, commit tx `0x8ba47d24…633a`, finalize tx `0x34fae933…64f6`, 10/10
   `processResponse` true; cutin-halt-001 interrupted on a refused connection; `docs/evidence/faultline-occlusion.md`.
   Deviations: tracker ROI/priors, PDM-Lite throttle ×0.35 on CARLA 0.10, signals/walkers disabled on the segment.
+- 2026-11-07 Faultline trust audit (`docs/faultline-audit.md`): provider signatures expire (~20 min broker cache), so
+  "8/8 processResponse true" was only true at run time; storage SDK 1.2.13 ignores `{proof:true}`, so the "Merkle proof"
+  claim was false until `downloadBlob` started recomputing the root. Fixed on `build/faultline`: signature
+  archive + offline check, Merkle root check, verifier XSS/CSP, pinned registry, fail-closed commit tick, sealed field
+  binding, aggregate recompute (`verify.ts` still loads ethers lazily for the live `sigs` check). Written, not
+  deployed: `EpisodeRegistryV2`. Open: A2 content binding, A3 prompt nonce, public replay, scenario reveal (R7), hosting.

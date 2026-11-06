@@ -45,6 +45,22 @@ export function recomputeMetrics(lines: Line[]): { ok: boolean; mismatches: numb
   return { ok: mismatches.length === 0, mismatches }
 }
 
+/** The headline numbers (badge, README) must follow from the per-tick rows, not just sit in metrics.json (audit R8). */
+export function aggregatesOk(lines: any[], met: any, manifest: any): boolean {
+  const ok = lines.filter((l) => l.applicable)
+  const ccsRows = lines.map((l) => (l.ccs ?? 0) as number)
+  const ttcs = ok.map((l) => l.ttc_s).filter((t) => t !== null) as number[]
+  const minOr = (xs: number[]) => (xs.length ? Math.min(...xs) : null)
+  const collision = lines.some((l) => l.collision === true)
+  return lines.length > 0 &&
+    close(met.ccs, Math.max(...ccsRows)) &&
+    (met.peak_step === null || close(ccsRows[met.peak_step], met.ccs)) &&
+    close(met.min_ttc_s, minOr(ttcs)) &&
+    close(met.min_gap_m, minOr(ok.map((l) => l.lidar_gap))) &&
+    close(met.max_ego_decel_mps2, Math.max(0, ...lines.map((l) => -l.ego_a))) &&
+    met.collision === collision && manifest.collision === collision
+}
+
 const hex = (s: string) => bytesToHex(sha256(new TextEncoder().encode(s)))
 
 export function checkPublic(pub: any) {
@@ -57,6 +73,7 @@ export function checkPublic(pub: any) {
       pub.decisions.filter((d: any) => d.source === '0g').length === m.decisions_0g &&
       pub.decisions.filter((d: any) => d.source === '0g').every((d: any) => d.request_id && d.provider && d.zg_res_key),
     metricsRecomputedOk: recomputeMetrics(lines).ok,
+    aggregatesOk: aggregatesOk(lines, JSON.parse(pub.metrics_json), m),
     trajectory: lines,
     metrics: JSON.parse(pub.metrics_json),
   }

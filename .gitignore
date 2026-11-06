@@ -11,3 +11,4 @@ apps/web/dist/
 __pycache__/
 .pytest_cache/
 runs/
+apps/faultline-web/dist/

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Faultline Verifier</title>
+  <style>
+    :root { --bg:#f6f6f3; --card:#fff; --fg:#1c1f1e; --muted:#5d6663; --line:#dcdfdc; --ok:#1f6b3a; --bad:#a0302a; --warn:#9a6a00; --acc:#0d5f63; --ego:#2f5fb3; --lead:#c98a00; color-scheme: light; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#121615; --card:#1a201e; --fg:#e4ebe8; --muted:#9aa7a3; --line:#2c3633; --ok:#7fcf93; --bad:#ee8a83; --warn:#e6bd5c; --acc:#62c3bd; --ego:#86a9ef; --lead:#f0c45a; color-scheme: dark; } }
+    :root[data-theme="dark"] { --bg:#121615; --card:#1a201e; --fg:#e4ebe8; --muted:#9aa7a3; --line:#2c3633; --ok:#7fcf93; --bad:#ee8a83; --warn:#e6bd5c; --acc:#62c3bd; --ego:#86a9ef; --lead:#f0c45a; color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px 16px 64px; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 1040px; margin: 0 auto; }
+    h1 { margin: 0 0 4px; font-size: 26px; } h2 { font-size: 18px; margin: 0 0 10px; }
+    .sub { color: var(--muted); margin: 0 0 18px; }
+    section, details { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 12px 0; }
+    summary { cursor: pointer; font-weight: 600; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-top: 8px; }
+    input, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; }
+    textarea { min-height: 70px; font-size: 12px; }
+    button { margin-top: 10px; padding: 8px 14px; border: 0; border-radius: 6px; background: var(--acc); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: progress; }
+    .ok { color: var(--ok); } .bad { color: var(--bad); } .warn { color: var(--warn); } .muted { color: var(--muted); font-size: 13px; }
+    code { font-size: 12.5px; overflow-wrap: anywhere; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; } .row > * { flex: 1 1 240px; }
+    .kv { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; font-size: 14px; } .kv dt { color: var(--muted); } .kv dd { margin: 0; overflow-wrap: anywhere; }
+    .table-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+    th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th { color: var(--muted); font-weight: 600; }
+    #badge { display: inline-block; padding: 2px 10px; border-radius: 99px; font-weight: 700; color: #fff; }
+    #badge.green { background: #1f6b3a; } #badge.amber { background: #9a6a00; } #badge.red { background: #a0302a; }
+    canvas { width: 100%; display: block; background: var(--bg); border-radius: 6px; }
+    #status { min-height: 1.4em; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Faultline verifier</h1>
+  <p class="sub">Check a published Faultline episode with no account and no key: download it from 0G Storage with a Merkle proof, check its file hashes, recompute every criticality metric from the LiDAR fields, read its commitments on 0G Galileo, and replay the trajectory.</p>
+
+  <section>
+    <div class="row">
+      <div><label for="root">Public root (0G Storage)</label><input id="root" placeholder="0x…" autocomplete="off"></div>
+      <div><label for="indexer">Indexer URL</label><input id="indexer" value="https://indexer-storage-testnet-turbo.0g.ai"></div>
+    </div>
+    <button id="load-root">Download and check</button>
+    <details>
+      <summary>Open the sealed bundle (tenant key)</summary>
+      <div class="row">
+        <div><label for="sroot">Sealed root</label><input id="sroot" placeholder="0x…" autocomplete="off"></div>
+        <div><label for="skey">Tenant key (32-byte hex, stays in this tab)</label><input id="skey" type="password" autocomplete="off"></div>
+      </div>
+      <button id="load-sealed">Open sealed bundle</button>
+      <div id="sealed-out"></div>
+    </details>
+    <details>
+      <summary>Paste a public JSON instead</summary>
+      <textarea id="paste" placeholder='{"schema":"faultline.public/v1", …}'></textarea>
+      <button id="load-paste">Check pasted JSON</button>
+    </details>
+    <p id="status" class="muted"></p>
+  </section>
+
+  <div id="report" class="hidden">
+    <section>
+      <h2>Episode <span id="badge"></span></h2>
+      <div class="row">
+        <dl class="kv" id="manifest"></dl>
+        <dl class="kv" id="checks"></dl>
+      </div>
+      <p class="muted">Inference: 0G mainnet Router, private tier (TeeML) · storage and chain: 0G Galileo testnet. CCS is a criticality score, not an accident probability.</p>
+    </section>
+    <section>
+      <h2>On-chain commitments</h2>
+      <dl class="kv" id="chain"><dt>status</dt><dd class="muted">not anchored or not read yet</dd></dl>
+    </section>
+    <section>
+      <h2>Replay</h2>
+      <canvas id="anim" height="120"></canvas>
+      <div class="row" style="align-items:center"><div style="flex:0 0 auto"><button id="play">Play</button></div><div class="muted" style="flex:1 1 auto">t = <span id="anim-t">0.00 s</span> · <span id="anim-info"></span></div></div>
+      <h2 style="margin-top:16px">Gap and TTC (from the LiDAR)</h2>
+      <canvas id="chart" height="220"></canvas>
+      <p class="muted"><span style="color:var(--ego)">■</span> LiDAR gap (m, left axis) · <span style="color:var(--lead)">■</span> TTC (s, right axis, capped at 10) · gaps in the line are scans with no target.</p>
+    </section>
+    <section>
+      <h2>Decisions</h2>
+      <div class="table-wrap"><table id="decisions"><thead><tr><th>cp</th><th>sim t</th><th>action</th><th>source</th><th>reason</th><th>request id</th><th>provider</th><th>latency</th><th>signature</th></tr></thead><tbody></tbody></table></div>
+      <p class="muted" id="sig-note"></p>
+    </section>
+    <section>
+      <h2>Metrics</h2>
+      <dl class="kv" id="metrics"></dl>
+    </section>
+  </div>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>

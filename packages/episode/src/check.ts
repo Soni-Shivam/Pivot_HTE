@@ -61,3 +61,15 @@ export function checkPublic(pub: any) {
     metrics: JSON.parse(pub.metrics_json),
   }
 }
+
+/** Hash chain over the raw decisions.jsonl lines (same rule as faultline/log.py verify_chain). */
+export function chainOk(jsonl: string, head: string): boolean {
+  let h = '0'.repeat(64)
+  const lines = jsonl.split('\n').filter(Boolean)
+  for (let i = 0; i < lines.length; i++) {
+    const e = JSON.parse(lines[i])
+    if (e.i !== i || e.prev_hash !== h) return false
+    h = bytesToHex(sha256(new TextEncoder().encode(lines[i])))
+  }
+  return h === head
+}

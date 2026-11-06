@@ -6,7 +6,7 @@ import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js'
 import { open, unpackTar } from '@sealedai/protocol'
 import { storage } from '@sealedai/integrations'
 import { ethers } from 'ethers'
-import { checkPublic } from './check.ts'
+import { chainOk, checkPublic } from './check.ts'
 import { obsSha256 } from './bundle.ts'
 
 export type ProcessResponse = (provider: string, chatId: string) => Promise<boolean | null>
@@ -29,18 +29,6 @@ export async function verifySignatures(decisions: any[], pr: ProcessResponse): P
     out.push({ cp: d.cp, request_id: d.request_id, provider: d.provider, zg_res_key: d.zg_res_key, source: d.source, verified })
   }
   return out
-}
-
-/** Hash chain over the raw decisions.jsonl lines (same rule as faultline/log.py verify_chain). */
-export function chainOk(jsonl: string, head: string): boolean {
-  let h = '0'.repeat(64)
-  const lines = jsonl.split('\n').filter(Boolean)
-  for (let i = 0; i < lines.length; i++) {
-    const e = JSON.parse(lines[i])
-    if (e.i !== i || e.prev_hash !== h) return false
-    h = bytesToHex(sha256(new TextEncoder().encode(lines[i])))
-  }
-  return h === head
 }
 
 export type VerifyConfig = { rpcUrl: string; indexerUrl: string; mainnetRpc?: string; tenantKeyHex?: string; sealedRoot?: string }

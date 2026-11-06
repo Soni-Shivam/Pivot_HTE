@@ -1,0 +1,279 @@
+{
+ "start": {
+  "ego_speed_mps": 25.0,
+  "initial_gap_m": 20.0,
+  "lead_decel_mps2": 5.0,
+  "friction_mu": 0.3,
+  "reaction_delay_s": 0.5,
+  "brake_onset_s": 5.0
+ },
+ "minimal_failing_case": {
+  "ego_speed_mps": 15.83,
+  "initial_gap_m": 40.0,
+  "lead_decel_mps2": 3.0,
+  "friction_mu": 0.8,
+  "reaction_delay_s": 0.6,
+  "brake_onset_s": 5.0
+ },
+ "minimal_outcome": {
+  "collision": false,
+  "min_gap_m": 1.9615,
+  "min_ttc_s": 1.4814,
+  "max_drac_mps2": 2.2943,
+  "ccs": 0.6221,
+  "ego_max_decel_mps2": 3.4092,
+  "measured_reaction_s": 0.7,
+  "gap_at_onset_m": 40.0,
+  "lead_decel_applied_mps2": 3.0,
+  "lead_decel_clamped": false,
+  "end_t_s": 14.65,
+  "safe": false
+ },
+ "necessary": [
+  {
+   "factor": "ego_speed_mps",
+   "failing_value": 15.83,
+   "benign_value": 15.0,
+   "counterfactual_params": {
+    "ego_speed_mps": 15.0,
+    "initial_gap_m": 40.0,
+    "lead_decel_mps2": 3.0,
+    "friction_mu": 0.8,
+    "reaction_delay_s": 0.6,
+    "brake_onset_s": 5.0
+   },
+   "counterfactual_safe": true,
+   "counterfactual_min_gap_m": 2.0561
+  }
+ ],
+ "restored": [
+  "friction_mu",
+  "reaction_delay_s",
+  "lead_decel_mps2",
+  "initial_gap_m"
+ ],
+ "runs": 17,
+ "trace": [
+  {
+   "params": {
+    "ego_speed_mps": 25.0,
+    "initial_gap_m": 20.0,
+    "lead_decel_mps2": 5.0,
+    "friction_mu": 0.3,
+    "reaction_delay_s": 0.5,
+    "brake_onset_s": 5.0
+   },
+   "safe": false,
+   "min_gap_m": -0.126,
+   "collision": true
+  },
+  {
+   "params": {
+    "ego_speed_mps": 25.0,
+    "initial_gap_m": 20.0,
+    "lead_decel_mps2": 5.0,
+    "friction_mu": 0.8,
+    "reaction_delay_s": 0.5,
+    "brake_onset_s": 5.0
+   },
+   "safe": false,
+   "min_gap_m": -0.0823,
+   "collision": true
+  },
+  {
+   "params": {
+    "ego_speed_mps": 25.0,
+    "initial_gap_m": 20.0,
+    "lead_decel_mps2": 5.0,
+    "friction_mu": 0.8,
+    "reaction_delay_s": 0.6,
+    "brake_onset_s": 5.0
+   },
+   "safe": false,
+   "min_gap_m": -0.0844,
+   "collision": true
+  },
+  {
+   "params": {
+    "ego_speed_mps": 25.0,
+    "initial_gap_m": 20.0,
+    "lead_decel_mps2": 3.0,
+    "friction_mu": 0.8,
+    "reaction_delay_s": 0.6,
+    "brake_onset_s": 5.0
+   },
+   "safe": false,
+   "min_gap_m": 0.9298,
+   "collision": false
+  },
+  {
+   "params": {
+    "ego_speed_mps": 25.0,
+    "initial_gap_m": 40.0,
+    "lead_decel_mps2": 3.0,
+    "friction_mu": 0.8,
+    "reaction_delay_s": 0.6,
+    "brake_onset_s": 5.0
+   },
+   "safe": false,
+   "min_gap_m": 0.7707,
+   "collision": false
+  },
+  {
+   "params": {
+    "ego_speed_mps": 15.0,
+    "initial_gap_m": 40.0,
+    "lead_decel_mps2": 3.0,
+    "friction_mu": 0.8,
+    "reaction_delay_s": 0.6,
+    "brake_onset_s": 5.0
+   },
+   "safe": true,
+   "min_gap_m": 2.0561,
+   "collision": false
+  },
+  {
+   "params": {
+    "ego_speed_mps": 20.0,
+    "initial_gap_m": 40.0,
+    "lead_decel_mps2": 3.0,
+    "friction_mu": 0.8,
+    "reaction_delay_s": 0.6,
+    "brake_onset_s": 5.0
+   },
+   "safe": false,
+   "min_gap_m": 1.338,
+   "collision": false
+  },
+  {
+   "params": {
+    "ego_speed_mps": 17.5,
+    "initial_gap_m": 40.0,
+    "lead_decel_mps2": 3.0,
+    "friction_mu": 0.8,
+    "reaction_delay_s": 0.6,
+    "brake_onset_s": 5.0
+   },
+   "safe": false,
+   "min_gap_m": 1.7397,
+   "collision": false
+  },
+  {
+   "params": {
+    "ego_speed_mps": 16.25,
+    "initial_gap_m": 40.0,
+    "lead_decel_mps2": 3.0,
+    "friction_mu": 0.8,
+    "reaction_delay_s": 0.6,
+    "brake_onset_s": 5.0
+   },
+   "safe": true,
+   "min_gap_m": 2.0093,
+   "collision": false
+  },
+  {
+   "params": {
+    "ego_speed_mps": 16.875,
+    "initial_gap_m": 40.0,
+    "lead_decel_mps2": 3.0,
+    "friction_mu": 0.8,
+    "reaction_delay_s": 0.6,
+    "brake_onset_s": 5.0
+   },
+   "safe": false,
+   "min_gap_m": 1.8314,
+   "collision": false
+  },
+  {
+   "params": {
+    "ego_speed_mps": 16.5625,
+    "initial_gap_m": 40.0,
+    "lead_decel_mps2": 3.0,
+    "friction_mu": 0.8,
+    "reaction_delay_s": 0.6,
+    "brake_onset_s": 5.0
+   },
+   "safe": false,
+   "min_gap_m": 1.8733,
+   "collision": false
+  },
+  {
+   "params": {
+    "ego_speed_mps": 15.0,
+    "initial_gap_m": 40.0,
+    "lead_decel_mps2": 3.0,
+    "friction_mu": 0.8,
+    "reaction_delay_s": 0.6,
+    "brake_onset_s": 5.0
+   },
+   "safe": true,
+   "min_gap_m": 2.0561,
+   "collision": false
+  },
+  {
+   "params": {
+    "ego_speed_mps": 15.7812,
+    "initial_gap_m": 40.0,
+    "lead_decel_mps2": 3.0,
+    "friction_mu": 0.8,
+    "reaction_delay_s": 0.6,
+    "brake_onset_s": 5.0
+   },
+   "safe": true,
+   "min_gap_m": 2.0279,
+   "collision": false
+  },
+  {
+   "params": {
+    "ego_speed_mps": 16.1718,
+    "initial_gap_m": 40.0,
+    "lead_decel_mps2": 3.0,
+    "friction_mu": 0.8,
+    "reaction_delay_s": 0.6,
+    "brake_onset_s": 5.0
+   },
+   "safe": false,
+   "min_gap_m": 1.9207,
+   "collision": false
+  },
+  {
+   "params": {
+    "ego_speed_mps": 15.9765,
+    "initial_gap_m": 40.0,
+    "lead_decel_mps2": 3.0,
+    "friction_mu": 0.8,
+    "reaction_delay_s": 0.6,
+    "brake_onset_s": 5.0
+   },
+   "safe": false,
+   "min_gap_m": 1.9434,
+   "collision": false
+  },
+  {
+   "params": {
+    "ego_speed_mps": 15.8788,
+    "initial_gap_m": 40.0,
+    "lead_decel_mps2": 3.0,
+    "friction_mu": 0.8,
+    "reaction_delay_s": 0.6,
+    "brake_onset_s": 5.0
+   },
+   "safe": false,
+   "min_gap_m": 1.9554,
+   "collision": false
+  },
+  {
+   "params": {
+    "ego_speed_mps": 15.83,
+    "initial_gap_m": 40.0,
+    "lead_decel_mps2": 3.0,
+    "friction_mu": 0.8,
+    "reaction_delay_s": 0.6,
+    "brake_onset_s": 5.0
+   },
+   "safe": false,
+   "min_gap_m": 1.9615,
+   "collision": false
+  }
+ ]
+}

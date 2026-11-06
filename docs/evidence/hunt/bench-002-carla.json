@@ -1,0 +1,83 @@
+{
+ "label": "scripted experiment execution; parameters from the 0G final report",
+ "delay_s": 0.9,
+ "boundary_0g_m": 45.094,
+ "carla-safe": {
+  "params": {
+   "ego_speed_mps": 15.0,
+   "friction_mu": 0.8,
+   "lead_decel_mps2": 6.0,
+   "brake_onset_s": 5.0,
+   "initial_gap_m": 47.094,
+   "reaction_delay_s": 0.9
+  },
+  "carla": {
+   "collision": false,
+   "min_gap_m": 1.7909,
+   "min_ttc_s": 1.4608,
+   "max_drac_mps2": 2.9993,
+   "ccs": 0.6379,
+   "ego_max_decel_mps2": 4.1009,
+   "measured_reaction_s": 1.0,
+   "gap_at_onset_m": 47.094,
+   "lead_decel_applied_mps2": 6.0,
+   "lead_decel_clamped": false,
+   "end_t_s": 13.55,
+   "safe": false,
+   "lidar_min_gap_m": 2.484
+  },
+  "kinematic": {
+   "collision": false,
+   "min_gap_m": 1.7909,
+   "min_ttc_s": 1.4608,
+   "max_drac_mps2": 2.9993,
+   "ccs": 0.6379,
+   "ego_max_decel_mps2": 4.1009,
+   "measured_reaction_s": 1.0,
+   "gap_at_onset_m": 47.094,
+   "lead_decel_applied_mps2": 6.0,
+   "lead_decel_clamped": false,
+   "end_t_s": 13.55,
+   "safe": false
+  }
+ },
+ "carla-unsafe": {
+  "params": {
+   "ego_speed_mps": 15.0,
+   "friction_mu": 0.8,
+   "lead_decel_mps2": 6.0,
+   "brake_onset_s": 5.0,
+   "initial_gap_m": 43.094,
+   "reaction_delay_s": 0.9
+  },
+  "carla": {
+   "collision": false,
+   "min_gap_m": 1.3604,
+   "min_ttc_s": 1.1388,
+   "max_drac_mps2": 3.3893,
+   "ccs": 0.8874,
+   "ego_max_decel_mps2": 4.4646,
+   "measured_reaction_s": 1.0,
+   "gap_at_onset_m": 43.094,
+   "lead_decel_applied_mps2": 6.0,
+   "lead_decel_clamped": false,
+   "end_t_s": 12.7,
+   "safe": false,
+   "lidar_min_gap_m": 2.137
+  },
+  "kinematic": {
+   "collision": false,
+   "min_gap_m": 1.3604,
+   "min_ttc_s": 1.1388,
+   "max_drac_mps2": 3.3893,
+   "ccs": 0.8874,
+   "ego_max_decel_mps2": 4.4646,
+   "measured_reaction_s": 1.0,
+   "gap_at_onset_m": 43.094,
+   "lead_decel_applied_mps2": 6.0,
+   "lead_decel_clamped": false,
+   "end_t_s": 12.7,
+   "safe": false
+  }
+ }
+}

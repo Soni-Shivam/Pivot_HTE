@@ -37,7 +37,9 @@ def _int(v):
 
 
 class ZgRouter:
-    def __init__(self, base_url: str, api_key: str, model: str = DEFAULT_MODEL, timeout_s: float = 8.0, http=requests):
+    def __init__(self, base_url: str, api_key: str, model: str = DEFAULT_MODEL, timeout_s: float = 8.0, http=requests,
+                 system_prompt: str = SYSTEM_PROMPT):
+        self.system_prompt = system_prompt  # per scenario family (policy / cutin); the parser stays strict for all
         self.url = base_url.rstrip("/") + "/chat/completions"
         self._key = api_key
         self.model = model
@@ -56,7 +58,7 @@ class ZgRouter:
     def decide(self, obs: dict, history, available: tuple[str, ...]) -> Decision:
         body = {
             "model": self.model,
-            "messages": [{"role": "system", "content": SYSTEM_PROMPT},
+            "messages": [{"role": "system", "content": self.system_prompt},
                          {"role": "user", "content": build_user_message(obs, history)}],
             "response_format": {"type": "json_object"},
             "chat_template_kwargs": {"enable_thinking": False},

@@ -11,6 +11,7 @@ from faultline.router import Decision, ZgRouter
 
 MODE = "ok"
 SEEN = []  # (model, trust header) of every request the fake received
+BODIES = []  # request bodies, newest last
 
 OBS = {"schema": "faultline.obs/v1", "checkpoint": 7, "sim_time_s": 7.0, "lead_speed_mps": 17.5,
        "ego_speed_mps": 23.1, "gap_m": 21.0, "closing_speed_mps": 5.6, "ttc_s": 3.75, "thw_s": 0.91,
@@ -41,6 +42,7 @@ class Handler(BaseHTTPRequestHandler):
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         trust = self.headers.get("X-0G-Provider-Trust-Mode")
         SEEN.append((body.get("model"), trust))
+        BODIES.append(body)
         if trust != "private" or body.get("model") != "0gm-1.0-35b-a3b" or self.path != "/v1/chat/completions":
             return self._send(400, {"error": {"code": "bad_test_request"}})
         n = sum(1 for _ in SEEN)
@@ -134,3 +136,15 @@ def test_never_changes_model_or_tier(server):
     for mode in ["r502", "r503_trust", "r429", "prose", "no_reqid", "garbage"]:
         run(server, mode)
         assert SEEN and all(s == ("0gm-1.0-35b-a3b", "private") for s in SEEN)
+
+
+def test_family_prompt_is_sent_and_parser_stays_strict(server):
+    from faultline import cutin, policy
+    global MODE
+    MODE = "ok"  # the fake answers BRAKE_SOFT, which is not a cut-in action
+    d = ZgRouter(server, "sk-test").decide(OBS, [], ACTIONS)
+    assert BODIES[-1]["messages"][0]["content"] == policy.SYSTEM_PROMPT and d.action == "BRAKE_SOFT"
+    d = ZgRouter(server, "sk-test", system_prompt=cutin.SYSTEM_PROMPT).decide(OBS, [], cutin.ACTIONS)
+    assert BODIES[-1]["messages"][0]["content"] == cutin.SYSTEM_PROMPT
+    assert (d.action, d.reason, d.request_id) == (None, "out_of_set", "r1")
+    assert SEEN[-1] == ("0gm-1.0-35b-a3b", "private")

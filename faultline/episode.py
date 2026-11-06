@@ -9,6 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
+from faultline import cutin
 from faultline.config import Scenario, canonical, scenario_hash
 from faultline.controller import G
 from faultline.log import ChainLog
@@ -49,7 +50,26 @@ def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def run_episode(world, decider, scenario: Scenario, out_dir: Path, clock=time, started_at: str | None = None,
+def ground_truth_metrics(rows: list[dict], collision: bool) -> dict:
+    """Cut-in outcome from ground truth (never shown to the ego): only ticks where the adversary's footprint overlaps
+    the ego's lane path count for gap/TTC/CCS; plus when that first happened vs when the ego's LiDAR first saw it."""
+    path = [r for r in rows if r["gt_in_path"]]
+    ttc = [r["gt_ttc_s"] for r in path if r["gt_ttc_s"] is not None]
+    gaps = [max(r["gt_gap"], 0.0) for r in path]
+    closing = [r["ego_v"] - r["lead_v"] for r in path]
+    ep = score_episode([float(drac(np.array(g), np.array(c))) for g, c in zip(gaps, closing)],
+                       [float(ttc_1d(np.array(g), np.array(c))) if c > 1e-3 else None for g, c in zip(gaps, closing)],
+                       [float(thw(np.array(g), np.array(r["ego_v"]))) for g, r in zip(gaps, path)])
+    first = lambda pred: next((r["t_s"] for r in rows if pred(r)), None)
+    return {"collision": collision, "ccs": ep["ccs"], "min_gap_in_path_m": min(gaps) if gaps else None,
+            "min_ttc_s": min(ttc) if ttc else None, "in_path_from_t_s": first(lambda r: r["gt_in_path"]),
+            "first_tracked_t_s": first(lambda r: r["n_tracks"] > 0),
+            "first_lidar_in_lane_t_s": first(lambda r: r["lidar_gap"] is not None),
+            "max_ego_decel_mps2": max([max(-r["ego_a"], 0.0) for r in rows] or [0.0]),
+            "max_ego_brake": max([r["ego_brake"] for r in rows] or [0.0])}
+
+
+def run_episode(world, decider, scenario, out_dir: Path, clock=time, started_at: str | None = None,
                 extra: dict | None = None) -> dict:
     """`started_at` lets --anchor fix the episode id before the loop; `extra` is merged into the manifest."""
     out_dir = Path(out_dir)
@@ -64,6 +84,7 @@ def run_episode(world, decider, scenario: Scenario, out_dir: Path, clock=time, s
     dt = s.dt_s
     runup_n, cp_n, horizon_n = round(s.runup_s / dt), round(s.checkpoint_s / dt), round(s.horizon_s / dt)
     brake_hard = min(ACTION_DECEL["BRAKE_HARD"], 0.8 * G * s.friction_mu)
+    cut = s.family == "cut_in"  # the cut-in family: its own actions, observation and adversary (faultline/cutin.py)
 
     world.reset(s)
     state = "READY"
@@ -79,7 +100,8 @@ def run_episode(world, decider, scenario: Scenario, out_dir: Path, clock=time, s
                 state = "AWAITING_0G"
                 gap, closing = last.gt_gap, last.ego_v - last.lead_v
                 ttc_now = _ttc(gap, closing)
-                obs = {"schema": "faultline.obs/v1", "checkpoint": k, "sim_time_s": _r(last.t_s, 3),
+                avail = world.adv.available() if cut else ACTIONS
+                obs = cutin.observation(world, last, s, k, avail) if cut else {"schema": "faultline.obs/v1", "checkpoint": k, "sim_time_s": _r(last.t_s, 3),
                        "lead_speed_mps": _r(last.lead_v, 3), "ego_speed_mps": _r(last.ego_v, 3), "gap_m": _r(gap, 3),
                        "closing_speed_mps": _r(closing, 3), "ttc_s": _r(ttc_now, 3),
                        "thw_s": _r(float(thw(np.array(gap), np.array(last.ego_v))), 3),
@@ -87,24 +109,32 @@ def run_episode(world, decider, scenario: Scenario, out_dir: Path, clock=time, s
                        "lead_max_brake_mps2": s.lead_max_brake_mps2, "available_actions": list(ACTIONS)}
                 history = {"items": list(items), "ego_observed_reaction_delay_s": _r(reaction_delay, 3),
                            "ego_min_ttc_so_far_s": _r(min_ttc, 3)}
-                d = decider.decide(obs, history, ACTIONS)
-                if d.reason == "ok" and d.action in ACTIONS:
-                    control = brake_hard if d.action == "BRAKE_HARD" else ACTION_DECEL[d.action]
+                d = decider.decide(obs, history, avail)
+                ok = d.reason == "ok" and d.action in avail
+                if ok:
                     source, state = getattr(decider, "source", "0g"), "EXECUTING"
                 else:
-                    control, source, state, halt_n = SAFE_HALT_DECEL, "none", "SAFE_HALT", n
-                world.set_lead_decel(control or None)
-                if control and not lead_decelerating:
+                    source, state, halt_n = "none", "SAFE_HALT", n
+                if cut:
+                    ctl = world.command_adversary(d.action if ok else None)
+                    hazard = d.action in cutin.HAZARD if ok else True
+                else:
+                    control = (brake_hard if d.action == "BRAKE_HARD" else ACTION_DECEL[d.action]) if ok \
+                        else SAFE_HALT_DECEL
+                    world.set_lead_decel(control or None)
+                    ctl, hazard = {"control_decel_mps2": control}, bool(control)
+                if hazard and not lead_decelerating:
                     onset_t = last.t_s
-                lead_decelerating = bool(control)
+                lead_decelerating = hazard
                 decels[source] += 1
-                log.append({"cp": k, "sim_time_s": obs["sim_time_s"], "wall_clock_utc": _iso(clock.time()),
-                            "observation": obs, "obs_sha256": hashlib.sha256(canonical(obs).encode()).hexdigest(),
-                            "history": history, "control_decel_mps2": control, "source": source,
-                            **asdict(d)})
+                entry = {"cp": k, "sim_time_s": obs["sim_time_s"], "wall_clock_utc": _iso(clock.time()),
+                         "observation": obs, "obs_sha256": hashlib.sha256(canonical(obs).encode()).hexdigest(),
+                         "history": history, **ctl, "source": source, **asdict(d)}
+                log.append(entry)
+                world.last_decision = entry  # display hook (viewer / ROS bridge); never read back
                 items.append({"cp": k, "your_action": d.action, "gap_m": obs["gap_m"],
                               "ego_speed_mps": obs["ego_speed_mps"], "ego_accel_mps2": obs["ego_accel_mps2"],
-                              "ttc_s": obs["ttc_s"]})
+                              "ttc_s": obs["ttc_s"], **({"lateral_offset_m": obs["lateral_offset_m"]} if cut else {})})
                 k += 1
 
             last = world.tick()
@@ -114,7 +144,7 @@ def run_episode(world, decider, scenario: Scenario, out_dir: Path, clock=time, s
             rows.append(st)
             traj_f.write(canonical(st) + "\n")
 
-            t_now = _ttc(last.gt_gap, last.ego_v - last.lead_v)
+            t_now = last.gt_ttc_s if cut else _ttc(last.gt_gap, last.ego_v - last.lead_v)
             if t_now is not None:
                 min_ttc = t_now if min_ttc is None else min(min_ttc, t_now)
             if onset_t is not None and prev_a is not None and (last.ego_a - prev_a) / dt <= RESPONSE_JERK_MPS3:
@@ -144,12 +174,16 @@ def run_episode(world, decider, scenario: Scenario, out_dir: Path, clock=time, s
                "perception": {"mean_abs_gap_error_m": sum(errs) / len(errs) if errs else None,
                               "max_abs_gap_error_m": max(errs) if errs else None,
                               "scans_without_target": len(rows) - len(ok)}}
+    if cut:
+        metrics["ground_truth"] = ground_truth_metrics(rows, collision)
     (out_dir / "metrics.json").write_text(canonical(metrics) + "\n")
 
     files = {f: _sha(out_dir / f) for f in ("scenario.json", "decisions.jsonl", "trajectory.jsonl", "metrics.json")}
     manifest = {"schema": "faultline.episode/v1",
                 "episode_id": hashlib.sha256(f"{s_hash}:{s.seed}:{started_at}".encode()).hexdigest(),
-                "scenario_hash": s_hash, "prompt_hash": prompt_hash(), "model": getattr(decider, "model", None),
+                "scenario_hash": s_hash, "family": s.family,
+                "prompt_hash": cutin.prompt_hash() if cut else prompt_hash(), "ego": getattr(world, "ego_name", "idm"),
+                "model": getattr(decider, "model", None),
                 "trust_mode": "private", "status": status, "collision": collision,
                 "decisions_total": sum(decels.values()), "decisions_0g": decels["0g"],
                 "decisions_halt": decels["none"], "log_head": log.head, "files": files, "started_at": started_at,

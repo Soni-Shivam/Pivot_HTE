@@ -1,28 +1,38 @@
 {
   "name": "sealedai",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Confidential AI model customization marketplace on 0G",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "tsx --test \"packages/*/test/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json",
+    "web:build": "esbuild apps/web/src/main.ts --bundle --format=esm --platform=browser --target=es2022 --minify --sourcemap --outfile=apps/web/dist/app.js --external:fs --external:path --external:os --external:'node:*' --define:process.env.NODE_ENV='\"production\"' && cp apps/web/index.html apps/web/dist/index.html",
+    "web:serve": "python3 -m http.server 5173 -d apps/web/dist"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "module",
-  "private": "true",
+  "private": true,
   "dependencies": {
-    "@0gfoundation/0g-agenticid-sdk": "^0.4.0",
-    "@0gfoundation/0g-compute-ts-sdk": "^0.9.0",
-    "@0gfoundation/0g-storage-ts-sdk": "^1.2.13",
-    "dotenv": "^18.0.9",
+    "@0gfoundation/0g-storage-ts-sdk": "1.2.13",
+    "@arkiv-network/sdk": "1.0.1",
+    "@noble/ciphers": "2.4.0",
+    "@noble/hashes": "2.4.0",
+    "@phala/dcap-qvl": "0.7.1",
+    "canonicalize": "5.1.0",
+    "dotenv": "18.0.9",
     "eciesjs": "0.5.0",
-    "ethers": "^6.13.1",
-    "viem": "^2.57.16"
+    "ethers": "6.13.1",
+    "viem": "2.57.16"
   },
   "devDependencies": {
-    "@types/node": "^26.6.6",
-    "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
-  }
+    "@types/node": "26.6.6",
+    "esbuild": "0.28.2",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ]
 }

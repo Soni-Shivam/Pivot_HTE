@@ -37,7 +37,7 @@ flowchart LR
     SC -- "listing" --> ARKIV
     BC -- "browse" --> ARKIV
     SC & BC -- "verify evidence, release key (2-of-2)" --> API
-    BC -- "job, fund, relay worker sigs" --> CHAIN
+    BC -- "job, fund, worker gas" --> CHAIN
     SC -- "complete, get paid" --> CHAIN
     ML -- "ciphertext in" --> STORE
     API -- "sealed report out" --> STORE
@@ -82,12 +82,12 @@ flowchart TB
 flowchart LR
     subgraph REUSED["Reused unchanged (pinned)"]
         R1["0G-TAPP / sealed sandbox"]
-        R2["ERC-8183 + WithAuthorization"]
+        R2["ERC-8183 reference (base)"]
         R3["0G Storage SDK, crypto off"]
         R4["0G Router"]
         R5["Arkiv SDK"]
         R6["PyTorch, transformers, peft, safetensors"]
-        R7["dcap-qvl, NVIDIA GPU verifier,<br/>noble, eciesjs / eciespy"]
+        R7["dcap-qvl, NVIDIA GPU verifier,<br/>noble, eciesjs"]
     end
     subgraph OURS["Ours"]
         P["packages/protocol"]
@@ -179,7 +179,8 @@ sequenceDiagram
     B->>E: createJob(provider=W, evaluator=S, expiry, "sealedai:v1:"+manifestHash, hook=0)
     B->>W: POST /v1/manifest (manifest + Offer + sigs)
     W-->>B: signed setBudget(price) + setPayoutReceiver(S)
-    B->>E: relay both, fund(expectedToken, expectedBudget)
+    W->>E: setPayoutReceiver(S) + setBudget(price) from the worker key (buyer sent it gas)
+    B->>E: fund(expectedToken, expectedBudget)
     S->>W: challenge(nonce_s) → fresh evidence
     S->>S: verify independently + manifest vs own Offer + job Funded on chain
     S->>W: KeyRelease(model) ECIES to worker key
@@ -211,7 +212,7 @@ flowchart TB
     TRAIN --> EVAL["Eval on val → aggregates"]
     EVAL --> LOOP
     LOOP -- "finish" --> HO["Holdout eval once (I6)"]
-    HO --> OUT["Sealed report + timeline → 0G Storage<br/>WorkerReceipt + SubmitAuthorization"]
+    HO --> OUT["Sealed report + timeline → 0G Storage<br/>WorkerReceipt + submit tx"]
     OUT --> SERVE["/v1/infer: labels only (I7)<br/>/v1/adapter only if Offer allows (C2)"]
 ```
 
@@ -250,10 +251,10 @@ r=8, lr 5e-5 with balanced class weights.
 ```mermaid
 stateDiagram-v2
     [*] --> Open: buyer createJob(provider=worker, evaluator=seller)
-    Open --> Open: worker-signed setBudget + setPayoutReceiver (buyer relays)
+    Open --> Open: worker setPayoutReceiver + setBudget (its own txs)
     Open --> Funded: buyer fund(expectedToken, expectedBudget)
     Open --> Rejected: buyer reject
-    Funded --> Submitted: worker-signed submit(receipt commitment)
+    Funded --> Submitted: worker submit(receipt commitment)
     Funded --> Rejected: seller reject → refund
     Funded --> Expired: claimRefund after expiredAt
     Submitted --> Completed: seller complete → payout to seller
@@ -281,9 +282,9 @@ sequenceDiagram
     participant E as Escrow
     actor S as Seller client
     W->>ST: sealed report + timeline
-    W-->>B: /v1/result → reportRoot, WorkerReceipt, signed SubmitAuthorization
+    W->>E: submit(receipt commitment)
+    W-->>B: /v1/result → reportRoot, WorkerReceipt, submit tx
     B->>B: decrypt, check receipt vs manifest + timeline head + evidence
-    B->>E: relay submitWithAuthorization
     S->>E: complete → seller paid
     loop license window
         B->>W: /v1/infer {text} (ECIES, signed)

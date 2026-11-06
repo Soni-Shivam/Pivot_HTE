@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SealedAI</title>
+  <style>
+    :root { --bg:#f6f6f3; --card:#fff; --fg:#1c1f1e; --muted:#5d6663; --line:#dcdfdc; --ok:#1f6b3a; --bad:#a0302a; --acc:#0d5f63; color-scheme: light; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#121615; --card:#1a201e; --fg:#e4ebe8; --muted:#9aa7a3; --line:#2c3633; --ok:#7fcf93; --bad:#ee8a83; --acc:#62c3bd; color-scheme: dark; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px 16px 64px; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 920px; margin: 0 auto; }
+    h1 { margin: 0 0 4px; font-size: 26px; } h2 { font-size: 18px; margin: 28px 0 10px; }
+    .sub { color: var(--muted); margin: 0 0 18px; }
+    section, details { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 12px 0; }
+    summary { cursor: pointer; font-weight: 600; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-top: 8px; }
+    input, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; }
+    textarea { min-height: 70px; }
+    button { margin-top: 10px; padding: 8px 14px; border: 0; border-radius: 6px; background: var(--acc); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: progress; }
+    .card { border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin: 10px 0; }
+    .ok { color: var(--ok); } .bad { color: var(--bad); } .muted { color: var(--muted); font-size: 13px; }
+    code { font-size: 12.5px; overflow-wrap: anywhere; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12.5px; background: var(--bg); padding: 10px; border-radius: 6px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; } .row > * { flex: 1 1 220px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>SealedAI <span class="muted">(working name)</span></h1>
+  <p class="sub">Customize a seller's AI model on your private data. Both assets meet only inside a TEE worker that <b>your own browser</b> verifies. No server of ours is involved: this page talks to 0G and Arkiv directly.</p>
+
+  <details id="settings">
+    <summary>Endpoints and keys (stored only in this browser)</summary>
+    <div class="row">
+      <div><label>0G RPC</label><input id="rpcUrl"></div>
+      <div><label>0G Storage indexer</label><input id="indexerUrl"></div>
+    </div>
+    <div class="row">
+      <div><label>Arkiv access key (your own, from hub.arkiv.network)</label><input id="arkivKey" type="password"></div>
+      <div><label>0G Private Computer key (your own, private-tier)</label><input id="routerKey" type="password"></div>
+    </div>
+    <label>0G Router URL</label><input id="routerUrl">
+    <button id="save">Save</button>
+  </details>
+
+  <h2>1 · Models for sale <span class="muted">(read from Arkiv, each one re-verified)</span></h2>
+  <section>
+    <div class="row"><div><label>Category</label><input id="category" value="support-triage"></div></div>
+    <button id="load">Load listings</button>
+    <div id="listings"></div>
+  </section>
+
+  <h2>2 · Plan a customization <span class="muted">(the AI sees numbers only)</span></h2>
+  <section>
+    <p class="muted" id="chosen">Pick a model above first.</p>
+    <label>Your goal</label><textarea id="goal">Route our ISP support tickets. Outages are rare but must not be missed.</textarea>
+    <label>Your dataset (JSONL of {"text","label"}). It never leaves this browser: only counts are sent to the agent.</label>
+    <input id="dataset" type="file" accept=".jsonl,.json,.txt">
+    <button id="plan">Ask the agent for a plan</button>
+    <div id="planOut"></div>
+  </section>
+
+  <h2>3 · Verify a worker before releasing anything</h2>
+  <section>
+    <label>Worker URL</label><input id="workerUrl" value="http://127.0.0.1:8787">
+    <button id="verify">Verify with my own client</button>
+    <div id="verifyOut"></div>
+  </section>
+
+  <p class="muted">Open source, no trackers, no backend. Build it yourself: <code>npm ci &amp;&amp; npm run web:build</code>. What this page depends on and what each party can see is listed in the README (CROPS).</p>
+</main>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

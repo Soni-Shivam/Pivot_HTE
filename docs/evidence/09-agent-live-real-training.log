@@ -1,0 +1,21 @@
+model {
+  architecture: 'DistilBertForSequenceClassification',
+  parameters: 66955779,
+  labels: [ 'billing', 'outage', 'other' ]
+}
+summary (all the agent may see of the data): {"rows":{"train":727,"val":244},"labelHistogram":{"other":408,"billing":448,"outage":115},"tokenLenP50":12,"tokenLenP95":16} holdout=229 rows (locked)
+#0 metrics {"runId":"baseline","metrics":{"valLoss":0.482,"valAccuracy":0.861,"valMacroF1":0.807,"perClass":{"billing":{"f1":0.983,"n":117},"outage":{"f1":0.628,"n":27},"other":{"f1":0.812,"n":100}}}}
+#1 plan [b92475500aefb8c0] {"proposalId":"p1","recipe":{"method":"lora","optim":{"lr":0.0001,"epochs":3,"batch":16,"warmup":0.06},"classWeights":"balanced","maxLen":128,"lora":{"r":16,"alpha":32,"dropout":0.1,"targets":["q_lin","v_lin"]}},"reason":"Baseline outage F1
+#2 train_start [4526618e0ce8addd] {"runId":"run1","proposalId":"p1","recipe":{"method":"lora","optim":{"lr":0.0001,"epochs":3,"batch":16,"warmup":0.06},"classWeights":"balanced","maxLen":128,"lora":{"r":16,"alpha":32,"dropout":0.1,"targets":["q_lin","v_lin"]}}}
+#3 train_end {"runId":"run1","gpuSeconds":1.133,"stoppedByBudget":false,"metrics":{"valLoss":0.122,"valAccuracy":0.988,"valMacroF1":0.982,"trainLoss":0.219,"perClass":{"billing":{"f1":0.987,"n":117},"outage":{"f1":0.963,"n":27},"other":{"f1":0.995,"n":1
+#4 policy_reject [8cca1a9aee0907e2] {"reason":"missing \"rationale\"","reply":"{\"tool\": \"finish\", \"args\": {\"selected\": \"run1\", \"rationate\": \"run1 achieved valMacroF1 of 0.982, significantly improving outage F1 from 0.628 to 0.963 using balanced class weights and 
+#5 finish [df3deb567ccda258] {"selected":"run1","rationale":"run1 achieved valMacroF1 of 0.982, significantly improving outage F1 from 0.628 to 0.963 using balanced class weights and LoRA. No further tuning needed."}
+#6 holdout {"selected":"run1","metrics":{"valLoss":0.141,"valAccuracy":0.983,"valMacroF1":0.987,"perClass":{"billing":{"f1":0.981,"n":106},"outage":{"f1":1,"n":16},"other":{"f1":0.981,"n":107}}}}
+
+stop=1 selected=run1 plannerCalls=5 gpuSeconds=1.1
+baseline val F1=0.807  run1 val F1=0.982  holdout F1=0.987
+infer("no internet in Bandra since last night") -> outage
+infer("my april bill has a fee I did not agree to") -> billing
+infer("how do I port my number") -> other
+timeline head 0xb34a038bd0916e3eadd5d01ed1f5b2318f27ea4302ef614b172c8b07434c3198
+(TEST RUN: synthetic data on a dev GPU, not a TEE)

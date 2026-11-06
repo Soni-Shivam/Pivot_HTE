@@ -88,8 +88,10 @@ For 0G SDK usage, first read the matching official skill in `./.0g-skills/skills
 
 ## ERC-8183 constraints that shaped the design (@142e669)
 - `setBudget`, `setPayoutReceiver`, `submit`: provider only. `evaluator != provider`, `client != provider`.
-  `ERC8183WithAuthorization` has EIP-712 `*WithAuthorization` variants (uint72 nonce + deadline), so a gasless
-  worker signs and anyone relays. `hook=0` is whitelisted at init. AccessControl is NOT enumerable.
+  `ERC8183WithAuthorization` (EIP-712 relayed variants) is 27,574 bytes, OVER the EIP-170 limit that 0G Galileo
+  enforces: deploying it reverts. Use the base `ERC8183` (20,960 bytes). Local forge tests don't enforce size;
+  check `forge build --sizes`. Our deployment: proxy 0x0E28A6Cb4A7B7De38Cc626E8E1E80A95cD0e070a, MockUSDC
+  0xDfe37dF36Eff5Bed6F628ed8430EFaE8c8f7a7d7 (admin renounced). 0G gas estimation: use --gas-estimate-multiplier 150. `hook=0` is whitelisted at init. AccessControl is NOT enumerable.
 
 ## Attestation (older notes)
 - dstack v1: `Attest(report_data <= 64 bytes)` returns TDX quote; `GetKey(domain, algorithm)`; SDK `@phala/dstack-sdk`. Verify with dcap-qvl / dstack-verifier.

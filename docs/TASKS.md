@@ -25,7 +25,7 @@ Evidence: user, 2026-11-06: "Confirm as recommended" (choices A–D per PLAN §2
 ## T01 · Dependencies and hardware answers. Needs: T00. Status: `todo`
 Acceptance:
 - [ ] Exact pins installed; `npm ci` reproducible on a fresh clone; `scripts/setup.sh` restores `.0g-skills@04b5a42`.
-- [ ] Worker image lockfile (Python: torch, transformers, peft, safetensors, eciespy) builds reproducibly; digest recorded.
+- [ ] Worker image lockfile (Python: torch, transformers, peft, safetensors; locked by uv in worker/ml/uv.lock) builds reproducibly; digest recorded.
 - [ ] Hardware: written answers or quota results for H1 (0G), H2 (GCP `a3-highgpu-1g` confidential quota, zone),
       H3 (Phala), and the H4 CPU training-time estimate for distilbert on 5k synthetic rows.
 - [ ] NVIDIA GPU attestation verifier chosen (NRAS or local), with a doc reference.
@@ -57,8 +57,8 @@ Acceptance:
 - [ ] `/v1/infer` (via the ML server) returns only labels from the label set.
 
 ## T03 · Escrow: pinned contracts, deploy + renounce, adversarial tests. Needs: T01. Status: `todo`
-Acceptance (Foundry, local): buyer `setBudget` reverts; worker-signed `setBudgetWithAuthorization` and
-`setPayoutReceiverWithAuthorization` succeed; wrong token or budget at `fund` reverts; payout to the seller with
+Acceptance (Foundry, local): buyer `setBudget` reverts; only the worker can `setBudget` / `setPayoutReceiver` /
+`submit`; payout receiver locked after funding; wrong token or budget at `fund` reverts; payout to the seller with
 exact conservation; Funded→Expired refund after `expiredAt` by an outsider; the Submitted grace boundary (+1 h);
 seller reject → refund; authorization replay and expired deadline revert; atomic proxy init, unpaused, token allowed,
 then both admin roles renounced, after which grant/pause/`emergencyWithdraw`/`upgradeToAndCall` all revert and a
@@ -66,8 +66,9 @@ role-event replay shows zero holders. The testnet deploy is a separate go-ahead.
 
 ## T06 · Envelope, vault, ECIES compatibility. Needs: T00. Status: `todo`
 Acceptance: a real 0G round trip; wrong key, bit flip, header change and truncation each throw; chunked model
-bundles (≥ 3 chunks) round-trip; fresh-device recovery from file + passphrase; no signature-derived keys; eciesjs
-(TS) ↔ eciespy (Python) encrypt/decrypt both ways on fixed vectors.
+bundles (≥ 3 chunks) round-trip; fresh-device recovery from file + passphrase; no signature-derived keys. (ECIES
+compatibility dropped: only TS code does crypto; the Python ML plane receives plaintext inside the enclave via
+tmpfs and a local pipe.)
 
 ## T14 · Evidence verifiers (client) [S→C]. Needs: T01. Status: `todo`
 Acceptance: per runtime (PROTOCOL §9). The TDX quote verified with dcap-qvl against recorded real quotes (from the
@@ -121,6 +122,23 @@ package.json); `/arkiv/*.md`; pre-event history disclosed; ≤ 3-min video; form
 Seller-code executor (choice B2), `causal-lm-sft` task adapter, licensed clones, AgentDNA assets, ERC-8004 feedback,
 self-paying agents, iAI sign-in, direct-to-TeeML-provider agent calls.
 
+## Build status (2026-11-06, branch build/phase1)
+- `done` T03: 24 forge tests; escrow `0x0E28A6Cb4A7B7De38Cc626E8E1E80A95cD0e070a`, admin renounced (docs/evidence/T03-*).
+- `done` T06: envelope/chunks/vault tests; real 3-chunk 0G round trip (07-*).
+- `done` T02A: 23 planner tests; live agent (08-*). `done` T13: 21 pytest (kernel netns skipped: AppArmor).
+- `done` T02B: live agent + real LoRA (09-*). `done` T08: private-only Router (03, router tests).
+- `done` T05: `acceptResult` (receipt signature, manifest/job/evidence binding, report commitment, timeline head,
+  holdout metric, escrow state) exercised in examples/10.
+- `done` T07: Arkiv listings with full re-verification; impostor hidden (11-*).
+- `done` T09 as a TEST RUN: full transaction on testnet with a test-only verifier (10-*). Confidential T09 needs T02.
+  Not yet run: the worker-failure → refund-after-expiry scenario.
+- `done` T10: static web app, tested in headless Chromium (catalog, agent plan, verifier refusal).
+- `done` T11 (docs part): README with CROPS, LICENSE (MIT), `/arkiv/*.md`, `.env.example`. Video and forms remain.
+- `doing` T14: TAPP verifier tested on real Intel TDX quotes; NVIDIA GPU verifier and sealed-sandbox path missing
+  (both reject); TAPP evidence provider in the worker missing.
+- `blocked` T02: needs TEE hardware (0G-hosted or GCP `a3-highgpu-1g`) and a budget decision.
+- `doing` T01: hardware answers from 0G / GCP quota (user).
+
 ## Change log
 - 2026-11-06 rev 1: tracker created.
 - 2026-11-06 rev 2: rebuilt after the PR #1 review; customization agent and two-party worker restored.
@@ -130,6 +148,11 @@ self-paying agents, iAI sign-in, direct-to-TeeML-provider agent calls.
   aggregates only, fixing the rev-2 flaw where classifier calls carried seller templates and buyer text through the
   0G gateway. Added T13 (ML plane) and T14 (evidence verifiers); MOCK removed everywhere. Pending: T00 confirmation
   of choices A–D.
+- 2026-11-06 build: `ERC8183WithAuthorization` is 27,574 bytes, over the EIP-170 limit 0G enforces (deploy reverted
+  twice). We deploy the unchanged base `ERC8183` instead; the worker sends its own provider txs, and the buyer
+  funds its gas. Deployed and verified on Galileo (`docs/evidence/T03-galileo-deploy.log`).
+- 2026-11-06 build: the ML plane does no crypto (the control plane decrypts into enclave tmpfs), so eciespy and the
+  TS↔Python ECIES compatibility test are removed.
 - 2026-11-06 T00 done: the user confirmed rev 3 with the recommended choices: A = ask 0G for a hosted GPU TEE
   (H1) + request GCP `a3-highgpu-1g` confidential quota (H2) in parallel, budget set by the user before any spend,
   H4 for small models if CPU timing allows; B = B1 standard formats only; C = C1 hosted inference (C2 adapter export

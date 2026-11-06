@@ -3,11 +3,20 @@
 Run from the project root (Node 22, `.env` with PRIVATE_KEY, RPC_URL, STORAGE_INDEXER, ZG_API_KEY, ZG_ROUTER_URL).
 
 | # | Command | Shows |
-|---|---------|-------|
-| 01 | `npx tsx examples/01-storage-roundtrip.ts` | Upload in-memory bytes to 0G Storage, download with Merkle proof verification, assert equal. |
-| 02 | `npx tsx examples/02-encrypted-storage.ts` | SDK client-side `aes256` encryption: right key -> plaintext; wrong key -> silently returns ciphertext (check a sha256). |
-| 03 | `npx tsx examples/03-router-private-inference.ts` | 0G Router chat completion with `X-0G-Provider-Trust-Mode: private` (TEE-only providers). |
-| 04 | `npx tsx examples/04-ecies-key-wrap.ts` | Wrap a 32-byte data key to an enclave secp256k1 pubkey with eciesjs; only the matching private key unwraps. No network. |
+|---|---|---|
+| 01 | `npx tsx examples/01-storage-roundtrip.ts` | 0G Storage upload/download with Merkle proof. |
+| 02 | `npx tsx examples/02-encrypted-storage.ts` | Why we don't use the SDK's `aes256` (wrong key returns ciphertext silently). |
+| 03 | `npx tsx examples/03-router-private-inference.ts` | 0G Private Computer, private (TEE-only) tier, no fallback. |
+| 04 | `npx tsx examples/04-ecies-key-wrap.ts` | ECIES key wrap to a worker key. |
+| 05 | `npx tsx examples/05-arkiv-roundtrip.ts` | Arkiv write + creator-filtered query. |
+| 07 | `npx tsx examples/07-envelope-0g-roundtrip.ts` | Our AES-GCM chunked envelope through real 0G Storage; truncation rejected. |
+| 08 | `npx tsx examples/08-agent-live-recorded.ts` | Live agent on 0G Private Computer, recorded metrics. |
+| 09 | `npx tsx examples/09-agent-live-real-training.ts` | Live agent driving real LoRA training (GPU, synthetic data). |
+| 10 | `npx tsx examples/10-e2e-testnet.ts` | Full marketplace transaction on testnet (test-only verifier: no TEE here). |
+| 11 | `npx tsx examples/11-arkiv-catalog.ts` | Arkiv listing + impostor listing hidden by verification. |
+| 12 | `npx tsx examples/12-dev-worker.ts` | Local worker without TEE (every client refuses it). |
+
+Evidence logs are in `docs/evidence/`.
 
 ## Results from a real run (0G Galileo testnet, chain 16602)
 

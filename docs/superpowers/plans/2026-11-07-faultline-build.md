@@ -164,7 +164,7 @@ def test_never_changes_model_or_tier():            # after any failure the serve
 **Interfaces:**
 - Produces: `corridor_gap(points: np.ndarray, front_offset_m: float, half_width_m: float = 1.4, z_min: float = -1.5, z_max: float = 0.8, min_points: int = 3) -> float | None` where `points` is `(N, 4)` float32 `[x, y, z, intensity]` in the sensor frame (x forward, y right, z up; CARLA LiDAR convention), returns bumper-to-bumper gap = `percentile_5(x of corridor points) - front_offset_m`, or `None` if fewer than `min_points` corridor points; `class GapTracker: __init__(self, window: int = 5, dt_s: float = 0.05)`, `update(self, gap: float | None) -> tuple[float | None, float | None]` returning `(gap, closing_speed_mps)` where closing speed is the negative slope of a least-squares line through the last `window` valid gaps (needs ≥ 3 valid samples, else `None`); a `None` gap resets the window.
 
-- [ ] **Step 1:** Write `tests/python/test_perception.py`:
+- [x] **Step 1:** Write `tests/python/test_perception.py`:
 ```python
 def _box(x0, n=200):  # points on the rear face of a car at longitudinal x0, 1.8 m wide, 0.3..1.2 m above ground (sensor at 1.9 m → z in [-1.6, -0.7])
     rng = np.random.default_rng(0); return np.column_stack([np.full(n, x0) + rng.normal(0, 0.02, n), rng.uniform(-0.9, 0.9, n), rng.uniform(-1.6, -0.7, n), np.ones(n)]).astype(np.float32)
@@ -179,10 +179,10 @@ def test_tracker_closing_speed_and_reset():
     assert out[0] == (30.0, None) and out[1][1] is None and abs(out[4][1] - 6.0) < 1e-6
     assert t.update(None) == (None, None) and t.update(28.0)[1] is None
 ```
-- [ ] **Step 2:** Run it. Expected: FAIL.
-- [ ] **Step 3:** Implement with numpy only (`np.percentile`, `np.polyfit(deg=1)`).
-- [ ] **Step 4:** Run it. Expected: PASS.
-- [ ] **Step 5:** Commit: `git commit -m "faultline: LiDAR corridor gap and closing-speed tracker"`.
+- [x] **Step 2:** Run it. Expected: FAIL.
+- [x] **Step 3:** Implement with numpy only (`np.percentile`, `np.polyfit(deg=1)`).
+- [x] **Step 4:** Run it. Expected: PASS.
+- [x] **Step 5:** Commit: `git commit -m "faultline: LiDAR corridor gap and closing-speed tracker"`.
 
 ### Task 5: World interface, kinematic world, IDM follower, lead longitudinal controller
 

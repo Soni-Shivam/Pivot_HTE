@@ -4,7 +4,9 @@ Spec: `docs/PLAN.md` · Security: `docs/SECURITY.md` · Formats: `docs/PROTOCOL.
 IDs T00–T12 follow the PR #1 review; T13–T14 were added in revision 3.
 
 ## Rules for agents (also in CLAUDE.md)
-1. Take the first `todo` whose **Needs** are all `done`; mark it `doing` and add your session name.
+1. Take the first `todo` whose **Needs** are all `done`; mark it `doing` and add your session name. In the
+   three-developer parallel workflow, take the first ready item in your lane in `THREE-DEVELOPER-EXECUTION.md`;
+   Person 2 coordinates status and evidence for cross-cutting items.
 2. `done` requires **Evidence** a stranger can check (a test command plus its passing summary line, tx hash,
    address, 0G root, request ID, entity key, image digest) and every acceptance box ticked, or marked `n/a` with a
    reason the user approved.

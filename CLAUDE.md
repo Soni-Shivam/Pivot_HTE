@@ -5,9 +5,10 @@ Before touching 0G, sandbox/TAPP, ERC-8183, attestation or Arkiv code, read .cla
 
 ## How work is tracked (this project is built by agents)
 Read in order: `docs/PLAN.md` (scope, decisions) → `docs/SECURITY.md` (invariants I1–I12, allowed claims) →
-`docs/PROTOCOL.md` (binding formats) → `docs/ARCHITECTURE.md` → `docs/TASKS.md` (tracker) → the current plan in
-`docs/superpowers/plans/`.
-- Take the first `todo` task in `docs/TASKS.md` whose **Needs** are `done`. It's `done` only when every acceptance
+`docs/PROTOCOL.md` (binding formats) → `docs/ARCHITECTURE.md` → `docs/TASKS.md` (tracker) →
+`docs/THREE-DEVELOPER-EXECUTION.md` (parallel ownership) → the current plan in `docs/superpowers/plans/`.
+- For three-person execution, take the first ready `todo` in your assigned lane in the ownership charter; otherwise
+  take the first `todo` whose **Needs** are `done`. It's `done` only when every acceptance
   test passes and **Evidence** is filled (test summary line, tx hash, address, 0G root, request ID, entity key, digest).
 - Don't contradict PLAN/SECURITY/PROTOCOL silently. If work shows a decision is wrong: stop, add a change-log line in
   TASKS, tell the user. Never mark T00 (scope approval) yourself.

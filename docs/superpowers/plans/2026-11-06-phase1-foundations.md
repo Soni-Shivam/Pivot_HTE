@@ -20,6 +20,9 @@ in (T02B, Phase 2).
 
 **Spec:** `docs/PLAN.md`, `docs/SECURITY.md`, `docs/PROTOCOL.md`
 
+For three-person parallel execution, `docs/THREE-DEVELOPER-EXECUTION.md` assigns file ownership and handoffs;
+the steps and acceptance tests below still apply.
+
 ## Global Constraints
 - Exact dependency pins everywhere; `ethers` exactly `6.13.1`, imported only in `packages/integrations/src/storage.ts`.
 - No network in unit tests; live checks are `examples/` scripts that print evidence IDs.

@@ -1,0 +1,8 @@
+# EpisodeRegistryV2 on 0G Galileo (16602) — 2026-11-06T21:51Z
+forge test: 38 tests passed, 0 failed, 0 skipped (38 total tests)  (registries: EpisodeRegistry 7 + EpisodeRegistryV2 7)
+forge script script/DeployRegistryV2.s.sol --rpc-url $RPC_URL --broadcast --gas-estimate-multiplier 150 --private-key $PRIVATE_KEY
+episodeRegistryV2=0xeE2260cE4835059F0e0f1FB9C9948Ca5a7d4b5A4
+deployTx=0xb7ab683b0c6ee871fa2734a1e530a240bb0b104fa0259f365a0011c6cda65849 block=64236158 status=1
+explorer: https://chainscan-galileo.0g.ai/address/0xeE2260cE4835059F0e0f1FB9C9948Ca5a7d4b5A4
+source verified via forge verify-contract --verifier custom --verifier-url https://chainscan-galileo.0g.ai/open/api --chain 16602
+  (the status poll errors with "guid is required"; getsourcecode returns ContractName EpisodeRegistryV2, v0.8.28, src/EpisodeRegistryV2.sol)

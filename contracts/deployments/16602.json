@@ -3,5 +3,6 @@
   "token": "0xDfe37dF36Eff5Bed6F628ed8430EFaE8c8f7a7d7",
   "setup": "0x04b02d9D9096394e04F5e31951375D721576A9e6",
   "chainId": 16602,
-  "episodeRegistry": "0x23edb2e37F9a2a2b1DAaF0514b58E278f2FFF46A"
+  "episodeRegistry": "0x23edb2e37F9a2a2b1DAaF0514b58E278f2FFF46A",
+  "episodeRegistryV2": "0xeE2260cE4835059F0e0f1FB9C9948Ca5a7d4b5A4"
 }

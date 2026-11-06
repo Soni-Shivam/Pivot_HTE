@@ -1,0 +1,9 @@
+# Reference stack: PDM-Lite planner on our LiDAR tracker, in-process Python adapter.
+name: pdm-lite-lidar
+adapter: python            # python | leaderboard | ros2
+entry: faultline.stack.reference:PdmLiteStack
+latency_budget_s: 0.1      # wall time per step; sync mode waits, but the ROS adapter brakes after this
+files:                     # the stack artifact: digest = sha256 over these (bound into the paid permit)
+  - faultline/ego/pdm_lite.py
+  - faultline/ego/lidar_tracker.py
+  - faultline/stack/reference.py

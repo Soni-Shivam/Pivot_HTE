@@ -1,0 +1,78 @@
+{
+ "map": "Carla/Maps/Town10HD_Opt",
+ "method": "Validated spawn sites on Town10HD_Opt: the start of a junction-free, near-straight stretch where the ego lane has",
+ "sites": [
+  {
+   "id": "r10l-2s64",
+   "road": 10,
+   "lane": -2,
+   "left_lane": -1,
+   "lane_width_m": 3.5,
+   "straight_m": 90.0,
+   "start_xyz": [
+    63.81,
+    -67.923,
+    0.0
+   ],
+   "yaw_deg": 179.977,
+   "obstacles": [],
+   "families": [
+    "cut_in"
+   ]
+  },
+  {
+   "id": "r1l2s42",
+   "road": 1,
+   "lane": 2,
+   "left_lane": 1,
+   "lane_width_m": 3.5,
+   "straight_m": 88.0,
+   "start_xyz": [
+    61.389,
+    130.695,
+    0.0
+   ],
+   "yaw_deg": 180.32,
+   "obstacles": [],
+   "families": [
+    "cut_in"
+   ]
+  },
+  {
+   "id": "r4l2s24",
+   "road": 4,
+   "lane": 2,
+   "left_lane": 1,
+   "lane_width_m": 3.5,
+   "straight_m": 90.0,
+   "start_xyz": [
+    -24.212,
+    140.562,
+    0.0
+   ],
+   "yaw_deg": 0.352,
+   "obstacles": [],
+   "families": [
+    "cut_in"
+   ]
+  },
+  {
+   "id": "r7l-2s3",
+   "road": 7,
+   "lane": -2,
+   "left_lane": -1,
+   "lane_width_m": 3.5,
+   "straight_m": 92.0,
+   "start_xyz": [
+    -23.837,
+    -57.743,
+    0.0
+   ],
+   "yaw_deg": 0.597,
+   "obstacles": [],
+   "families": [
+    "cut_in"
+   ]
+  }
+ ]
+}

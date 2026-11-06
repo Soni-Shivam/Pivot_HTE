@@ -1,0 +1,10 @@
+# Arena stack B: IDM car-following (1.6 s headway) over the same LiDAR tracks; PDM-Lite PID only tracks its speed.
+name: idm-1.6s-lidar
+adapter: python
+entry: faultline.stack.reference:IdmLidarStack
+latency_budget_s: 0.1
+files:
+  - faultline/ego/pdm_lite.py
+  - faultline/ego/lidar_tracker.py
+  - faultline/controller.py
+  - faultline/stack/reference.py

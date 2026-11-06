@@ -1,265 +1,261 @@
-# Project plan (working name: SealedAI — placeholder, not final)
+# Project plan (working name SealedAI; the name is a placeholder)
 
-Status: DRAFT for approval · Written 2026-11-06 · Supersedes https://claude.ai/artifact/AXKEPVFc1eDiFvHo6bUMKZ
+Status: **REVISION 2, awaiting scope approval (T00)** · 2026-11-06
+Revision 1 dropped the customization agent and the two-party key release. The PR #1 review (R01–R16, T00–T12)
+asked for both back. This revision restores them. How each review point is handled: `docs/REVIEW-RESPONSE.md`.
 
-This is the single source of truth for what we build and why. Agents: read this, then `docs/TASKS.md`, then the
-phase plan in `docs/superpowers/plans/`. Every fact below was read from official docs, source code or a live call on
-2026-11-06 (sources at the end). Anything not yet verified is marked **VERIFY** and has a task in `docs/TASKS.md`.
+Read in this order: this file → `docs/SECURITY.md` (threat model, allowed claims) → `docs/PROTOCOL.md` (exact
+schemas) → `docs/ARCHITECTURE.md` (diagrams) → `docs/TASKS.md` (tracker) → the current phase plan in
+`docs/superpowers/plans/`.
 
-The product name is not decided. Code uses one constant `APP_ID = "sealedai"` (schema names, EIP-191 message
-prefixes). Renaming = change that constant and the docs.
-
----
-
-## 1. What we are building
-
-**Long-term:** a marketplace where people license proprietary AI (agents, pipelines, prompts+tools, later models)
-for private evaluation and use, without the platform or the host being able to read anyone's asset.
-
-**First product (hackathon):** *confidential AI test drives.* A seller lists a sealed AI agent. A buyer pays per
-call to run it on their own private benchmark, gets a report where every answer is TEE-signed by that exact agent,
-and can rate it on-chain with proof that the call really happened.
-
-**The one transaction that must work end to end:** seller lists → buyer funds a test-drive job → buyer calls the
-sealed agent N times, paying per call → buyer gets a graded, signed report → buyer leaves proof-backed feedback →
-unused budget is refundable.
-
-**Non-goals for the hackathon:** training/fine-tuning, model-weight assets, outcome-based pricing, our own TEE
-worker, our own token, our own backend server, x402/other payment chains.
-
-**Anti-goals (would be a failure even if it "works"):**
-- Anything labelled "attested"/"confidential" that isn't backed by real attestation.
-- A platform server that can see keys, benchmarks or seller IP.
-- Custom code where a published, maintained component already does the job.
+Every external fact below was read from official docs, pinned source code or a live call on 2026-11-06. Pinned
+revisions are in §9. Anything unconfirmed is marked **VERIFY** and owned by a task.
 
 ---
 
-## 2. Reuse-first: what we take, what we write
+## 1. Product
 
-The rule: if a maintained, documented component exists, we use it unchanged. We only write glue.
+**Long-term:** a general-purpose marketplace where people privately evaluate and adapt proprietary AI (models,
+prompt pipelines, agents) to their own needs. Neither the platform, nor the host, nor the other party can read
+either side's asset.
 
-| Need | Prebuilt component we use (unchanged) | What we write |
+**The promise:** *"Tell us what you need. We test and adapt a seller's proprietary AI against your private data in a
+bounded, verifiable workflow, while each party controls access to its own asset."*
+
+**Three separate roles** (the review's central point):
+
+| Role | What it is | In the MVP |
 |---|---|---|
-| Seller's asset sealed in a TEE, keys never exposed | **0G AgentDNA / Agentic ID** (`@0gfoundation/0g-agentdna` 0.4.0, already installed). Agents run in attested TDX "sealed sandbox" containers; iData is ERC-7857 encrypted data; the KMS→attestor→container chain provisions keys; owner never holds the agent key. Live on Galileo via `https://agentdna-testnet.0g.ai`. | A reference seller agent (persona + one `/api/*` service). |
-| Proof that a specific agent produced a specific answer | AgentDNA **serve-proofs** (`X-Agent-Proof` on `/api/*` responses, signed by the agent's TEE-held key, bound to request/response bytes and the agent's iData version). `fetchWithProof` + `verifyProof`. | Nothing. |
-| Reputation | AgentDNA **VerifiedFeedbackRegistry** + canonical **ERC-8004** Reputation (`ag.reputation.giveFeedback({ agentId, value, serveProof })`). | Nothing. |
-| Escrow + pay-per-call | **ERC-8183 reference implementation** `erc-8183/base-contracts` (MIT, Foundry, `evm_version = "cancun"`, includes `settleClaim` streaming payments, `claimRefund`, hooks, `MockUSDC`). | Deploy script only. |
-| "Buy a private copy" (Phase 5) | AgentDNA **clone** + **CloneGate** + `ICloneAuthorizer` (marketplace fork, issue #133). Attestor re-keys sealed data to the buyer's copy. | One ~40-line `ICloneAuthorizer` that says yes when an ERC-8183 purchase job is Completed. |
-| Encrypted private data (buyer benchmark, reports) | **0G Storage SDK** built-in `aes256` encryption (proven in `examples/02`). | Key derivation from a wallet signature. |
-| AI in the main flow | **0G Private Computer** Router, `X-0G-Provider-Trust-Mode: private`, model `0gm-1.0-35b-a3b` (proven in `examples/03`). | Grader + plain-English summary prompts. |
-| Public, queryable marketplace catalog | **Arkiv** (`@arkiv-network/sdk` 1.0.1, Rabdi testnet, chain 7794095). | Two schemas: listing, score. |
-| Verifiable client (CROPS) | Static Vite app + the official **`0g-agentdna` CLI** as an independent client. | The app. No backend. |
+| Seller's asset | The thing being licensed | An `llm-classifier/v1` configuration: prompt templates, label guidelines, optional seller examples. Pure data, no code. |
+| Customization agent | Plans how to adapt the asset to the buyer's goal | A planner LLM on 0G Private Computer that calls structured tools. Deterministic policy validates every action. |
+| Sealed worker + policy gates | Holds both assets, runs only authorized operations, enforces budgets and output rules, signs receipts | Our reviewed worker image in a sealed TEE container that both parties verify before releasing their keys |
 
-What we are deliberately **not** building any more (vs. the old plan): our own TDX worker, our own ERC-7857 contract,
-our own escrow, ECIES key-release protocol, enclave registration, attestation verification code. AgentDNA already does
-all of it on real TDX hardware, which also removes our biggest blocker (this server has no TDX).
+### The MVP transaction (must work end to end)
+1. **Seller lists** an asset: encrypted bundle on 0G Storage, a signed Offer, and a public listing on Arkiv.
+2. **Buyer states a goal and budget.** The planner proposes a plan from the public asset card, a local summary of
+   the buyer's data and the recipe catalog. The buyer approves it.
+3. **A sealed worker is created.** Buyer and seller each verify its evidence (certified image digest, fresh key,
+   approved manifest), then each releases its own key to it (2-of-2).
+4. **The worker runs the loop:** baseline on validation → planner picks an approved recipe → experiment →
+   validation metrics → planner decides the next step or finishes. Max 2 experiments. The best config is frozen and
+   evaluated **once** on the final holdout.
+5. **The buyer gets an encrypted report** (metrics, every planner decision with its 0G request ID, costs, failures,
+   stop reason). The worker submits a signed receipt to escrow and the seller is paid a fixed fee.
+6. **The buyer uses the result:** the customized classifier is served by the same sealed worker for a license window
+   (N calls / D hours), with requests and responses encrypted end to end.
+
+### Non-goals (hackathon)
+Weight training, multiple asset types, arbitrary or generated code, clone sales, outcome-based pricing, pay-per-call
+streaming payments, self-paying agents, our own backend server, x402 or other chains.
+
+### Anti-goals (a failure even if it "works")
+- Calling anything "attested", "confidential" or "private" without the evidence `docs/SECURITY.md` requires.
+- An LLM that can run shell commands, reach arbitrary hosts, spend money or approve key release.
+- Seller-controlled code or an owner chat channel touching buyer data.
+- A demo fixture that silently redefines the marketplace (the manifest stays general; the fixture is one executor).
 
 ---
 
-## 3. Architecture
+## 2. Scope decision for approval (T00): what we promise
 
+Each guarantee is classified separately, as the review asked. "Confidential mode" exists only when gate **G-RT**
+(a real attested runtime) passes. Until then everything runs in **MOCK mode**, labelled as such everywhere.
+
+| Property | Confidential mode (after G-RT) | MOCK mode (always available) |
+|---|---|---|
+| At rest | AES-256-GCM per object, keys held only by their owner (§3.4) | Same |
+| In transit | App-layer ECIES to the attested worker key, so proxies see ciphertext | Same code, but the worker key isn't attested |
+| Runtime | Sealed TEE worker: certified image, no SSH/exec, fresh per-job key, 2-of-2 release | Local container on a dev machine. **Not confidential. Synthetic data only.** |
+| Third party seeing plaintext | 0G Router gateway (in memory, zero retention per 0G docs) + a TeeML provider see template + buyer text for each inference call. Explicitly trusted and disclosed. | Same |
+| Output integrity | Receipt signed by the attested worker key, bound to the manifest | Signed by the mock key; the verifier labels it MOCK |
+| Answer quality | Objective metrics (accuracy, macro-F1) on a held-out split. The LLM's commentary is advisory only. | Same |
+| Delivery fairness | Fixed fee in ERC-8183 escrow; paid only after the worker submits; refundable on failure or expiry | Same contracts on testnet |
+| Availability | Depends on 0G Chain, Storage, Router, the sandbox provider and Arkiv; static client, no backend of ours | Same |
+
+**Decisions needed from the user (T00):**
+1. Approve this scope: the MVP asset type `llm-classifier/v1`, configuration customization (not weight training),
+   fixed fee, and MOCK mode until G-RT passes.
+2. Runtime route for G-RT, in order of preference (details in §5):
+   **W1** ask 0G to register our worker image as a sealed-sandbox snapshot;
+   **W2** run it under 0G-TAPP on a TDX VM (needs a GCP or Alibaba account and budget);
+   **W4** ship MOCK only and say so.
+
+---
+
+## 3. Components
+
+### 3.1 Reused unchanged
+| Need | Component | Pinned |
+|---|---|---|
+| Sealed TEE worker (W1) | **0G Private Sandbox, sealed mode**: no SSH or toolbox for the container's lifetime; image digest certified; fresh secp256k1 container key; provider-signed v3 certificate `{chain_id, registry_address, app_id, registered_at, seal_id, pubkey, image_hash, ts, signature}`; egress `networkAllowList` (≤ 10 CIDRs) | `0gfoundation/0g-sandbox@ce187a4` |
+| Sealed TEE worker (W2) | **0G-TAPP** ("malicious deployer" model): `GetEvidence --nonce` → `{quote, cc_eventlog, runtime_data}`, `report_data = sha512(runtime_data)`, app signer in evidence, attested TLS | `0gfoundation/0g-tapp@e0fc4c2` |
+| TDX quote verification (W2) | `@phala/dcap-qvl` 0.7.1 | npm |
+| Escrow | **ERC-8183 reference** incl. `ERC8183WithAuthorization` (EIP-712 signed actions with nonce and deadline) | `erc-8183/base-contracts@142e669` |
+| Test token | `MockUSDC` from the same repo | same |
+| Planner + inference | **0G Private Computer Router**, `X-0G-Provider-Trust-Mode: private`, `0gm-1.0-35b-a3b`; the API key itself set to private-only routing (per the 0G privacy doc) | live `/v1/models` |
+| Encrypted blobs | **0G Storage SDK**, upload/download with Merkle proof. We do **not** use its `aes256` mode (AES-CTR, unauthenticated); we upload our own AES-GCM ciphertext. | `@0gfoundation/0g-storage-ts-sdk` 1.2.13 |
+| Crypto primitives | `@noble/ciphers` (AES-GCM), `@noble/hashes` (scrypt, sha256), `eciesjs` 0.5.0 (secp256k1 ECIES) | npm, exact versions |
+| Public catalog | **Arkiv** `@arkiv-network/sdk` 1.0.1 (Rabdi, chain 7794095) | npm |
+
+### 3.2 Ours (proposed boundaries, from the review)
 ```
-            ┌──────────────────────────── user's machine ────────────────────────────┐
- Seller ──▶ │ Static web app / CLI (open source, built from this repo, no backend)   │ ◀── Buyer
-            │  • wallet signs everything   • benchmark encrypted locally             │
-            └───┬───────────────┬────────────────┬────────────────┬──────────────────┘
-                │               │                │                │
-        Arkiv (Rabdi)    0G Chain (Galileo)   0G Storage     0G Private Computer
-        listings,        ERC-8183 escrow,     encrypted      grader + summary
-        public scores    AgentDNA contracts,  benchmark,     (request IDs shown)
-                         ERC-8004 feedback    reports
-                │
-                └──────────▶ AgentDNA sealed agent (TDX container, 0G-hosted)
-                              seller's persona/skills/service code = ERC-7857 iData
-                              /api/* answers carry TEE serve-proofs
+packages/protocol      EIP-712 types, manifest/offer/receipt schemas, canonical encoding, invariants
+packages/planner       customization agent: tool schemas, policy, budget/stop rules, prompt templates
+packages/client        local keys + vault, evidence verification, key release, report decryption
+packages/worker        the sealed worker: HTTP API, policy gates, executor adapters, receipts
+packages/integrations  0G Storage / Chain / Router and Arkiv adapters (ethers 6.13.1 confined to storage)
+apps/cli               reproducible end-to-end transaction (built before the UI)
+apps/web               goal → plan → approve → experiments timeline → report → use
+contracts              Foundry: pinned ERC-8183 + deploy/renounce script + adversarial tests
 ```
 
-### Where each piece of data lives
+### 3.3 Executor `llm-classifier/v1` (the first, and only MVP, executor)
+- **Seller asset bundle** (JSON): `templates[]` (≤ 3 prompt variants with `{guidelines}`, `{examples}`, `{input}`
+  slots), `guidelines` (text), `sellerExamples[]` (optional), `labelSet[]`, `defaultConfig`.
+- **Buyer dataset** (JSONL): `{text, label}` rows; labels ⊆ `labelSet`.
+- **Splits:** a seeded hash split, 60/20/20 train/validation/holdout. The seed is committed in the manifest under a
+  random salt. Holdout rows are loaded only after `finish`.
+- **Recipe catalog v1** (reviewed; params are enumerated, never free-form):
+  `fewshot {k ∈ {0,2,4,8}, selection ∈ {random, stratified}}` (examples drawn from the buyer's **train** split),
+  `template {variant ∈ seller template ids}`, `decode {temperature ∈ {0, 0.3}}`,
+  `labelhints {on, off}` (adds the buyer's public label descriptions).
+- **Metrics:** accuracy and macro-F1, computed deterministically by the worker. Per-class metrics are suppressed
+  below 5 samples. A model output outside `labelSet` counts as wrong and is reported.
+- **Output policy:** inference responses are labels from `labelSet` only. Free text never leaves the worker. That
+  bounds what a hostile input can extract per call to log2(|labelSet|) bits (disclosed).
 
-| Data | Where | Visible to |
-|---|---|---|
-| Seller's agent internals (prompt, skills, service code) | AgentDNA iData: encrypted on 0G Storage, key sealed to the agent's TEE | Only the agent's TEE. Not the platform, not 0G's host, not the buyer. |
-| Listing (title, category, price, agentId) | Arkiv entity owned by the seller's wallet | Public |
-| Test-drive job + payments | ERC-8183 contract on 0G Galileo | Public |
-| Buyer's benchmark cases | 0G Storage, `aes256`, key derived from buyer's wallet signature | Buyer only (plus the agent sees each case it answers, see §5) |
-| Signed answers + report | 0G Storage, encrypted to the buyer | Buyer; buyer may publish a score |
-| Public score (opt-in) | Arkiv entity owned by the buyer + ERC-8004 feedback | Public |
-| Grader prompts | 0G Router private mode | 0G gateway sees plaintext (0G calls it "tier 2.5"); disclosed in UI |
-
----
-
-## 4. Flows
-
-### A. Seller lists an agent
-1. Seller deploys an AgentDNA agent from our template (framework `openclaw`; persona + seller's service). SDK:
-   `AgentDNA.fromAttestor(TESTNET_ATTESTOR, { account })` → `ag.ack()` → `ag.deposit({ amountWei })` →
-   `ag.agent.deploy({...params, sandbox: undefined}, { wait: 'minted' })` → `ag.agent.start(sealId, { apiKey })`
-   (deploying without `sandbox` keeps the model key sealed, per the SDK guide).
-2. The agent registers its `/api/*` service (sealed proxy signs every buffered response).
-3. Seller writes an Arkiv `listing` entity: `agentId`, `category`, `title`, `pricePerCall`, `token`, `escrow`, expiry.
-   Readers only trust a listing whose Arkiv `$creator` equals `ownerOf(agentId)` on 0G Chain.
-
-### B. Buyer test-drives (pay per call)
-1. Buyer browses listings from Arkiv (the user-visible Arkiv read).
-2. Buyer `createJob(provider=seller, evaluator=buyer, expiredAt, description, hook=0, providerAgentId=agentId)`,
-   `setBudget`/`fund` with `N × pricePerCall` of the payment token.
-3. For call k: buyer `settleClaim(jobId, k × price, deliverable=keccak(request), 0x)` then calls the agent's
-   `/api/*` with an EIP-191 signature over `(APP_ID, jobId, k, sha256(body))`.
-4. The seller's service checks on chain: job is Funded, signer = `job.client`, `settledAmount ≥ k × price`. Then it
-   answers. The response carries a serve-proof.
-   Risk is bounded to one call on either side. No evaluator trust is needed.
-5. After expiry, `claimRefund` returns any unsettled budget (anyone can call; not hookable, so nobody can block it).
-
-### C. Buyer gets a report and rates
-1. The client verifies each serve-proof (`verifyProof(proof, { task })` → `ok`).
-2. The grader (0G Private Computer, private mode) scores each answer against the buyer's rubric and writes a
-   plain-English summary. Request IDs are stored per case and shown.
-3. The report (cases hashes, answers, proofs, scores, request IDs) is encrypted and uploaded to 0G Storage.
-4. Optional, buyer's choice: publish a `score` entity on Arkiv and `giveFeedback({ agentId, value, serveProof })`.
-
-### D. Buy (Phase 5, decided by spike result G2)
-- If the clone-extraction probe (T1.5) shows a buyer-owned copy cannot trivially leak seller internals: **buy a
-  private copy** via `CloneGate` + our `PurchaseCloneAuthorizer` (yes iff an ERC-8183 purchase job for that buyer and
-  agent is Completed).
-- Otherwise: **buy hosted access** = flow B with a long-lived job and no expiry pressure. No new contract.
-
-### Why buyers come back tomorrow
-Their encrypted benchmark vault stays. When a new agent is listed in their category (Arkiv query), the app shows
-"N new agents you can test on your benchmark" with one click to start a test drive, and a private leaderboard of every
-agent they've tried.
+### 3.4 Keys and data at rest
+- Each object (asset bundle, dataset, report) gets a fresh random 32-byte key and AES-256-GCM with a 12-byte random
+  nonce. AAD = the canonical object header `{schema, objectType, objectId, version, plaintextSha256}`.
+- **Local keystore:** a random master key encrypts the per-object keys. Recovery = an exported file encrypted under
+  scrypt(passphrase) with AES-GCM. A fresh device recovers from file + passphrase, with nothing from us. No
+  wallet-signature-derived secrets (review R08).
+- Key release = ECIES (`eciesjs`) of the object key to the worker's attested pubkey, carried in a signed
+  `KeyRelease` bound to the manifest hash (§`PROTOCOL.md`).
 
 ---
 
-## 5. Trust model (honest version)
+## 4. Flows (diagrams in ARCHITECTURE.md)
 
-| Protected | Against | By |
-|---|---|---|
-| Seller's agent internals | Platform, 0G host, buyer | AgentDNA TEE + sealed iData. The buyer only gets `/api` outputs. |
-| Buyer's benchmark at rest | Platform, storage nodes | Client-side `aes256`, key from the buyer's wallet. |
-| Which agent produced an answer | Seller lying, platform lying | Serve-proof signed by the agent's TEE-held key, checked against chain state. |
-| Payments | Either party | ERC-8183 escrow; ≤1 call of exposure; refunds can't be blocked. |
-| The app itself | A malicious operator | No backend; open source; runs from the repo with any RPC (CROPS, §6). |
+**A. List.** Seller encrypts the bundle → 0G Storage root → signs `Offer` (asset commitment, executor, recipe catalog
+hash, worker image digest, price, token, license terms, validity) → Arkiv `listing` entity with the offer hash.
 
-**Known limits (we say these out loud in the README and demo):**
-1. **The seller can talk to their own agent.** Each test case the buyer sends is seen by the seller's agent, and the
-   owner has a private chat channel to it (AgentDNA TRUST_MODEL "owner attack surface"). So buyer cases are hidden
-   from the platform and the host, **not from a determined seller.** Advice: use test cases you're OK sharing with the
-   vendor. Roadmap: run test drives on a clone that neither party owns.
-2. **A serve-proof proves who answered, not that the answer is right.** Quality is the grader's and the buyer's
-   judgement.
-3. **The grader's gateway sees plaintext** (0G "tier 2.5"). Buyers can switch to local exact-match grading.
-4. **We trust AgentDNA's attestor, KMS and sandbox provider** (its acknowledged "trust root", `ag.ack()`), Intel TDX,
-   and 0G's TappRegistry.
-5. **VERIFY:** does the agent's public URL terminate TLS inside the TEE, or at 0G's sandbox proxy
-   (`art-testnet.0g.ai`)? Until verified, we don't claim buyer inputs are hidden from 0G infrastructure in transit.
+**B. Plan.** Buyer selects a listing (Arkiv query; owner re-validated on chain). The client computes a **local data
+summary** (row count, label histogram, mean length; no text). The planner (Router, private) gets the summary, public
+asset card and catalog, and returns a plan. The buyer approves it; the plan's hash goes into the manifest.
 
-Words we never use: "trustless", "nobody can learn anything", "attested" for anything that isn't.
+**C. Worker + release.** Buyer creates the sealed worker → gets the certificate/evidence → challenges the worker to
+sign a fresh nonce → builds and signs `JobManifest` → `createJob(provider=worker, evaluator=seller, …)` → relays
+worker-signed `setBudget(offer.price)` and `setPayoutReceiver(seller)` → `fund(expectedToken, expectedBudget)`.
+Seller's client independently verifies evidence + manifest + on-chain job terms, then releases the asset key. Buyer
+releases the dataset key and its Router key. The worker starts only when both releases are valid.
 
----
+**D. Customize.** The worker runs the bounded loop (§3.3, ARCHITECTURE §7). Every planner call goes through the
+policy gate; every decision and request ID is appended to a hash-chained timeline.
 
-## 6. CROPS (Ethereum Foundation track): lead property = Censorship resistance
+**E. Settle.** Worker uploads the encrypted report → signs `WorkerReceipt` and `SubmitAuthorization(deliverable =
+receipt commitment)` → buyer (or anyone) relays `submit` → seller calls `complete` (or relays a signed completion) →
+payout to seller. No submission by expiry → buyer `claimRefund`. Submitted but seller never completes → refund after
+expiry + 1 h grace (the reference contract's rule; disclosed to sellers).
 
-Not a bolt-on: the reuse architecture has **no backend**, so "works when we disappear" comes for free. We make it
-structural and demo it.
-
-- **C:** We control nothing the user depends on at runtime. The app is static files built from this repo; it talks
-  directly to public 0G RPC, the 0G Storage indexer, Arkiv RPC, the 0G Router and the agent's URL, all of which the
-  user can swap in Settings. Demo: build from the repo, run it locally, change RPCs, do a full test drive. A CLI
-  (`npx tsx cli/...`) and the official `0g-agentdna` CLI do the same without the web UI.
-- **O:** MIT. `npm ci && npm run build` from the repo alone. Stretch: publish the `dist/` hash so users can check the
-  hosted copy matches the repo.
-- **P:** What each third party learns (table goes in the README): 0G RPC and Arkiv RPC see the wallet address and
-  reads; the Arkiv RPC key identifies the app (user can bring their own); 0G Router sees grader prompts; the agent
-  (and its owner, see §5) sees test cases; no analytics, no trackers.
-- **S:** Keys stay in the user's wallet. The benchmark key is derived from a wallet signature (deterministic, so it's
-  recoverable with nothing from us). Trust assumptions are in §5.
-
-Requirements to meet: README section titled `CROPS`, demo video ≤ 3 min showing it running without us, no trackers.
-**Admin keys:** the ERC-8183 reference contract has admin roles (pause, `emergencyWithdraw` while paused, UUPS upgrade).
-After setup we renounce them, and a test proves no admin remains (otherwise "S" fails).
+**F. Use.** For the license window, the buyer sends ECIES-encrypted, signed `/infer` requests; the worker answers
+with labels encrypted to the buyer, counting calls in memory. If the worker restarts, its keys are gone and the
+license window ends (MVP limit, disclosed).
 
 ---
 
-## 7. Sponsors (from the ETHGlobal Mumbai prize pages)
+## 5. Runtime routes and gate G-RT
 
-| Track | Fit | Must show |
-|---|---|---|
-| 0G: Build with 0G Private Computer ($5k), primary | Grader + summary in the main buyer flow | Inference in main flow with request IDs; a working app a judge can try; a reason to return tomorrow; "what breaks without 0G" sentence. Bonus: 0G account sign-in with credits going down (stretch, VERIFY). Risk: track asks for a *consumer* app, so we pitch to individuals and small teams choosing an AI agent, not enterprise procurement. |
-| Arkiv: Build on Arkiv from scratch ($4k) | Listings + public scores, browse page reads from Arkiv | Writes to testnet; a user-visible feature reads from Arkiv; README lists writer wallets + one query; `/arkiv/schema.md`, `friction.md`, `reach.md`, `why-arkiv.md`, `how-you-use-arkiv.md`; open-source license; AI-use disclosure. |
-| EF: Best CROPS App ($3.5k) | §6 | README `CROPS` section; ≤3-min video of the lead property; no trackers. |
-| 0G: Agents That Pay for Themselves ($2k), stretch | The sealed agent is the ERC-8183 provider's payout receiver and pays for its own inference | Full loop with tx hashes + request IDs; spend cap; graceful degradation. Blocked on VERIFY: how an agent tops up its own Router credit. |
-
-"What breaks without 0G": without 0G there is no attested place to run the seller's agent, no proof that a given
-answer came from it, no private grader, and no escrow; buyers and sellers would have to trust our server with both
-the agent and the benchmark.
-
-**VERIFY:** ETHGlobal's limit on partner prizes per project, and whether the Arkiv "built from scratch at Mumbai"
-rule is affected by the four pre-event examples in `examples/` (we can move them out of the submission repo).
-
----
-
-## 8. Decisions (each one is final unless a gate result reopens it)
-
-| # | Decision | Why | Rejected |
+| Route | What it needs | Evidence a client checks | Status |
 |---|---|---|---|
-| D1 | The first asset type is a **sealed AI agent** on AgentDNA. | The only live, real-TEE runtime available to us; zero custom TEE code. | Small trained model in our own worker (no TDX here, so it would be mock-only). |
-| D2 | The first transaction is a **pay-per-call test drive** using ERC-8183 `settleClaim`. | Fixed price, ≤1-call risk, no evaluator trust, reference code unchanged. | Metric-uplift pricing (ChatGPT agrees: benchmark integrity is unproven); buyer-as-evaluator lump sum (buyer could refuse to pay after use). |
-| D3 | Use the ERC-8183 reference `erc-8183/base-contracts` **unchanged**, then renounce admin. | Reuse plus CROPS "S". | Writing our own escrow (old plan). |
-| D4 | **No backend.** Static app + CLI. | CROPS lead property; nothing to hack or subpoena. | Next.js API routes, a DB. |
-| D5 | Arkiv holds only **public** data (listings, opt-in scores). | Arkiv is public; private state stays local or encrypted on 0G. | Arkiv as the job database. |
-| D6 | ERC-8004 reputation via AgentDNA's VerifiedFeedbackRegistry. | Already deployed, proof-backed, sybil-resistant by construction. | Our own reputation contract. |
-| D7 | Grading runs on 0G Private Computer with the gateway's plaintext visibility disclosed; exact-match grading is a local option. | Track requirement + honesty. | Claiming "fully private" grading. |
-| D8 | "Buy" product chosen by gate G2 (clone vs hosted access). | Don't build a sale flow that leaks seller IP. | Deciding now. |
-| D9 | No customization or training in the hackathon. | No TEE training path is available to us; 0G fine-tuning is provider-run. Roadmap. | Agent-driven fine-tuning loop (old plan). |
-| D10 | Stacks: `viem` for AgentDNA, Arkiv and contracts; `ethers@6.13.1` only inside the 0G Storage module. | The SDKs require it (0G skills rule). | Mixing them in one module. |
-| D11 | Docs: one plan (this file), one tracker (`docs/TASKS.md`), per-phase step plans. | Agents need one place to look; fewer files to drift. | Nine separate docs. |
+| **W1** 0G sealed sandbox | 0G registers our worker image as a snapshot on a provider that accepts sealed creates (snapshot registration is provider-only per `docs/CLI.md`) | v3 certificate signature recovers to the provider address; that provider is an active registered signer for its `app_id` in TappRegistry (**VERIFY getter**); `image_hash` == offer's `workerImageDigest`; fresh `ts`; worker signs our nonce with `pubkey` | Ask 0G on day 1. The public broker `private-sandbox-testnet.0g.ai` answered 404 on documented paths on 2026-11-06 (**VERIFY**). AgentDNA's provider `art-testnet.0g.ai` is `sealed_only` and dedicated to AgentDNA images. |
+| **W2** 0G-TAPP on a TDX VM | GCP (TDX) or Alibaba ECS confidential VM + 0G-TAPP image; we deploy the worker compose | DCAP quote valid (dcap-qvl), TCB policy, `sha512(runtime_data) == report_data`, our nonce echoed, the event log shows our compose/image, the app signer signs the per-job worker key | Needs a cloud account and money (user decision) |
+| **W4** MOCK | Docker on this server (not installed yet) | A mock certificate signed by a local mock-provider key. The verifier accepts it **only** in `mode=mock` and every surface shows MOCK. | Always |
 
-How ChatGPT's corrections are covered: small purpose-built contracts → D3 (even smaller: reuse); enclave signature ≠
-success → §5 limit 2; key release via a local client → there is no key release to the platform at all (D4);
-usable deliverable → hosted access or a clone (D8), no adapters; fixed fees → D2; gated phases → §9; mock never
-says attested → AgentDNA is real TDX, and the only mock is local dev, labelled.
+**G-RT passes when:** a sealed worker created by the buyer client produces evidence that the *seller's* client
+verifies independently. A wrong image digest, a stale certificate/quote, a substituted key or a replayed release each
+fail closed. No SSH/exec is possible. Host or proxy capture shows ciphertext only.
+
+Rejected for the worker: **AgentDNA agents.** The owner has a private chat channel and frameworks are LLM-driven,
+not a fixed runner (review R01). AgentDNA stays a reference for its key chain and a roadmap option.
 
 ---
 
-## 9. Phases and gates
+## 6. Payment design (ERC-8183 reference, unchanged)
 
-Each phase ends with an explicit exit check. **Cut line: Phases 1–4 = a complete hackathon submission.**
-
-| Phase | Goal | Exit check (evidence goes in `docs/TASKS.md`) |
+| Field | Value | Why |
 |---|---|---|
-| 0 Freeze | This plan approved | User says yes |
-| 1 Prove the reused pieces | Every borrowed component works for us on testnet | Gate **G1**: a non-owner calls a seller-defined `/api/*` service on a sealed agent and `verifyProof` returns `ok: true`. Gate **G2**: clone-extraction result recorded. Plus: Arkiv entity key + query, grader request ID, feedback tx, ERC-8183 tests passing locally. |
-| 2 Contracts on Galileo | ERC-8183 + MockUSDC deployed, admin renounced | Addresses + tx hashes; a scripted create→fund→settleClaim→claimRefund run on testnet; a test shows no admin role holder. |
-| 3 One full transaction (CLI) | Flows A–C end to end | One testnet run with: listing entity key, job id, ≥3 paid calls with proofs, report root, request IDs, feedback tx, refund tx. |
-| 4 Web app + CROPS + Arkiv files | Judge-usable app | Browse (reads Arkiv), test drive, report with request IDs; CROPS README; `/arkiv/*.md`; app run from a fresh clone with swapped RPCs. |
-| 5 Buy | Flow D per G2 | A buyer-owned copy or a long-lived access job works on testnet. |
-| 6 Stretch | Agent pays itself; 0G sign-in; build-hash proof | Each needs its VERIFY item answered first. |
-| 7 Submit | README, video, prize forms | Checklist in `docs/TASKS.md`. |
+| `client` | buyer | pays |
+| `provider` | the worker's address | only the provider can `setBudget` and `submit`, so those become worker-signed and manifest-checked |
+| `evaluator` | seller | `evaluator != provider` is enforced; the seller can only complete (pay themselves) a job the worker submitted, or reject (refund the buyer) |
+| `payoutReceiver` | seller, set by worker signature | money reaches the seller, not the worker key |
+| `budget/token` | `offer.price` / `offer.token`, set by worker signature | the buyer funds with `expectedToken/expectedBudget` (front-running check in the contract) |
+| `description` | `"sealedai:v1:" ‖ manifestHash` | no plaintext; the manifest hash covers salted commitments only (R07) |
+| `hook` | `address(0)` | whitelisted at `initialize` |
+
+The worker has no gas: its actions are EIP-712 authorizations (`setBudgetWithAuthorization`,
+`setPayoutReceiverWithAuthorization`, `submitWithAuthorization`) that the buyer relays. Claims (`submitClaim`,
+`settleClaim`) are **not used**, so `PendingClaimExists` can't block a refund. After deployment we renounce
+`ADMIN_ROLE` and `DEFAULT_ADMIN_ROLE` (upgrade authority) and prove from the `RoleGranted`/`RoleRevoked` event history
+that no holder remains (AccessControl is not enumerable).
 
 ---
 
-## 10. Open questions (ask at the 0G and Arkiv booths)
+## 7. Sponsors
 
-1. AgentDNA: can a seller ship deterministic service code in iData at mint (openclaw `workspace/` role), or must the
-   agent create its service itself? (T1.3 tests this.)
-2. AgentDNA: is TLS to an agent's public URL terminated inside the TEE?
-3. AgentDNA testnet: sandbox costs 0.004 0G/min for 2 CPU/4 GB (live `estimateCosts`), and we hold about 0.5 0G.
-   Can we get more testnet 0G, and can the container spec be smaller?
-4. Which Router network do testnet AgentDNA agents use for `0g-compute` inference, and does our `ZG_API_KEY` work there?
-5. How can an agent wallet top up its own Router credit (Payment Layer function)? Needed for the self-paying track.
-6. Is there an ERC-20 test stablecoin on Galileo we should use instead of deploying `MockUSDC`?
-7. Arkiv: does the "built from scratch" rule allow a repo containing pre-event 0G examples?
+| Track | How we qualify | Must show |
+|---|---|---|
+| **0G: Build with 0G Private Computer** ($5k, primary) | The customization agent and the classifier inference both run on Private Computer inside the main flow | Request IDs per decision and per call in the timeline; a judge-usable app; a return reason (re-run the vault benchmark when new listings appear); "what breaks without 0G" (§8). Risk: the track asks for a *consumer* app, so we pitch to individuals and small teams choosing AI for their own data. |
+| **Arkiv: Build on Arkiv** ($4k) | Listings + buyer-reported scores, read on the browse page | Writes to testnet; a user-visible read; writer wallets + one query in the README; `/arkiv/schema.md`, `friction.md`, `reach.md`, `why-arkiv.md`, `how-you-use-arkiv.md`; OSS license; AI-use disclosure |
+| **EF: Best CROPS App** ($3.5k) | Lead property **C**, scoped honestly: no backend of ours; the client runs from the repo; a dependency/failure matrix lists what still depends on 0G and Arkiv | README `CROPS` section; ≤ 3-min video; no trackers |
+| Stretch only | 0G Agents That Pay for Themselves; iAI sign-in | Not on the critical path |
 
----
+**VERIFY (T11):** the ETHGlobal partner-prize limit per project. Also the Arkiv "built from scratch at Mumbai" rule
+against our pre-event commit history: we disclose the history and ask organizers. Moving files doesn't change
+provenance.
 
-## Sources (read 2026-11-06)
+## 8. "What breaks without 0G"
+Without 0G there is no attested sealed container to hold both parties' assets, no private TEE inference for the
+customization agent and the classifier, no verifiable storage for encrypted assets and reports, and no escrow chain.
+Buyer and seller would have to trust each other, or us, with their data.
 
-- AgentDNA SDK README + GUIDE (`node_modules/@0gfoundation/0g-agentdna/`), live `https://agentdna-testnet.0g.ai/config`,
-  repo `https://github.com/0gfoundation/0g-agentic-id` (`sealed/TRUST_MODEL.md`, `contracts/src/StandardCloneAuthorizer.sol`,
-  `contracts/src/interfaces/ICloneAuthorizer.sol`, `sealed/AGENT_DOCTRINE.md`)
-- ERC-8183 spec `https://eips.ethereum.org/EIPS/eip-8183`; reference `https://github.com/erc-8183/base-contracts`
-- Arkiv docs `https://docs.arkiv.network/llms.txt`; npm `@arkiv-network/sdk` 1.0.1
-- ETHGlobal Mumbai prizes: `/events/mumbai/prizes/0g`, `/prizes/arkiv`; EF CROPS track text as published on the
-  prize page (provided by the team)
-- 0G docs + official skills in `.0g-skills/`; facts in `.claude/skills/sealedai-stack/SKILL.md`; our passing
-  `examples/01-04`
+## 9. Pinned revisions
+| Thing | Pin |
+|---|---|
+| ERC-8183 reference | `erc-8183/base-contracts@142e669c1fd318486a4628395b629f033654dd06` (solc 0.8.28, cancun) |
+| 0G sandbox docs | `0gfoundation/0g-sandbox@ce187a4` |
+| 0G-TAPP | `0gfoundation/0g-tapp@e0fc4c2` |
+| AgentDNA (reference only) | `0gfoundation/0g-agentic-id@e8cd7a4`, SDK 0.4.0 |
+| 0G agent skills | `0gfoundation/0g-agent-skills@04b5a42` (installed by `scripts/setup.sh`) |
+| ethers | exactly 6.13.1 (storage SDK peer) |
+
+## 10. Decisions
+| # | Decision | Status |
+|---|---|---|
+| D1 | MVP asset = `llm-classifier/v1` configuration (data only, no seller code) | **Proposed (T00)** |
+| D2 | Customization = enumerated recipe search with ≤ 2 experiments, by a planner LLM behind a deterministic policy gate | **Proposed (T00)**, restores the original D9 intent |
+| D3 | Worker = our reviewed image in a sealed TEE (W1, else W2), MOCK until G-RT | **Proposed (T00)** |
+| D4 | Escrow = ERC-8183 reference unchanged; worker = provider, seller = evaluator; fixed fee; admin renounced | Proposed |
+| D5 | No backend of ours; static client + CLI | Kept from rev 1 |
+| D6 | Arkiv holds public data only; scores are labelled "buyer-reported" | Revised (R12) |
+| D7 | Our own AES-GCM envelope over 0G Storage; random keys + passphrase recovery file | Revised (R08) |
+| D8 | Clone sales, AgentDNA assets, ERC-8004 feedback: deferred, not on the critical path | Revised (R10, R11) |
+| D9 | ~~No customization~~ **Reopened and reversed**: the customization agent is required | Revised |
+| D10 | viem everywhere except the 0G Storage adapter (ethers 6.13.1) | Kept |
+| D11 | Docs: PLAN, SECURITY, PROTOCOL, ARCHITECTURE, TASKS, per-phase plans | Revised |
+
+## 11. Open questions (owner task in brackets)
+1. 0G: will you register our worker image as a sealed-sandbox snapshot on a testnet provider, and which provider? [T01]
+2. 0G: the TappRegistry getter that proves a sandbox provider address is an active attested signer for its app_id. [T01]
+3. 0G: does the sealed-sandbox certificate or provider record attest the egress policy, or only the image? [T01]
+4. 0G: is a hosted TAPP node available to hackathon teams? [T01]
+5. 0G: the current public broker URL (documented paths returned 404). [T01]
+6. 0G: Router CIDRs or a stable egress target for the worker's 10-CIDR allowlist. [T01]
+7. Arkiv/ETHGlobal: pre-event history and the "from scratch" rule; partner-prize limit. [T11]
+
+## Sources
+0G sandbox `README.md`, `docs/API_REFERENCE.md`, `docs/CLI.md`, `docs/APP_IDENTITY.md`,
+`docs/sandbox-egress-isolation.md`; 0G-TAPP `README.md`; 0G Router privacy doc
+(`docs.0g.ai/.../router/privacy`, updated 2026-09-05); ERC-8183 spec and `contracts/ERC8183.sol`,
+`ERC8183WithAuthorization.sol` at the pin; storage SDK `lib.esm/common/encryption.js`; AgentDNA
+`sealed/TRUST_MODEL.md`; Arkiv `docs.arkiv.network/llms.txt`; ETHGlobal Mumbai prize pages; PR #1 review.

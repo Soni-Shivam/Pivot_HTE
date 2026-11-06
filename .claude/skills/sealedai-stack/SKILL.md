@@ -16,7 +16,9 @@ For 0G SDK usage, first read the matching official skill in `./.0g-skills/skills
 - Package `@0gfoundation/0g-storage-ts-sdk` (NOT `@0glabs/...`). Needs `ethers@6.13.1` exactly. Do not bump ethers.
 - Testnet indexer `https://indexer-storage-testnet-turbo.0g.ai`. Explorer `https://storagescan-galileo.0g.ai`.
 - Built-in client-side encryption: upload `{ encryption: { type: 'aes256', key } }` or `{ type: 'ecies', recipientPubKey }`; download `indexer.downloadToBlob(root, { proof: true, decryption: { symmetricKey } | { privateKey } })`.
-- TRAP: a wrong key does NOT throw; it returns ciphertext. Always check a sha256 of the plaintext against the expected hash.
+- TRAP: a wrong key does NOT throw; it returns ciphertext. The `aes256` mode is AES-256-CTR with NO authentication
+  (`lib.esm/common/encryption.js`), so tampering is undetectable. Project rule: never use SDK encryption; upload our
+  AES-GCM envelope (docs/PROTOCOL.md §3).
 - `indexer.download()` (to file) does not decrypt and does not work in browsers.
 
 ## 0G Private Computer (Router)
@@ -38,10 +40,11 @@ For 0G SDK usage, first read the matching official skill in `./.0g-skills/skills
 ## Agent identity and standards
 - ERC-8004 (Draft) on Galileo: Identity `0x8004A818BFB912233c491871b3d84c89A494BD9e`, Reputation `0x8004B663056A597Dffe9eCcC1965A193B7388713`. NO Validation Registry deployed on 0G.
   - `register(agentURI)`, `giveFeedback(agentId, int128 value, uint8 valueDecimals, tag1, tag2, endpoint, feedbackURI, feedbackHash)` (owner cannot rate own agent), `getSummary(agentId, clientAddresses[], tag1, tag2)` (clientAddresses must be non-empty).
-- ERC-7857 (Final): no 0G reference deployment on Galileo; ZKP verifier is a TODO in the repo. Implement only the subset needed (mint, `intelligentDataOf`, `authorizeUsage`).
+- ERC-7857 (Final): 0G's AgenticID contract on Galileo implements it for AgentDNA agents (see below). The older
+  `0g-agent-nft` repo is not deployed. Not used by this project's MVP (PLAN D8).
 - ERC-8183 (Draft) escrow shape: Open -> Funded -> Submitted -> Completed/Rejected/Expired; refunds via `claimRefund` after `expiredAt` (no `expire()`).
 
-## 0G AgentDNA / Agentic ID (verified 2026-11-06; this is our TEE layer, see docs/PLAN.md)
+## 0G AgentDNA / Agentic ID (verified 2026-11-06; NOT our worker: owner chat channel, see PLAN §5. Reference only)
 - Package `@0gfoundation/0g-agentdna` 0.4.0 (installed via the `0g-agenticid-sdk` shim). viem-based. CLI `0g-agentdna`.
 - Testnet attestor `https://agentdna-testnet.0g.ai`; `AgentDNA.fromAttestor(url, { account })` fills every address
   from `GET /config`. Live config 2026-11-06: AgenticID `0x34493302287308f565cf3409daadedf4c8895648`,
@@ -66,7 +69,29 @@ For 0G SDK usage, first read the matching official skill in `./.0g-skills/skills
   `settleClaim(jobId, cumulativeAmount, deliverable, optParams)` (client, while Funded); `claimRefund` after expiry
   (not hookable).
 
-## Attestation (sealed worker; superseded by AgentDNA for the hackathon)
+## 0G Private Sandbox, sealed mode (our worker route W1; `0gfoundation/0g-sandbox@ce187a4`)
+- `POST /api/sandbox {snapshot, sealed:true, publicPorts:[8080,...], networkAllowList (<=10 CIDRs)}`. Sealed: SSH and
+  toolbox blocked for life (403); the image digest is resolved and certified; a fresh secp256k1 container key is
+  injected as `SANDBOX_SEAL_KEY`, plus `SANDBOX_SEAL_ATTESTATION` = v3 cert `{version, chain_id, registry_address,
+  app_id, registered_at, seal_id, pubkey, image_hash, ts, signature}` (EIP-712 by the provider key). Caller env is
+  restricted to a fixed key list.
+- Snapshots (images) are registered by the PROVIDER only (`cmd/provider snapshot`), so our image needs 0G's help.
+- The hosted broker `https://private-sandbox-testnet.0g.ai` returned 404 on documented paths on 2026-11-06.
+  AgentDNA's provider `https://art-testnet.0g.ai/api/info` is live and `sealed_only: true`.
+- The sandbox provider generates the container key (it's in the TCB for that hop).
+
+## 0G-TAPP (worker route W2; `0gfoundation/0g-tapp@e0fc4c2`)
+- Runs Docker Compose apps in TDX on Alibaba ECS or GCP TDX VMs. "Malicious deployer" model. `GetEvidence --nonce`
+  returns `{quote, cc_eventlog, runtime_data}` with `report_data = sha512(runtime_data)`; runtime_data has
+  `app_id, identities, key_commitments, nonce, signer, tls_public_key`. Hash the bytes as transmitted.
+- Quote verification in JS: `@phala/dcap-qvl` 0.7.1.
+
+## ERC-8183 constraints that shaped the design (@142e669)
+- `setBudget`, `setPayoutReceiver`, `submit`: provider only. `evaluator != provider`, `client != provider`.
+  `ERC8183WithAuthorization` has EIP-712 `*WithAuthorization` variants (uint72 nonce + deadline), so a gasless
+  worker signs and anyone relays. `hook=0` is whitelisted at init. AccessControl is NOT enumerable.
+
+## Attestation (older notes)
 - dstack v1: `Attest(report_data <= 64 bytes)` returns TDX quote; `GetKey(domain, algorithm)`; SDK `@phala/dstack-sdk`. Verify with dcap-qvl / dstack-verifier.
 - 0G-TAPP: `GetEvidence --nonce` returns `{quote, cc_eventlog, runtime_data}`, `report_data = sha512(runtime_data)`. GPU evidence signature is not checked by the repo yet.
 - The dev server `sedrica-w` has NO TDX. Anything run there is unattested dev mode and must be labelled so.

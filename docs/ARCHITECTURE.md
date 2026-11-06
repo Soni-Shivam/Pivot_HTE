@@ -1,13 +1,10 @@
-# Architecture (working name SealedAI, placeholder)
+# Architecture (revision 2)
 
-Diagrams for `docs/PLAN.md`. Each section has one diagram and a few words on why it's built that way. Facts come
-from the sources listed in PLAN.md; anything not yet confirmed on testnet is marked **VERIFY** and tracked in
-`docs/TASKS.md`.
+Diagrams for `docs/PLAN.md`. Exact formats are in `docs/PROTOCOL.md`; security rules in `docs/SECURITY.md`
+(invariants I1–I12 are referenced below). Each section has one diagram and a few words on why.
 
-Legend used throughout:
-- **Ours**: code we write (kept as small as possible).
-- **Reused**: published, maintained components used unchanged.
-- **External**: networks and services we call but don't run.
+Legend: **ours** = code we write · **reused** = published component used unchanged · **external** = a network or
+service we call.
 
 ---
 
@@ -15,403 +12,447 @@ Legend used throughout:
 
 ```mermaid
 flowchart LR
-    subgraph USER["User's device (ours, open source, no backend)"]
-        APP["Static web app<br/>Vite + viem"]
-        CLI["CLI<br/>same core package"]
-        CORE["packages/core<br/>escrow · vault · grader · proofs · arkiv"]
-        WALLET["User wallet<br/>signs everything"]
-        APP --> CORE
-        CLI --> CORE
-        CORE --> WALLET
+    subgraph DEV["User devices (ours, open source, no backend)"]
+        SC["Seller client<br/>web or CLI"]
+        BC["Buyer client<br/>web or CLI"]
     end
 
-    subgraph ARKIV["Arkiv Rabdi testnet (external)"]
-        LIST[("listing entities")]
-        SCORE[("score entities")]
+    subgraph TEE["Sealed TEE worker (our reviewed image; W1 sandbox or W2 TAPP)"]
+        API["Worker API<br/>ECIES in and out"]
+        GATE["Policy gate<br/>budgets, enums, output rules"]
+        PLAN["Customization agent<br/>planner loop"]
+        EXEC["Executor<br/>llm-classifier/v1"]
+        API --> GATE
+        GATE <--> PLAN
+        GATE --> EXEC
     end
 
     subgraph ZG["0G (external)"]
-        direction TB
-        subgraph CHAIN["0G Chain Galileo 16602"]
-            ESC["ERC-8183 escrow<br/>reused, admin renounced"]
-            AID["AgenticID ERC-7857 + ERC-8004<br/>reused, deployed by 0G"]
-            VFR["VerifiedFeedbackRegistry<br/>reused, deployed by 0G"]
-        end
-        STORE[("0G Storage<br/>encrypted blobs")]
-        ROUTER["0G Private Computer Router<br/>private trust mode"]
-        subgraph TEE["AgentDNA sealed sandbox, Intel TDX (reused)"]
-            AGENT["Seller's sealed agent<br/>/api/* with serve-proofs"]
-        end
+        CHAIN["0G Chain<br/>ERC-8183 escrow (reused)"]
+        STORE[("0G Storage<br/>GCM ciphertext")]
+        ROUTER["0G Private Computer Router<br/>private TeeML only"]
+        REG["TappRegistry<br/>provider identities"]
     end
 
-    CORE -- "browse, publish" --> ARKIV
-    CORE -- "jobs, payments, refunds" --> ESC
-    CORE -- "deploy, clone, feedback" --> AID
-    CORE -- "feedback with proof" --> VFR
-    CORE -- "encrypted benchmark, report" --> STORE
-    CORE -- "grade, summarise" --> ROUTER
-    CORE -- "paid calls" --> AGENT
-    AGENT -- "reads job state" --> ESC
-    AGENT -- "iData ciphertext" --> STORE
-    AGENT -- "identity, iData version" --> AID
+    ARKIV[("Arkiv<br/>listings, buyer-reported scores")]
+
+    SC -- "encrypted bundle" --> STORE
+    SC -- "listing" --> ARKIV
+    BC -- "browse" --> ARKIV
+    SC & BC -- "verify evidence" --> REG
+    SC & BC -- "key release, 2-of-2" --> API
+    BC -- "job, fund, relay worker signatures" --> CHAIN
+    SC -- "complete, get paid" --> CHAIN
+    EXEC -- "classify" --> ROUTER
+    PLAN -- "decide (aggregates only)" --> ROUTER
+    EXEC -- "read ciphertext" --> STORE
+    API -- "encrypted report" --> STORE
+    API -- "reads job state" --> CHAIN
 ```
 
-**Why this shape:** every box outside "User's device" already exists and is run by someone else. Our code is a
-client plus one small seller service. There's no server of ours in the picture: nothing to breach, nothing that sees
-keys, and nothing whose shutdown stops the app (the CROPS lead property). The sealed agent is the only place both
-parties' data meet, and it runs on AgentDNA's real TDX hardware rather than a worker we'd have to build and could
-only mock here.
+**Why:** the three roles the review separated are three different boxes. The seller's asset is data in Storage. The
+customization agent plans. The worker and its policy gate are the only place both assets are ever in plaintext, and
+they run inside a TEE that each party verifies itself. We run no server: clients talk to 0G and Arkiv directly.
 
 ---
 
-## 2. Who builds what
+## 2. Roles and authority
 
 ```mermaid
 flowchart TB
-    subgraph REUSED["Reused unchanged"]
-        R1["AgentDNA SDK + sealed runtime<br/>@0gfoundation/0g-agentdna 0.4.0"]
-        R2["ERC-8183 reference contracts<br/>erc-8183/base-contracts, MIT"]
-        R3["0G Storage SDK, aes256 mode"]
-        R4["0G Router, OpenAI-compatible"]
-        R5["Arkiv SDK 1.0.1"]
-        R6["MockUSDC test token<br/>from the ERC-8183 repo"]
+    subgraph PROPOSE["Can only propose"]
+        LLM["Planner LLM<br/>(0G Router, private)"]
     end
-    subgraph OURS["Ours"]
-        O1["packages/core<br/>thin wrappers + rules"]
-        O2["Seller service template<br/>payment check + answer"]
-        O3["Static web app + CLI"]
-        O4["Deploy script<br/>deploy, allow token, renounce admin"]
-        O5["PurchaseCloneAuthorizer<br/>about 40 lines, Phase 5, only if G2 holds"]
+    subgraph DECIDE["Decides, deterministic code"]
+        G["Policy gate<br/>catalog enums, 2 experiments max,<br/>call/time budgets, holdout lock"]
     end
-    O1 --> R1 & R3 & R4 & R5
-    O2 --> R1
-    O4 --> R2 & R6
-    O5 --> R1 & R2
-    O3 --> O1
+    subgraph CONSENT["Consent, human wallets"]
+        S["Seller: offer + key release"]
+        B["Buyer: plan approval + manifest + key release + funding"]
+    end
+    LLM -- "tool call JSON" --> G
+    G -- "accepted or rejected, logged" --> LLM
+    S --> G
+    B --> G
+    G -. "never" .-> NO["shell · network · files · signing · spending · key release"]
 ```
 
-**Why:** the brief is to reuse first. The custom code is glue and policy. Anything security-critical (TEE key
-handling, attestation, escrow accounting, proof signing) stays in components that are already deployed, tested and
-reviewed by their maintainers.
+**Why:** an LLM must not hold authority (I5). It picks among enumerated options, and code enforces every limit.
+Consent comes only from the two parties' wallets, so neither the LLM nor we can start a job or release a key.
 
 ---
 
-## 3. Seller's agent on AgentDNA
+## 3. Who builds what
 
 ```mermaid
 flowchart LR
-    S["Seller wallet"] -- "1 ack trust root<br/>2 deposit sandbox balance" --> SB["Sandbox billing contracts"]
-    S -- "3 deploy, no sandbox<br/>signed iData: framework + persona" --> ATT["AgentDNA attestor<br/>agentdna-testnet.0g.ai"]
-    ATT -- "encrypt iData" --> ST[("0G Storage")]
-    ATT -- "mint ERC-7857 token" --> AID["AgenticID"]
-    S -- "4 start, model key sealed<br/>to the agent key" --> ATT
-    ATT -- "provision container" --> C
-    subgraph C["Sealed container, Intel TDX"]
-        SEALED["sealed runtime<br/>holds agent_seal_priv in memory only"]
-        FW["openclaw framework<br/>persona, skills"]
-        SVC["seller /api/answer service<br/>loopback, registered with sealed"]
-        SEALED --> FW
-        FW --> SVC
+    subgraph REUSED["Reused unchanged (pinned)"]
+        R1["0G sealed sandbox / 0G-TAPP"]
+        R2["ERC-8183 + WithAuthorization<br/>@142e669"]
+        R3["0G Storage SDK (no SDK crypto)"]
+        R4["0G Router"]
+        R5["Arkiv SDK 1.0.1"]
+        R6["noble ciphers/hashes, eciesjs,<br/>dcap-qvl"]
     end
-    SVC -. "inference" .-> R["0G Router"]
+    subgraph OURS["Ours"]
+        P["packages/protocol"]
+        PL["packages/planner"]
+        CL["packages/client"]
+        W["packages/worker + image"]
+        I["packages/integrations"]
+        A["apps/cli, apps/web"]
+        C["contracts: deploy + renounce + tests"]
+    end
+    P --> PL & CL & W
+    W --> PL & I
+    CL --> I
+    A --> CL
+    I --> R3 & R4 & R5
+    CL --> R6
+    W --> R6
+    C --> R2
+    W -. "runs on" .-> R1
 ```
 
-**Why:** the seller's IP (persona, skills, service code) becomes ERC-7857 iData: encrypted on 0G Storage, with the
-key sealed so only the agent's TEE can open it. Deploying *without* a sandbox and then calling `start` keeps the
-model API key out of the wallet prompt (SDK guide). We pick `openclaw` because it's the default framework with
-documented service registration.
-
-**VERIFY (gate G1):** that a seller can ship deterministic service code, either by asking the agent to create it
-(the documented "expose a service" path) or by seeding it through the `workspace/` iData role.
+**Why:** security-critical primitives (TEE isolation, attestation, escrow accounting, ciphers) are reused. What we
+write is protocol glue, the policy gate and the executor, which is exactly the product-specific part nobody else has
+built.
 
 ---
 
-## 4. Key trust chain inside AgentDNA (reused; what we rely on)
+## 4. Seller lists an asset
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant KMS as AgentDNA KMS (TEE app)
-    participant ATT as Attestor (TEE app)
-    participant SP as Sandbox provider
-    participant C as Sealed container (TDX)
-    participant REG as TappRegistry (0G Chain)
-    REG-->>ATT: registered app identities
-    SP->>C: inject container key, issue signed certificate
-    C->>ATT: provision request with certificate
-    ATT->>ATT: check certificate is signed by a trusted provider
-    KMS->>ATT: derive per-agent agent_seal_priv
-    ATT->>C: ECIES(agent_seal_priv, container pubkey)
-    C->>C: decrypt into memory, zero the env copy
-    Note over C: owner, host and attestor never see agent_seal_priv after this
+    actor S as Seller client
+    participant ST as 0G Storage
+    participant AK as Arkiv
+    S->>S: bundle JSON → schema check → fresh key K_a → AES-GCM envelope
+    S->>ST: upload ciphertext (no SDK crypto)
+    ST-->>S: assetRoot
+    S->>S: sign Offer {assetCommitment, assetRoot, executor, recipeCatalogHash, workerImageDigest, price, license, validUntil}
+    S->>ST: upload signed Offer JSON
+    ST-->>S: offerRoot
+    S->>AK: create listing/v1 {offerHash, offerRoot, price, category, ...} expires at validUntil
+    S->>S: keep K_a in local keystore (recovery file)
 ```
 
-**Why it matters to us:** this chain is our "only approved code gets the keys" guarantee. We don't reimplement it.
-We state its assumptions instead: the attestor, KMS and sandbox provider are the acknowledged trust root (`ag.ack()`),
-plus Intel TDX and the TappRegistry. Source: `sealed/TRUST_MODEL.md` in `0gfoundation/0g-agentic-id`.
+**Why:** the seller pins *which worker image* may ever see the asset (`workerImageDigest`), so a later image change
+needs a new offer. The asset is encrypted with an authenticated envelope because the SDK's built-in mode is AES-CTR
+without authentication (I10).
 
 ---
 
-## 5. Pay-per-call test drive
+## 5. Buyer states a goal; the agent proposes a plan
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor B as Buyer client
-    participant E as ERC-8183 escrow
-    participant A as Seller agent /api/answer (TEE)
-    B->>E: createJob(provider=seller, evaluator=buyer, expiredAt, desc, hook=0, agentId)
-    B->>E: setBudget(N x price), approve token, fund
-    loop for each test case k = 1..N
-        B->>E: settleClaim(jobId, k x price, keccak(request), 0x)
-        E-->>A: seller paid for call k
-        B->>A: POST case k + EIP-191 sig over (APP_ID, jobId, k, sha256(body))
-        A->>E: getJob(jobId)
-        A->>A: check Funded, signer == client, settledAmount >= k x price
-        A-->>B: answer + X-Agent-Proof
-    end
-    Note over B,E: after expiredAt, anyone calls claimRefund and the unsettled budget returns to the buyer
+    participant AK as Arkiv
+    participant R as 0G Router (private)
+    B->>AK: query listings by category
+    B->>B: verify Offer signature, creator == seller, validUntil
+    B->>B: local data summary: rows, label histogram, mean length (no text)
+    B->>R: planner prompt: goal + public asset card + summary + catalog
+    R-->>B: proposed plan JSON + X-Request-ID
+    B->>B: policy check of the plan (enums, ≤2 experiments, budgets)
+    B->>B: buyer approves → planHash, goalCommitment (salted)
 ```
 
-**Why:** paying *before* each call caps both sides' risk at one call. No evaluator has to be trusted, and the buyer
-can't use the service and then refuse to pay. `settleClaim` and `claimRefund` are already in the reference contract,
-and `claimRefund` can't be blocked by hooks. Fixed per-call prices follow the review advice: no outcome-based
-pricing until benchmark integrity is proven.
+**Why:** the buyer sees and approves the plan before anything is unlocked. Only a numeric summary leaves the buyer's
+device, and only to 0G's private tier. The approved plan is a starting point; the agent can adapt it inside the
+worker, but only within the same policy.
 
 ---
 
-## 6. Escrow state machine (reference ERC-8183, unchanged)
+## 6. Worker creation and two-party key release
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor B as Buyer client
+    actor S as Seller client
+    participant P as Sandbox provider (TEE app)
+    participant W as Sealed worker
+    participant E as ERC-8183 escrow
+    B->>P: create sealed sandbox (snapshot = worker image, networkAllowList)
+    P->>W: inject container key + v3 certificate (seal_id, pubkey, image_hash)
+    B->>W: GET /v1/identity, POST /v1/challenge(nonce)
+    B->>B: verify certificate, provider in TappRegistry, image == offer, signed nonce
+    B->>E: createJob(provider=W, evaluator=S, expiredAt, "sealedai:v1:"+manifestHash, hook=0)
+    B->>W: POST /v1/manifest (manifest + offer + signatures)
+    W-->>B: signed setBudget(price) + setPayoutReceiver(S)
+    B->>E: relay both, then fund(expectedToken, expectedBudget)
+    S->>W: GET identity + challenge (own nonce)
+    S->>S: verify evidence, manifest vs own offer, job on chain Funded with exact terms
+    S->>W: KeyRelease(asset) ECIES to worker key
+    B->>W: KeyRelease(dataset) + Router key, ECIES to worker key
+    W->>W: start only if both releases are valid for this manifestHash
+```
+
+**Why:** each party trusts only what its own client checked (I2), and the worker needs both keys (I1). The worker is
+the escrow *provider*, so price and payout come from worker-signed authorizations that the worker issues only if the
+seller's signed offer matches. No platform signer is involved, and the seller need not be online to quote. They must
+be online to release their key, which is the consent step anyway. For MOCK mode, step 2 is a mock certificate and
+every later artifact says MOCK (I12).
+
+---
+
+## 7. Inside the worker
+
+```mermaid
+flowchart TB
+    IN["HTTP 8080<br/>ECIES envelope, ts + nonce replay check"] --> AUTH{"signer is manifest<br/>buyer or seller?"}
+    AUTH -- "no" --> DROP["reject"]
+    AUTH -- "yes" --> KS["Key slots<br/>seller · buyer · router key"]
+    KS --> LOAD["Download + GCM verify<br/>asset, dataset (I10)"]
+    LOAD --> SPLIT["Seeded split<br/>train 60 · val 20 · holdout 20 (locked)"]
+    SPLIT --> LOOP["Customization loop (§8)"]
+    LOOP --> GATE{"Policy gate"}
+    GATE -- "valid" --> EXE["Executor: render template,<br/>call Router, parse label"]
+    GATE -- "invalid" --> EV["timeline: policy_reject"]
+    EXE --> MET["Deterministic metrics"]
+    MET --> LOOP
+    LOOP -- "finish" --> HO["Holdout eval once (I6)"]
+    HO --> OUT["Encrypted report + timeline → 0G Storage<br/>WorkerReceipt + SubmitAuthorization"]
+    OUT --> SERVE["/v1/infer for license window<br/>labels only (I7)"]
+```
+
+**Why:** one narrow pipe in and out. Inputs are authenticated and encrypted. Keys live only in memory, and a restart
+loses them, which ends the job (fail closed). Outputs are fixed shapes: an encrypted report, a signed receipt, and
+labels from the label set.
+
+---
+
+## 8. The customization loop
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Open: createJob
-    Open --> Funded: setBudget + fund
-    Open --> Rejected: client reject
-    Funded --> Funded: settleClaim (pay per call)
-    Funded --> Submitted: provider submit
-    Funded --> Rejected: evaluator reject
-    Funded --> Expired: claimRefund after expiry
-    Submitted --> Completed: evaluator complete
-    Submitted --> Rejected: evaluator reject
-    Submitted --> Expired: claimRefund after expiry + 1h grace
+    [*] --> Baseline: both keys released, job Funded
+    Baseline --> Planning: val metrics of default config
+    Planning --> Proposed: propose_recipe (enum values)
+    Proposed --> Planning: policy_reject (logged)
+    Proposed --> Experiment: run_experiment (≤ 2 total)
+    Experiment --> Planning: read_metrics → val metrics
+    Planning --> Frozen: finish(selected) or budget exhausted or planner unavailable
+    Frozen --> Holdout: unlock holdout, evaluate once
+    Holdout --> Reported: encrypted report + receipt
+    Reported --> Serving: license window
+    Serving --> [*]: calls or hours used up
+```
+
+**Why:** this is the loop the review asked to restore: baseline → bounded experiment → validation feedback → next
+decision → finish → final holdout. The demo has to show one decision that *changes* because of a validation result
+(for example, the agent drops few-shot after k=4 hurts minority classes and tries the other template). Holdout
+numbers can't influence selection because the holdout is locked until `Frozen`.
+
+---
+
+## 9. Escrow: roles and states (ERC-8183 reference @142e669)
+
+```mermaid
+stateDiagram-v2
+    [*] --> Open: buyer createJob(provider=worker, evaluator=seller)
+    Open --> Open: worker-signed setBudget + setPayoutReceiver (buyer relays)
+    Open --> Funded: buyer fund(expectedToken, expectedBudget)
+    Open --> Rejected: buyer reject
+    Funded --> Submitted: worker-signed submit(receipt commitment)
+    Funded --> Rejected: seller reject (refund)
+    Funded --> Expired: claimRefund after expiredAt
+    Submitted --> Completed: seller complete → payout to seller
+    Submitted --> Rejected: seller reject (refund)
+    Submitted --> Expired: claimRefund after expiredAt + 1h grace
     Completed --> [*]
     Rejected --> [*]
     Expired --> [*]
 ```
 
-**Why:** we only use the `Funded → Funded` streaming loop plus `Expired` for test drives. `Completed` is used later
-by the "buy" flow. After setup, the deploy script renounces the admin roles (pause, `emergencyWithdraw`, upgrade), so
-we can't touch escrowed funds. A test proves it.
+**Why:** the contract enforces `evaluator != provider` and lets only the provider set the budget and submit, so the
+worker is the provider and the seller the evaluator. The seller can't be paid unless the worker submitted. The buyer
+can't refuse to pay after receiving the result. We never use claims, so `PendingClaimExists` can't block a refund.
+Admin roles are renounced after setup (pause, `emergencyWithdraw`, and UUPS upgrade all need them).
 
 ---
 
-## 7. Proofs, report and feedback
-
-```mermaid
-flowchart LR
-    RESP["answer + X-Agent-Proof"] --> V{"verifyProof(proof, task)"}
-    V -- "ok: signer = agentSeal,<br/>not expired, data on chain,<br/>task bound to these bytes" --> KEEP["keep case result"]
-    V -- "fail" --> DROP["mark case UNVERIFIED<br/>never scored"]
-    KEEP --> G["grader score<br/>with request ID"]
-    G --> REP["report JSON<br/>case hashes, answers, proofs,<br/>scores, request IDs"]
-    REP --> ENC["aes256 encrypt"] --> ST[("0G Storage root")]
-    REP -- "buyer opts in" --> FB["giveFeedback(agentId, value, serveProof)"]
-    FB --> CANON["ERC-8004 Reputation<br/>canonical entry"]
-    FB --> VER["VerifiedFeedbackRegistry<br/>proof-backed mark"]
-    REP -- "buyer opts in" --> AS[("Arkiv score entity")]
-```
-
-**Why:** a serve-proof proves *which* agent, in *which* iData version, produced *these exact bytes*. It does not
-prove the answer is right; that's the grader's job, and the report keeps the two apart. Feedback must carry a proof
-the buyer earned, and only that buyer can redeem it, so fake reviews cost real paid calls.
-
----
-
-## 8. Benchmark vault
-
-```mermaid
-flowchart LR
-    W["Buyer wallet"] -- "sign fixed message<br/>APP_ID vault v1" --> SIG["signature"]
-    SIG -- "sha256" --> K["32-byte vault key"]
-    CASES["test cases JSON"] --> UP["0G Storage upload<br/>encryption aes256 with K"]
-    K --> UP
-    UP --> ROOT["root hash<br/>kept locally + recovery file"]
-    ROOT --> DL["downloadToBlob<br/>decryption with K"]
-    K --> DL
-    DL --> CHECK{"sha256 matches<br/>recorded hash?"}
-    CHECK -- "yes" --> USE["use cases"]
-    CHECK -- "no" --> ERR["wrong key: stop<br/>the SDK returns ciphertext silently"]
-```
-
-**Why:** the buyer can always recover the vault key from their wallet alone, with nothing from us (CROPS: recoverable
-without a server). The hash check exists because the 0G SDK returns ciphertext instead of an error when the key is
-wrong (seen in `examples/02`). **VERIFY:** that the wallets we target sign deterministically (RFC 6979); if one
-doesn't, we fall back to a key file.
-
----
-
-## 9. Grader on 0G Private Computer
+## 10. Settlement and use
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant B as Buyer client
-    participant R as 0G Router
-    participant P as TeeML provider (TDX)
-    B->>R: POST /v1/chat/completions<br/>X-0G-Provider-Trust-Mode: private<br/>model 0gm-1.0-35b-a3b, json_object, thinking off
-    R->>P: route to a TEE-attested provider
-    P-->>R: score + reason JSON
-    R-->>B: body + X-Request-ID + x_0g_trace
-    B->>B: store request ID per case, show it in the report
-    alt no TEE provider available
-        R-->>B: 503 no_provider_for_trust_mode
-        B->>B: stop and say so, never fall back to non-private
+    participant W as Worker
+    participant ST as 0G Storage
+    actor B as Buyer client
+    participant E as Escrow
+    actor S as Seller client
+    W->>ST: encrypted report + timeline
+    W-->>B: GET /v1/result → reportRoot, WorkerReceipt, signed SubmitAuthorization
+    B->>B: decrypt report, check receipt vs manifest + timeline head (PROTOCOL §9)
+    B->>E: relay submitWithAuthorization
+    S->>E: complete → seller paid
+    loop license window
+        B->>W: /v1/infer {text} ECIES + signed
+        W-->>B: {label} encrypted to buyer session key
     end
 ```
 
-**Why:** this puts 0G Private Computer inference in the main user flow with visible request IDs, which the 0G track
-requires. AI is the product here: it turns a raw benchmark into a judgement and a plain-English summary. Limit,
-disclosed in the UI: 0G's gateway sees prompts in plaintext ("tier 2.5"). Buyers can pick local exact-match grading
-instead.
+**Why:** the deliverable is usable: the customized classifier is served from the sealed worker for the license
+window, so neither side ever sees the combined config in plaintext. Fixed fee, no uplift pricing (the review
+pointed out an unvalidated metric shouldn't drive money).
 
 ---
 
-## 10. Arkiv catalog
+## 11. Data at rest
+
+```mermaid
+flowchart LR
+    PT["plaintext object"] --> H["header {schema, type, id, version, sha256}"]
+    K["fresh random 32-byte key"] --> G["AES-256-GCM<br/>aad = header"]
+    PT --> G
+    H --> G
+    G --> BLOB["blob = len, header, nonce, ciphertext+tag"] --> UP["0G Storage upload<br/>SDK crypto off"]
+    K --> KS["local keystore<br/>encrypted by master key"]
+    MK["random master key"] --> KS
+    PW["passphrase"] --> SC["scrypt"] --> RF["recovery file<br/>AES-GCM(master key)"]
+    MK --> RF
+```
+
+**Why:** random keys, not a wallet-signature-derived secret (signatures are shareable, and recovery across wallet
+types isn't guaranteed: review R08). Recovery = file + passphrase, which works on a fresh device with nothing from
+us. GCM plus header-bound AAD makes tampering, truncation or a swapped object fail closed.
+
+---
+
+## 12. Trust boundaries: who sees plaintext
+
+```mermaid
+flowchart TB
+    subgraph T1["Inside the attested worker"]
+        A1["seller bundle"] --- A2["buyer dataset"] --- A3["selected config"]
+    end
+    subgraph T2["Explicitly trusted and disclosed"]
+        B1["0G Router gateway (in memory, zero retention)<br/>+ TeeML provider: rendered prompts, labels"]
+        B2["Sandbox provider app: creates the container key"]
+    end
+    subgraph T3["Own data only"]
+        C1["Seller: own bundle, job status, payout"]
+        C2["Buyer: own data, report, labels"]
+    end
+    subgraph T4["Public"]
+        D1["chain: job with salted manifest hash"]
+        D2["Arkiv: listings, buyer-reported scores"]
+        D3["Storage: ciphertext only"]
+    end
+    T1 -- "per inference call" --> B1
+```
+
+**Why:** the review asked us to name every plaintext recipient (R02). The complete list is in SECURITY §3. The two
+trusted third parties are 0G's own TEE-backed services, and we say so instead of hiding them.
+
+---
+
+## 13. Runtime routes and gate G-RT
+
+```mermaid
+flowchart TB
+    START["Same worker image + same client verifier interface"] --> Q1{"0G registers our image<br/>as a sealed snapshot?"}
+    Q1 -- "yes" --> W1["W1 sealed sandbox<br/>verify v3 certificate + TappRegistry"]
+    Q1 -- "no" --> Q2{"Cloud TDX VM<br/>budget approved?"}
+    Q2 -- "yes" --> W2["W2 0G-TAPP<br/>verify DCAP quote + runtime_data"]
+    Q2 -- "no" --> W4["W4 MOCK only<br/>synthetic data, loud labels"]
+    W1 & W2 --> GRT{"G-RT tests pass?<br/>wrong image, stale evidence,<br/>swapped key, replay all fail"}
+    GRT -- "yes" --> CONF["Confidential mode enabled"]
+    GRT -- "no" --> W4
+```
+
+**Why:** the review said not to assume a runtime works until it's shown. The worker and verifier are built once
+against an interface with three implementations, so we can demo the full product in MOCK while the real runtime is
+being proven, and switch without rewriting anything.
+
+---
+
+## 14. Arkiv catalog
 
 ```mermaid
 erDiagram
     LISTING {
-        u256 agentId "indexed"
-        str category "indexed"
-        str title "up to 128 bytes"
-        u256 pricePerCall
-        addr token
+        u64 chainId
         addr escrow
+        addr seller "indexed"
+        key assetId "indexed"
+        u64 assetVersion
+        str executor "indexed"
+        str category "indexed"
+        str title "max 128 bytes"
+        u256 price
+        addr token
+        key offerHash
+        str offerRoot
+        u64 validUntil
     }
     SCORE {
-        u256 agentId "indexed"
-        dec score "indexed, sortable"
-        u64 cases
-        str reportRoot "0G Storage root"
+        key listingKey "indexed"
+        u64 assetVersion
+        addr buyer
         u256 jobId
+        dec holdoutMacroF1 "indexed"
+        str manifestRoot
+        str receiptRoot
     }
-    LISTING ||--o{ SCORE : "rated by buyers"
+    LISTING ||--o{ SCORE : "buyer-reported"
 ```
+
+**Why:** public, expiring, wallet-owned data is what Arkiv is for, and the browse page is the user-visible read the
+track requires. Bare IDs aren't unique, so every listing carries chain, escrow, asset ID and version (R16). Scores are
+always "buyer-reported". The "worker-signed" badge needs a completed job and a receipt that verifies (PROTOCOL §10).
+
+---
+
+## 15. CROPS: what still depends on whom
 
 ```mermaid
 flowchart LR
-    Q["Browse page"] --> F["select from sealedai.listing<br/>where category = X"]
-    F --> T{"$creator == ownerOf(agentId)<br/>on 0G Chain?"}
-    T -- "yes" --> SHOW["show listing<br/>+ scores sorted desc"]
-    T -- "no" --> HIDE["hide: spoofed listing"]
+    APP["Static client built from the repo<br/>(no server of ours)"] --> RPC["0G RPC: swappable"]
+    APP --> IDX["0G Storage indexer: swappable"]
+    APP --> AKR["Arkiv RPC + own key: swappable"]
+    APP --> RT["0G Router: required for planner + executor"]
+    APP --> SP["Sandbox provider: required for confidential mode"]
+    APP --> ESC["Escrow contract: immutable after renounce"]
+    RPC -. "outage" .-> F1["switch endpoint"]
+    RT -. "outage" .-> F2["run stops, refund after expiry"]
+    SP -. "outage" .-> F3["no new jobs; MOCK still demoable"]
 ```
 
-**Why:** listings and opt-in scores are public by nature, and expire on their own (Arkiv expiration), so the catalog
-needs no database of ours. Arkiv is a public database anyone can write to, so we only trust a listing written by the
-agent's on-chain owner (Arkiv docs: filter by creator). Private state (jobs in progress, vault roots) never goes to
-Arkiv. The browse page is the user-visible Arkiv read the track requires. Column types are from Arkiv's documented set;
-exact builder syntax is confirmed in T1.6.
+**Why:** CROPS judges reward structural independence and honest trade-offs. We claim independence from *us*, not
+from 0G. Refunds work with only an RPC and the contract, so a buyer can always recover funds without any service of
+ours (R15).
 
 ---
 
-## 11. Buy flow (Phase 5, shape decided by gate G2)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor S as Seller
-    actor B as Buyer
-    participant E as ERC-8183 escrow
-    participant CG as CloneGate (0G)
-    participant PA as PurchaseCloneAuthorizer (ours)
-    participant ATT as AgentDNA attestor
-    S->>CG: setCloneAuthorizer(agentId, PA)
-    B->>E: purchase job: fund, seller submits, buyer completes
-    B->>ATT: clone(sourceAgentId, targetOwner=B, authData=jobId)
-    ATT->>CG: cloneFrom(...)
-    CG->>PA: canClone(source, B, B, jobId)
-    PA->>E: getJob(jobId): Completed, client == B, agentId == source
-    PA-->>CG: true
-    CG-->>B: new ERC-7857 token, iData re-keyed to the buyer's copy
-```
-
-**Why:** 0G already built the marketplace-fork path (`ICloneAuthorizer`, issue #133). Our only contract is the
-policy: "yes iff this buyer completed a purchase job for this agent". **Gate G2** checks first whether a buyer who owns
-a copy can simply ask it for the seller's prompt. If they can, we sell ongoing hosted access instead (the flow in §5
-with a long-lived job) and don't ship this.
-
----
-
-## 12. Trust boundaries: who can see what
-
-```mermaid
-flowchart TB
-    subgraph PUBLIC["Public"]
-        P1["listings, scores"]
-        P2["jobs, payments"]
-        P3["agent identity, iData version hashes"]
-    end
-    subgraph BUYER["Buyer only"]
-        B1["benchmark cases at rest"]
-        B2["full report"]
-    end
-    subgraph TEEONLY["Agent's TEE only"]
-        T1["seller persona, skills, service code"]
-        T2["agent signing key"]
-    end
-    subgraph LEAKY["Seen by a third party, disclosed"]
-        L1["each test case, by the seller's agent<br/>and its owner via private chat"]
-        L2["grader prompts, by 0G's gateway"]
-        L3["wallet address, by RPC providers"]
-    end
-```
-
-**Why:** stating this up front is how we keep claims honest. The three items in the bottom box are known limits
-(PLAN §5). L1 is the biggest one, and it's on the roadmap ("test drive on a clone neither party owns").
-
----
-
-## 13. CROPS: running without us
+## 16. Build order and gates
 
 ```mermaid
 flowchart LR
-    REPO["Public repo, MIT"] -- "npm ci, npm run build" --> DIST["dist/ static files"]
-    DIST --> LOCAL["run locally"]
-    DIST --> ANYHOST["any static host or IPFS"]
-    LOCAL & ANYHOST --> SET["Settings: user-editable endpoints"]
-    SET --> E1["0G RPC"]
-    SET --> E2["0G Storage indexer"]
-    SET --> E3["Arkiv RPC + own key"]
-    SET --> E4["0G Router + own key"]
-    SET --> E5["agent URL from chain"]
-    CLI2["Official 0g-agentdna CLI"] -. "independent client<br/>for agents and feedback" .-> E1
+    T00["T00 scope approved"] --> T01["T01 runtime + dependency evidence"]
+    T00 --> T02A["T02A planner + policy<br/>on fixtures (MOCK)"]
+    T00 --> T03["T03 escrow tests<br/>+ deploy + renounce"]
+    T00 --> T06["T06 envelope + vault"]
+    T01 --> T02["T02 G-RT: real sealed worker"]
+    T04 --> T02
+    T02A --> T02B["T02B loop: baseline → 2 exp → holdout"]
+    T03 --> T04["T04 worker auth, release, replay"]
+    T06 --> T04
+    T02B --> T04
+    T04 --> T05["T05 receipts + acceptance policy"]
+    T05 --> T07["T07 Arkiv"]
+    T05 --> T08["T08 Router strict tier"]
+    T07 & T08 --> T09["T09 full CLI run"]
+    T09 --> T10["T10 web app + CROPS demo"]
+    T10 --> T11["T11 submission"]
+    T02 -. "enables confidential label" .-> T09
 ```
 
-**Why:** the lead property is censorship resistance, and here it's structural. There's no backend to switch off,
-and every endpoint can be swapped. The demo builds from a fresh clone, swaps RPCs, and completes a test drive. The
-official AgentDNA CLI is a second, independent client that 0G maintains, so users don't even need our UI to verify an
-agent or leave feedback. Stretch: publish the `dist/` hash so anyone can check the hosted copy matches the repo.
-
----
-
-## 14. Build order and gates
-
-```mermaid
-flowchart LR
-    P0["P0 Freeze<br/>plan approved"] --> P1["P1 Prove reuse<br/>spikes on testnet"]
-    P1 --> G1{"G1: seller service<br/>+ serve-proof?"}
-    P1 --> G2{"G2: clone leaks<br/>seller prompt?"}
-    G1 -- "pass" --> P2["P2 Contracts<br/>deploy, renounce"]
-    G1 -- "fail" --> ASK["ask 0G: seed service<br/>via workspace iData"]
-    P2 --> P3["P3 Full transaction<br/>CLI, all evidence IDs"]
-    P3 --> P4["P4 Web app + CROPS<br/>+ Arkiv files"]
-    P4 --> CUT(["hackathon cut line"])
-    G2 -- "holds" --> P5A["P5 sell a copy"]
-    G2 -- "leaks" --> P5B["P5 sell hosted access"]
-    CUT --> P5A & P5B
-    P5A & P5B --> P6["P6 stretch: agent pays itself,<br/>0G sign-in, build hash"]
-    P6 --> P7["P7 submit"]
-```
-
-**Why:** we prove each borrowed piece on testnet before building on it. G1 is the one gate that could change the
-architecture, so it runs first. Phases 1 to 4 are a complete submission; everything after the cut line is a bonus.
+**Why:** the planner, escrow and envelope work don't depend on the runtime, so they proceed in parallel with the
+G-RT investigation. The submission depends only on MVP tasks. Confidential mode is a label that switches on when T02
+passes, not a blocker for shipping the product loop.

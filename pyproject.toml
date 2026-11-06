@@ -5,3 +5,4 @@ requires-python = ">=3.12"
 
 [tool.pytest.ini_options]
 testpaths = ["tests/python"]
+markers = ["carla: needs the CARLA server on 127.0.0.1:2000 (run with FAULTLINE_CARLA=1)"]

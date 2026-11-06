@@ -1,0 +1,16 @@
+# faultline demo-001 — 2026-11-06T19:46:47Z — .venv/bin/python -m faultline run --world carla --seed 42 --view --out runs/demo-001
+# CARLA 0.10.0 Town10HD_Opt; model 0gm-1.0-35b-a3b, private tier. Ended at t=10.45 s: lead braked to a stop and both cars were stopped for 2 s (8 decisions, plan expected >=20).
+
+episode 206583160206ff1a7bf083b97acb7661daf3756e5ab9e02784bba7c5f9a485c9  world carla-0.10.0  status completed  collision False
+decisions total 8  0g 8  halt 0  log_head f3015f97f37c6d4c0f07d3497a52f1c5d4ec224de9579434e718f65ed06b9a8c  chain_ok True
+ccs 1.0000  min_ttc_s 0.5064129099186548  min_gap_m 1.362573  perception {'max_abs_gap_error_m': 1.19733, 'mean_abs_gap_error_m': 0.3918861913875598, 'scans_without_target': 0}
+
+ cp action     source            reason       request_id                               provider                                     latency_ms
+  0 BRAKE_HARD 0g                ok           ee9d5579-6941-4864-98d6-89a251d181b4     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2308
+  1 BRAKE_HARD 0g                ok           2ec401fa-3d21-46b3-93d1-727668cd8cd6     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2249
+  2 BRAKE_HARD 0g                ok           8ad6a57a-3609-4329-ae7e-0be4a7bdbe22     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2147
+  3 BRAKE_HARD 0g                ok           cef6f504-913f-4a73-a9de-306b1a3ec364     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2398
+  4 MAINTAIN   0g                ok           845492f3-5a01-450d-82a4-144a5f3a276e     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2100
+  5 BRAKE_HARD 0g                ok           f237c06e-8e52-49e5-b794-c65a852aade7     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2156
+  6 MAINTAIN   0g                ok           5bc6cd53-65b1-4bb8-83e6-e9b37f75caac     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2144
+  7 MAINTAIN   0g                ok           9c1e6db3-8986-4b92-87b4-5a10d9edf449     0xf4FB8d2bD856e672b5f9848b0eD235A20079B250   2088

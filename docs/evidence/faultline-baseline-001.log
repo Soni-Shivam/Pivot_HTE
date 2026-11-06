@@ -1,0 +1,5 @@
+# faultline baseline-001 — 2026-11-06T19:48:14Z — run --world carla --seed 42 --decider maintain --view --out runs/baseline-001 (scripted, no 0G)
+
+episode c3f42c5440539580f7b5670707b45fb278912fb999d009a0f8227a56a0a62253  world carla-0.10.0  status completed  collision False
+decisions total 27  0g 0  halt 0  log_head 5a898e20c5928507e055889b2721a02f4848d985cceb97366ed58ad8bcf82d1d  chain_ok True
+ccs 0.0941  min_ttc_s 9.993809661673744  min_gap_m 34.450121  perception {'max_abs_gap_error_m': 1.1101080000000039, 'mean_abs_gap_error_m': 0.08139600701754376, 'scans_without_target': 30}

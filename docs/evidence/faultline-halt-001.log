@@ -1,0 +1,8 @@
+# faultline halt-001 — 2026-11-06T19:48:14Z — run --world carla --seed 42 --chaos unreachable --view --out runs/halt-001 (router URL http://127.0.0.1:1, a real refused connection)
+
+episode d8c4427eddbf23de52b4a6675ca53231693d181eb4be29311073db374d2409a9  world carla-0.10.0  status interrupted  collision False
+decisions total 1  0g 0  halt 1  log_head edfba9dbba77e1a9741fd313ea71a13f57ad12244d9a859132ee36e20ab438fe  chain_ok True
+ccs 0.9989  min_ttc_s 0.5753010846704635  min_gap_m 1.455381  perception {'max_abs_gap_error_m': 1.309488, 'mean_abs_gap_error_m': 0.16315800925925944, 'scans_without_target': 0}
+
+ cp action     source            reason       request_id                               provider                                     latency_ms
+  0 None       none              unreachable  None                                     None                                         1

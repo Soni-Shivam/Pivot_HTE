@@ -66,7 +66,7 @@ def run_episode(world, decider, scenario: Scenario, out_dir: Path, clock=time) -
     world.reset(s)
     state = "READY"
     n, last, k = 0, None, 0
-    items, decels = [], {"0g": 0, "none": 0}
+    items, decels = [], {"0g": 0, "none": 0, "scripted-baseline": 0}
     lead_decelerating, onset_t, reaction_delay, min_ttc, prev_a = False, None, None, None, None
     halt_n, stopped_n, collision = None, 0, False
     rows = []
@@ -88,7 +88,7 @@ def run_episode(world, decider, scenario: Scenario, out_dir: Path, clock=time) -
                 d = decider.decide(obs, history, ACTIONS)
                 if d.reason == "ok" and d.action in ACTIONS:
                     control = brake_hard if d.action == "BRAKE_HARD" else ACTION_DECEL[d.action]
-                    source, state = "0g", "EXECUTING"
+                    source, state = getattr(decider, "source", "0g"), "EXECUTING"
                 else:
                     control, source, state, halt_n = SAFE_HALT_DECEL, "none", "SAFE_HALT", n
                 world.set_lead_decel(control or None)
@@ -148,7 +148,7 @@ def run_episode(world, decider, scenario: Scenario, out_dir: Path, clock=time) -
                 "episode_id": hashlib.sha256(f"{s_hash}:{s.seed}:{started_at}".encode()).hexdigest(),
                 "scenario_hash": s_hash, "prompt_hash": prompt_hash(), "model": getattr(decider, "model", None),
                 "trust_mode": "private", "status": status, "collision": collision,
-                "decisions_total": decels["0g"] + decels["none"], "decisions_0g": decels["0g"],
+                "decisions_total": sum(decels.values()), "decisions_0g": decels["0g"],
                 "decisions_halt": decels["none"], "log_head": log.head, "files": files, "started_at": started_at,
                 "finished_at": _iso(clock.time()), "world": getattr(world, "name", type(world).__name__)}
     (out_dir / "manifest.json").write_text(json.dumps(manifest, sort_keys=True, indent=2) + "\n")

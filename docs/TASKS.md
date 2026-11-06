@@ -201,3 +201,7 @@ self-paying agents, iAI sign-in, direct-to-TeeML-provider agent calls.
   `docs/evidence/faultline-matrix.md`). **Deviation:** the reveal is in public.json at publish (just before finalize),
   not a separate object at finalize. Open: content binding (own E2EE client or Compute SDK direct), cut-in browser
   replay, hosting (item 5, user's call), agentId not yet in configHash.
+
+# 2026-11-07 Hedera x402 transfer
+
+The user approved the paid Faultline job flow. Branch `feature/hedera-paid-faultline` adds a Hedera x402 merchant endpoint, bounded buyer client, settlement recovery, single-use local run permit, and the verified kinematic 0G/Storage/Galileo pipeline. See `docs/evidence/faultline-paid-job-001.md` and `docs/CARLA_PAYMENT_HANDOFF.md`. CARLA through the paid permit, a dashboard, and production multi-user state are pending. Keep existing CARLA/swarm work on `main` while integrating.

@@ -1,0 +1,94 @@
+{
+  "total": 11,
+  "verified": 11,
+  "signatures": [
+    {
+      "cp": 0,
+      "request_id": "676e52fb-08a8-4251-b4b8-bec19501766e",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "bb07f33c-3f84-4992-b5b4-bf981e8990a9",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 2,
+      "request_id": "33f733d9-a89f-4292-ba91-323d40759f29",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "20f5f002-57f5-400f-aef5-2e210c654ce9",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 4,
+      "request_id": "276363a6-9533-474c-b24a-91de89ec6ce4",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "5175f5c7-5749-4c04-af88-50e49e0778cb",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 6,
+      "request_id": "e90ef236-ded4-44e7-9ef2-30f3edb4611b",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "5e4895eb-e919-4f3e-9531-735f834d0677",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 8,
+      "request_id": "c500d3eb-6cff-4dc8-bbfe-647ba327a9ca",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "89acf261-5bca-4217-a629-df5012f402ad",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 10,
+      "request_id": "8cc4df8a-82e0-4040-bc1b-03064b9621d9",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "793d3433-3841-4002-aa4d-06060c52d6d0",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 12,
+      "request_id": "18c844ee-8f86-49c4-9aa1-e4092ce254c6",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "1d08acb8-4fe4-4026-b4ab-51dfa91c04cb",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 14,
+      "request_id": "1b2e84dd-2f74-4c5a-88a1-77be86ff4957",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "b4f4e124-f89a-4bf0-b32e-9c08c351dcae",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 16,
+      "request_id": "c1d3d0b0-8a71-4f83-8b5d-f209fabd546d",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "2e80b388-2b82-4a86-8dd6-575f04450624",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 18,
+      "request_id": "da996faf-aaf5-45e0-aff3-67d425e8707a",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "5e264a64-4192-4c28-a9e4-710c026c4b78",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 20,
+      "request_id": "8a2bd4b8-4dda-4484-b302-d3f1022932c6",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "16bd6334-3d0b-4a59-9e19-7b047141c974",
+      "source": "0g",
+      "verified": true
+    }
+  ]
+}

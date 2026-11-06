@@ -1,0 +1,78 @@
+{
+  "total": 9,
+  "verified": 9,
+  "signatures": [
+    {
+      "cp": 0,
+      "request_id": "93335606-cd77-4e07-ac73-9b8ffe2a2cee",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "16c4939e-b117-4706-86f1-62e6725945b5",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 2,
+      "request_id": "71ca1de7-47b6-476f-8a75-116e8c6166fe",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "94aae7fc-c99d-4492-bf74-f8f966c8ee67",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 4,
+      "request_id": "a10e8908-5529-4883-85c9-37b2b413a898",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "a5f1531b-b3fe-46c2-bf71-20509b16731d",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 6,
+      "request_id": "b7e2d016-6917-40e4-97d4-49ddfc2da641",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "6a31cafc-6a31-44fe-a83f-2d2c018c4ab8",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 8,
+      "request_id": "8c34bbd6-f760-44f6-a71e-5399b9941bf2",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "ed9af4b0-3c30-4317-800c-de34626a13bb",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 10,
+      "request_id": "608fefda-eca1-494c-8faf-d36388670131",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "bd31d23e-698a-49ac-9370-3e1eebcb9573",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 12,
+      "request_id": "7f14b80a-1f3a-4bc4-b8da-5dce12921cd6",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "6494b91e-517e-47ae-ae7e-739402aae034",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 13,
+      "request_id": "875911af-c222-452a-91db-08d399532f71",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "e7888ccc-0411-4a14-9fae-66a5ae0ff1d2",
+      "source": "0g",
+      "verified": true
+    },
+    {
+      "cp": 15,
+      "request_id": "1104b23b-f8f9-40fc-b50b-e5ddbf4359ea",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "8696a61f-d0f0-4fbd-8876-58052760b8bc",
+      "source": "0g",
+      "verified": true
+    }
+  ]
+}

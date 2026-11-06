@@ -1,0 +1,117 @@
+{
+ "label": "scripted execution of the 0G-found minimized case (parameters chosen by the 0G loop, not live 0G driving); controllers: carla-failure = current, carla-fix-0g = 0G's proposed fix (no-change), carla-fix-baseline = classical grid fix (not 0G)",
+ "params": {
+  "ego_speed_mps": 18.75,
+  "initial_gap_m": 25.0,
+  "lead_decel_mps2": 3.6562,
+  "friction_mu": 0.8,
+  "reaction_delay_s": 0.6,
+  "brake_onset_s": 5.0
+ },
+ "carla-failure": {
+  "ctrl": null,
+  "config_hash": "1d3928abd50c895f4bfd6da80ebd6c7624d14834b24fc6a8052c2024fa48b69f",
+  "carla": {
+   "collision": true,
+   "min_gap_m": -0.0078,
+   "min_ttc_s": 0.0213,
+   "max_drac_mps2": 18.1618,
+   "ccs": 1.0,
+   "ego_max_decel_mps2": 5.7614,
+   "measured_reaction_s": 0.7,
+   "gap_at_onset_m": 25.0,
+   "lead_decel_applied_mps2": 3.6562,
+   "lead_decel_clamped": false,
+   "end_t_s": 10.8,
+   "safe": false,
+   "lidar_min_gap_m": 1.3366
+  },
+  "kinematic": {
+   "collision": true,
+   "min_gap_m": -0.0078,
+   "min_ttc_s": 0.0213,
+   "max_drac_mps2": 18.1618,
+   "ccs": 1.0,
+   "ego_max_decel_mps2": 5.7614,
+   "measured_reaction_s": 0.7,
+   "gap_at_onset_m": 25.0,
+   "lead_decel_applied_mps2": 3.6562,
+   "lead_decel_clamped": false,
+   "end_t_s": 10.8,
+   "safe": false
+  }
+ },
+ "carla-fix-0g": {
+  "ctrl": {
+   "min_gap_m": 3.0
+  },
+  "config_hash": "810334f2bd08240cd1204365c87602b9273f0387e10accfa64e69e78152a3bf9",
+  "carla": {
+   "collision": false,
+   "min_gap_m": 0.3579,
+   "min_ttc_s": 0.328,
+   "max_drac_mps2": 4.5772,
+   "ccs": 0.9994,
+   "ego_max_decel_mps2": 6.2784,
+   "measured_reaction_s": 0.7,
+   "gap_at_onset_m": 25.0,
+   "lead_decel_applied_mps2": 3.6562,
+   "lead_decel_clamped": false,
+   "end_t_s": 11.75,
+   "safe": false,
+   "lidar_min_gap_m": 1.6109
+  },
+  "kinematic": {
+   "collision": false,
+   "min_gap_m": 0.3579,
+   "min_ttc_s": 0.328,
+   "max_drac_mps2": 4.5772,
+   "ccs": 0.9994,
+   "ego_max_decel_mps2": 6.2784,
+   "measured_reaction_s": 0.7,
+   "gap_at_onset_m": 25.0,
+   "lead_decel_applied_mps2": 3.6562,
+   "lead_decel_clamped": false,
+   "end_t_s": 11.75,
+   "safe": false
+  }
+ },
+ "carla-fix-baseline": {
+  "ctrl": {
+   "min_gap_m": 5.0,
+   "comfort_decel_mps2": 2.0,
+   "max_accel_mps2": 3.0,
+   "min_time_headway_s": 2.0
+  },
+  "config_hash": "3f6b26a53b096ea2abe8c0ac351698f250a42ba5adc38170d54d6fb0dc8b9803",
+  "carla": {
+   "collision": false,
+   "min_gap_m": 4.7407,
+   "min_ttc_s": 1.9416,
+   "max_drac_mps2": 1.8001,
+   "ccs": 0.2562,
+   "ego_max_decel_mps2": 5.8575,
+   "measured_reaction_s": 0.7,
+   "gap_at_onset_m": 37.0386,
+   "lead_decel_applied_mps2": 3.6562,
+   "lead_decel_clamped": false,
+   "end_t_s": 14.35,
+   "safe": true,
+   "lidar_min_gap_m": 4.766
+  },
+  "kinematic": {
+   "collision": false,
+   "min_gap_m": 4.7407,
+   "min_ttc_s": 1.9416,
+   "max_drac_mps2": 1.8001,
+   "ccs": 0.2562,
+   "ego_max_decel_mps2": 5.8575,
+   "measured_reaction_s": 0.7,
+   "gap_at_onset_m": 37.0386,
+   "lead_decel_applied_mps2": 3.6562,
+   "lead_decel_clamped": false,
+   "end_t_s": 14.35,
+   "safe": true
+  }
+ }
+}

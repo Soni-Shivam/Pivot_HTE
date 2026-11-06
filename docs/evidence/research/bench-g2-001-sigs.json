@@ -1,0 +1,14 @@
+{
+  "total": 1,
+  "verified": 1,
+  "signatures": [
+    {
+      "cp": 0,
+      "request_id": "c334d147-6c66-4038-b83d-de9250b9127b",
+      "provider": "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250",
+      "zg_res_key": "2e71d0a4-1655-4ec8-955c-33730921c8aa",
+      "source": "0g",
+      "verified": true
+    }
+  ]
+}

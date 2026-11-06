@@ -22,6 +22,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import sys
 import time
 from dataclasses import asdict
@@ -576,7 +577,27 @@ def _sgn(x, eps=1e-6):
     return 0 if abs(x) <= eps else (1 if x > 0 else -1)
 
 
-def audit(final: dict, hist: list, goal: dict, cf_runs=()) -> dict:
+FRICTION_RE = re.compile(r"friction|grip|traction", re.I)
+LIMIT_RE = re.compile(r"limit|insufficient|cannot|can't|unable|not enough|capab|exceed", re.I)
+
+
+def mechanism_check(text: str, runs: list) -> tuple[str, str] | None:
+    """A claim that blames friction-limited braking is checked against the fingerprints of the unsafe runs it is about:
+    'grip_available' means the ego's peak deceleration stayed below the road's limit 0.8*g*mu."""
+    if not (FRICTION_RE.search(text or "") and LIMIT_RE.search(text or "")):
+        return None
+    uns = [e for e in runs if e and e["status"] == "ran" and e.get("fingerprint")]
+    if not uns:
+        return "unverifiable", "no unsafe run to check the friction claim against"
+    grip = [e for e in uns if e["fingerprint"]["braking"] == "grip_available"]
+    det = "; ".join(f"run {e['n']}: ego peak decel {e['outcome']['ego_max_decel_mps2']} vs friction limit "
+                    f"{round(0.8 * G * e['params']['friction_mu'], 2)} m/s^2" for e in uns[:4])
+    if len(grip) == len(uns):
+        return "contradicted", f"blames friction-limited braking, but the ego never reached the friction limit ({det})"
+    return ("supported", det) if not grip else ("unverifiable", f"mixed: {det}")
+
+
+def audit(final: dict, hist: list, goal: dict, cf_runs=(), focus_runs=()) -> dict:
     """Check each claim in the agent's report against the measured runs. verdicts: supported, contradicted,
     unverifiable, malformed. Boundary rows are checked against the runs in their slice."""
     get = lambda n: hist[n - 1] if isinstance(n, int) and not isinstance(n, bool) and 1 <= n <= len(hist) else None
@@ -619,9 +640,16 @@ def audit(final: dict, hist: list, goal: dict, cf_runs=()) -> dict:
                            "detail": f"pairs {bad} move {m} the other way or not at all" if bad else
                            f"{len(pairs)} cited pair(s) agree", "uses_counterfactual": any(e["n"] in cf_runs for e in es)})
         elif t == "general":
-            claims.append({"claim": c, "verdict": "unverifiable", "detail": "free-text claim; citations exist"})
+            mc = mechanism_check(c["text"], es)
+            claims.append({"claim": c, "verdict": mc[0] if mc else "unverifiable",
+                           "detail": mc[1] if mc else "free-text claim; citations exist"})
         else:
             claims.append({"claim": c, "verdict": "malformed", "detail": f"type {t!r}"})
+    focus = [get(n) for n in focus_runs]
+    mc = mechanism_check(final.get("explanation", ""), focus) if focus else None
+    if mc:  # the explanation itself, checked against the minimized case(s)
+        claims.append({"claim": {"text": "[explanation] " + final["explanation"], "type": "explanation", "runs": list(focus_runs)},
+                       "verdict": mc[0], "detail": mc[1]})
     bounds = [audit_boundary(b, hist, goal) for b in final.get("boundary", [])]
     if cf_runs and not any(r.get("uses_counterfactual") or set(r["claim"].get("runs", [])) & set(cf_runs)
                            for r in claims if isinstance(r["claim"], dict)):
@@ -700,6 +728,26 @@ def evaluate_fix(case: dict, ctrl: dict, run=_eval, suite=SUITE) -> dict:
             "regressions": reg, "suite_fixed": [r["i"] for r in rows if not r["before"]["safe"] and r["after"]["safe"]],
             "suite_unsafe_before": sum(not r["before"]["safe"] for r in rows), "suite_unsafe_after": sum(not r["after"]["safe"] for r in rows),
             "efficiency": {k: {"before": mean("before", k), "after": mean("after", k)} for k in ("mean_speed_mps", "cruise_thw_s")}}
+
+
+FIX_GRID = {"min_gap_m": (2.0, 3.0, 4.0, 5.0), "comfort_decel_mps2": (1.0, 2.0, 3.0, 4.5, 6.0),
+            "max_accel_mps2": (0.5, 1.5, 3.0), "min_time_headway_s": (0.0, 1.0, 1.5, 2.0)}
+
+
+def fix_baseline(case: dict) -> dict:
+    """Classical comparison for the fixer (deterministic, not 0G): every controller on FIX_GRID (inside the frozen
+    bounds) on the failing case; the ones that make it safe go through the same evaluate_fix rule."""
+    import itertools
+    ctrls = [dict(zip(FIX_GRID, v)) for v in itertools.product(*FIX_GRID.values())]
+    ok = [c for c in ctrls if run_experiment(case, ctrl=c)["safe"]]
+    evs = [evaluate_fix(case, c) for c in ok]
+    imp = [e for e in evs if e["verdict"] == "improved"]
+    best = max(imp, key=lambda e: (e["efficiency"]["mean_speed_mps"]["after"], -e["suite_unsafe_after"]), default=None)
+    slim = lambda e: {k: e[k] for k in ("ctrl", "verdict", "regressions", "suite_unsafe_before", "suite_unsafe_after", "efficiency")} | \
+        {"failing_case_after": e["failing_case"]["after"]}
+    return {"label": "classical baseline: deterministic grid over the frozen controller bounds (not 0G)", "grid": FIX_GRID,
+            "tested": len(ctrls), "case_safe": len(ok), "improved": len(imp), "best_improved": slim(best) if best else None,
+            "fewest_suite_unsafe": slim(min(imp, key=lambda e: (e["suite_unsafe_after"], -e["efficiency"]["mean_speed_mps"]["after"]))) if imp else None}
 
 
 # ---------------------------------------------------------------- benchmark metrics
@@ -892,7 +940,7 @@ def cmd_mission(a) -> int:
     lab, agent, res, final, log = _hybrid_run(goal, out, a.budget, known, library_summary(lib), complete)
     fix_attempts, retest = [], None
     mini = _best_min(lab.minimized)
-    au = audit(final, lab.hist, goal, [c["run"] for c in lab.counterfactuals]) if final else None
+    au = audit(final, lab.hist, goal, [c["run"] for c in lab.counterfactuals], [mini["minimal_case_id"]] if mini else []) if final else None
     if res["status"] == "completed" and mini:
         case = lab.get(mini["minimal_case_id"])
         feedback = None
@@ -924,7 +972,8 @@ def cmd_mission(a) -> int:
             rows = [{"n": e["n"], "before": _brief(e), "after": _eval(e["params"], best["ctrl"])} for e in lab.hist
                     if e["status"] == "ran" and not e["outcome"]["safe"]]
             retest = {"ctrl": best["ctrl"], "unsafe_cases": len(rows), "now_safe": sum(r["after"]["safe"] for r in rows), "rows": rows}
-    data = {"schema": "faultline.research-mission/v1", "goal": goal, "budget": a.budget, "status": res["status"], "reason": res["reason"],
+    fixb = fix_baseline(lab.get(mini["minimal_case_id"])["params"]) if res["status"] == "completed" and mini else None
+    data = {"schema": "faultline.research-mission/v1", "fix_baseline": fixb, "goal": goal, "budget": a.budget, "status": res["status"], "reason": res["reason"],
             "experiments": lab.hist, "tool_log": res["tool_log"], "hypotheses": res["hypotheses"], "final": final, "audit": au,
             "minimized": lab.minimized, "counterfactuals": lab.counterfactuals, "deterministic_completion": det,
             "fix_attempts": fix_attempts, "retest": retest, "stats": agent.stats(), "log_head": log.head,
@@ -1000,6 +1049,16 @@ def mission_md(d) -> str:
               f"- efficiency (suite means): speed {fx['efficiency']['mean_speed_mps']}, cruise time headway {fx['efficiency']['cruise_thw_s']}",
               f"- config hash before `{fx['config_hash_before'][:16]}…` after `{fx['config_hash_after'][:16]}…`",
               f"- **verdict: {fx['verdict']}**", ""]
+    fb = d.get("fix_baseline")
+    if fb:
+        L += [f"**{fb['label']}**: {fb['tested']} controllers tested on the failing case, {fb['case_safe']} make it safe, "
+              f"{fb['improved']} pass the improvement rule."]
+        for tag in ("best_improved", "fewest_suite_unsafe"):
+            b = fb.get(tag)
+            if b:
+                L.append(f"- {tag.replace('_', ' ')}: `{canonical(b['ctrl'])}` → case min gap {b['failing_case_after']['min_gap_m']}, suite unsafe "
+                         f"{b['suite_unsafe_before']} → {b['suite_unsafe_after']}, mean speed {b['efficiency']['mean_speed_mps']}, cruise THW {b['efficiency']['cruise_thw_s']}")
+        L.append("")
     if d["retest"]:
         L += [f"Retest of all {d['retest']['unsafe_cases']} unsafe mission cases with `{canonical(d['retest']['ctrl'])}`: {d['retest']['now_safe']} now safe.", ""]
     L += ["## Uncertainty", ""] + [f"- {u}" for u in f.get("uncertainty", [])] + \
@@ -1011,7 +1070,7 @@ def mission_md(d) -> str:
 
 
 def console_html(d) -> str:
-    slim = {k: d[k] for k in ("goal", "status", "experiments", "tool_log", "final", "audit", "minimized", "counterfactuals",
+    slim = {k: d.get(k) for k in ("fix_baseline", "goal", "status", "experiments", "tool_log", "final", "audit", "minimized", "counterfactuals",
                               "fix_attempts", "retest", "stats", "library_before")}
     blob = json.dumps(slim).replace("</", "<\\/")
     return CONSOLE.replace("__DATA__", blob)
@@ -1070,6 +1129,7 @@ if(f.invalid){h+=`<p class="no">rejected: ${esc(f.invalid)}</p>`;continue}const 
 h+=`<table><tr><th></th><th>before</th><th>after</th></tr><tr><td>failing case</td><td class="${c.before.safe?'ok':'no'}">${c.before.safe?'safe':'unsafe'} (${c.before.min_gap_m} m)</td><td class="${c.after.safe?'ok':'no'}">${c.after.safe?'safe':'unsafe'} (${c.after.min_gap_m} m)</td></tr>
 <tr><td>suite unsafe (of ${f.suite.length})</td><td>${f.suite_unsafe_before}</td><td>${f.suite_unsafe_after}</td></tr><tr><td>mean speed (m/s)</td><td>${f.efficiency.mean_speed_mps.before}</td><td>${f.efficiency.mean_speed_mps.after}</td></tr>
 <tr><td>cruise time headway (s)</td><td>${f.efficiency.cruise_thw_s.before}</td><td>${f.efficiency.cruise_thw_s.after}</td></tr></table><p>verdict: <b>${f.verdict}</b>${f.regressions.length?' · regressions '+f.regressions:''}</p>`}
+if(D.fix_baseline){const b=D.fix_baseline,x=b.best_improved;h+=`<p class="mut">${esc(b.label)}: ${b.tested} tested, ${b.case_safe} make the case safe, ${b.improved} pass the rule.${x?' Best: <code>'+esc(JSON.stringify(x.ctrl))+'</code>, suite unsafe '+x.suite_unsafe_before+'→'+x.suite_unsafe_after+', mean speed '+x.efficiency.mean_speed_mps.before+'→'+x.efficiency.mean_speed_mps.after:''}</p>`}
 if(D.retest)h+=`<p class="mut">Retest: ${D.retest.now_safe}/${D.retest.unsafe_cases} unsafe mission cases safe with the proposal.</p>`;$('fix').innerHTML=h||'<p class="mut">no fix proposed</p>';
 const f=D.final||{};let a=`<p>${esc(f.explanation)}</p>`;if(D.audit){a+=`<p class="mut">${esc(JSON.stringify(D.audit.counts))}</p><table>`;for(const r of D.audit.claims){const c=typeof r.claim==='object'?r.claim:{text:r.claim};
 a+=`<tr><td>${esc(c.text)}</td><td>${esc(JSON.stringify(c.runs))}</td><td class="${r.verdict==='supported'?'ok':r.verdict==='contradicted'?'no':''}">${r.verdict}</td></tr>`}a+='</table>'+D.audit.flags.map(x=>`<p class="no">⚠ ${esc(x)}</p>`).join('')}$('aud').innerHTML=a;
@@ -1090,9 +1150,12 @@ def cmd_carla(a) -> int:
     mini = _best_min(d["minimized"])
     fx = next((f for f in d["fix_attempts"] if f.get("verdict") == "improved"), next((f for f in reversed(d["fix_attempts"]) if "verdict" in f), None))
     p = mini["minimal_failing_case"]
-    summary = {"label": "scripted executions of 0G-chosen parameters (minimized case) — not live 0G driving", "params": p}
-    for tag, ctrl in (("carla-failure", None), ("carla-fixed", fx and fx["ctrl"])):
-        if tag == "carla-fixed" and not ctrl:
+    summary = {"label": "scripted execution of the 0G-found minimized case (parameters chosen by the 0G loop, not live 0G "
+                        "driving); controllers: carla-failure = current, carla-fix-0g = 0G's proposed fix "
+                        f"({fx and fx.get('verdict')}), carla-fix-baseline = classical grid fix (not 0G)", "params": p}
+    fb = (d.get("fix_baseline") or {}).get("fewest_suite_unsafe")
+    for tag, ctrl in (("carla-failure", None), ("carla-fix-0g", fx and fx["ctrl"]), ("carla-fix-baseline", fb and fb["ctrl"])):
+        if tag != "carla-failure" and not ctrl:
             continue
         out = Path(a.run_dir) / tag
         out.mkdir(exist_ok=True)
@@ -1103,7 +1166,29 @@ def cmd_carla(a) -> int:
         (out / "experiment.json").write_text(json.dumps({"label": summary["label"], "params": p, **summary[tag]}, indent=1) + "\n")
         print(tag, "carla safe", o["safe"], "min gap", o["min_gap_m"], "collision", o["collision"], "| kinematic safe", kin["safe"], kin["min_gap_m"])
     (Path(a.run_dir) / "carla.json").write_text(json.dumps(summary, indent=1) + "\n")
-    _live(f"carla pair for {Path(a.run_dir).name}: failure safe={summary['carla-failure']['carla']['safe']} fixed safe={summary.get('carla-fixed', {}).get('carla', {}).get('safe')}")
+    _live(f"carla for {Path(a.run_dir).name}: " + ", ".join(f"{k} safe={v['carla']['safe']} min gap {v['carla']['min_gap_m']}"
+                                                          for k, v in summary.items() if k.startswith("carla-")))
+    return 0
+
+
+def cmd_rebuild(a) -> int:
+    """Recompute the deterministic parts of a mission (audit, fix baseline, report, console) from research.json with
+    the current code. No 0G call; designer.jsonl is untouched."""
+    out = Path(a.run_dir)
+    d = json.loads((out / "research.json").read_text())
+    mini = _best_min(d["minimized"])
+    if d["final"]:
+        d["audit"] = audit(d["final"], d["experiments"], d["goal"], [c["run"] for c in d["counterfactuals"]],
+                           [mini["minimal_case_id"]] if mini else [])
+    if mini and d["status"] == "completed":
+        d["fix_baseline"] = fix_baseline(d["experiments"][mini["minimal_case_id"] - 1]["params"])
+    d["rebuilt"] = {"code_sha256": code_sha(), "research_py_sha256": _sha(Path(__file__).read_bytes()), "at": time.strftime("%Y-%m-%dT%H:%M:%S")}
+    (out / "research.json").write_text(json.dumps(d, indent=1) + "\n")
+    (out / "report.md").write_text(mission_md(d))
+    (out / "console.html").write_text(console_html(d))
+    m = json.loads((out / "manifest.json").read_text())
+    _manifest(out, {k: m[k] for k in ("goal", "budget", "designer_log_head", "status", "chain_ok")} | {"rebuilt": d["rebuilt"]})
+    print(f"rebuilt {out}: audit {d['audit'] and d['audit']['counts']}; fix baseline improved {d.get('fix_baseline', {}).get('improved')}")
     return 0
 
 
@@ -1136,6 +1221,9 @@ def main(argv=None) -> int:
     c.add_argument("--seed", type=int, default=7)
     c.add_argument("--display", default=":2")
     c.set_defaults(fn=cmd_carla)
+    r = sub.add_parser("rebuild")
+    r.add_argument("run_dir")
+    r.set_defaults(fn=cmd_rebuild)
     o = sub.add_parser("audit-old")
     o.add_argument("hunt_json")
     o.set_defaults(fn=cmd_audit_old)

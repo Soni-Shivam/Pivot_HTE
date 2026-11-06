@@ -251,3 +251,15 @@ def test_parsers_strict():
 
 def test_suite_has_at_least_20_cases_safe_with_the_current_controller():
     assert sum(run_experiment(p)["safe"] for p in R.SUITE) == 21 and len(R.SUITE) == 40
+
+
+def test_mechanism_check_flags_friction_blame_when_grip_was_available():
+    p = {**CRASH, "ego_speed_mps": 18.75, "initial_gap_m": 25.0, "lead_decel_mps2": 3.6562, "reaction_delay_s": 0.6}
+    o, fp = R.run_fp(p)
+    assert o["collision"] and fp["braking"] == "grip_available"
+    e = {"n": 1, "status": "ran", "params": p, "outcome": o, "fingerprint": fp}
+    final = {"boundary": [], "claims": [{"text": "braking is limited by road friction", "type": "general", "runs": [1]}],
+             "explanation": "The ego's braking capability, limited by friction, is insufficient."}
+    a = R.audit(final, [e], MISSION, focus_runs=[1])
+    assert [c["verdict"] for c in a["claims"]] == ["contradicted", "contradicted"] and "friction limit" in a["claims"][0]["detail"]
+    assert R.mechanism_check("reaction delay dominates", [e]) is None

@@ -3,11 +3,14 @@
 The adversary is driven by a local script, labelled source "scripted-baseline" in decisions.jsonl and on
 /faultline/decision; it is never 0G and never shown as 0G.
   lead_brake: MAINTAIN until checkpoint --brake-cp, then BRAKE_HARD (IDM ego, kinematic placement)
-  cut_in:     KEEP_LANE, CUT_IN_AGGRESSIVE at checkpoint --brake-cp, then BRAKE_HARD (PDM-Lite ego on LiDAR)
+  cut_in:     KEEP_LANE, CUT_IN_AGGRESSIVE at checkpoint --brake-cp, then BRAKE_HARD (the AV stack, PDM-Lite, on LiDAR)
+With the view on, the :2 desktop is recorded (desk.mkv + windows.json) and stitched (faultline.stitch: the ChaseView
+window fills the director slot; the caption says SCRIPTED).
 
     source viz/env.sh && .venv/bin/python viz/demo_live.py [--family cut_in] [--horizon 15] [--no-view]
 """
 import argparse
+import json
 import os
 import sys
 import time
@@ -49,12 +52,14 @@ def main() -> int:
     from faultline.carla_world import CarlaWorld
     from faultline.cutin import CutInScenario
     from faultline.rosbridge import RosBridge
+    from faultline.stitch import DeskRecorder, find_windows, stitch
 
     out = ROOT / "runs" / f"viz-demo-{time.strftime('%Y%m%dT%H%M%S')}"
     view = None
     if not a.no_view:
         from faultline.viewer import ChaseView
-        view = ChaseView(out, record=False)
+        out.mkdir(parents=True)
+        view = ChaseView(out, record=False, scripted=True)
     cut = a.family == "cut_in"
     world, bridge = (CutInCarlaWorld if cut else CarlaWorld)(view=view), RosBridge()
     reset = world.reset
@@ -63,11 +68,17 @@ def main() -> int:
         try:
             reset(s)
             bridge.attach(world)
+            if view:  # the ChaseView window exists now; each tick's wall time maps sim time to the desktop recording
+                (out / "windows.json").write_text(json.dumps(find_windows(a.display)) + "\n")
+                prev = world.on_tick
+                world.on_tick = lambda w, st: (prev(w, st), wall.append(round(time.time(), 3)))
         except BaseException:
             world.close()  # run_episode only closes the world once reset has returned
             raise
     world.reset = reset_then_attach
 
+    wall = []
+    desk = DeskRecorder(out / "desk.mkv", a.display).start() if view else None
     t0 = time.monotonic()
     try:
         if cut:
@@ -79,6 +90,11 @@ def main() -> int:
         m = run_episode(world, Scripted(plan), s, out)
     finally:
         bridge.close()  # run_episode already closed the world (async mode restored, actors destroyed)
+        if desk:
+            desk.stop()
+            (out / "chase_frames.json").write_text(json.dumps({"fps": 20, "wall": wall}) + "\n")
+    if desk:
+        print(stitch(out))
     wall, st = time.monotonic() - t0, bridge.stats()
     line = (f"[viz-agent] demo_live {out.name}: status {m['status']}, {st['ticks']} ticks in {wall:.1f} s wall, "
             f"bridge publish mean {st['mean_ms']:.2f} ms p95 {st['p95_ms']:.2f} ms max {st['max_ms']:.2f} ms per tick")

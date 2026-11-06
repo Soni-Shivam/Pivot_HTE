@@ -164,7 +164,7 @@ def draw_bev(buf, p: Painter, st: dict):
         p.text(u + 6, v - 18, f"#{t['id']} {t['speed']:.1f} m/s", 13, (40, 230, 255), bold=True)
     p.poly(_box_px(-0.0, 0.0, 0.0, 4.9, 2.1), COLORS["ego"], 3.0, close=True)
     p.rect(x0, y0, w, 30, (0, 0, 0), 0.6)
-    p.text(x0 + 10, y0 + 6, "LiDAR bird's-eye  ·  what PDM-Lite sees", 15, bold=True)
+    p.text(x0 + 10, y0 + 6, "LiDAR bird's-eye  ·  what the AV stack sees", 15, bold=True)
     p.text(x0 + 10, y0 + h - 24, "cyan: LiDAR tracks   dashed: ground truth   colour: height", 12, (180, 180, 180))
 
 
@@ -388,7 +388,7 @@ def result_extras(metrics: dict | None, pe: dict | None) -> dict:
 def result_card(base, res: dict, progress: float):
     size = 24 if len(res) <= 9 else 19
     body = [(f"{k:<28}{v}", (235, 235, 235), size, False, True) for k, v in res.items()]
-    return card(base, "Episode result (ground truth)", "PDM-Lite drove on its own LiDAR; the swarm drove on 0G",
+    return card(base, "Episode result (ground truth)", "The AV stack drove on its own LiDAR; the swarm drove on 0G",
                 body, ["not anchored · decisions.html lists every call verbatim"], progress, (60, 200, 120))
 
 
@@ -472,7 +472,7 @@ class Director:
             right = rx * math.cos(dy_ + math.pi / 2) + ry * math.sin(dy_ + math.pi / 2)
             up = rx * math.cos(dy_) + ry * math.sin(dy_)
             u, v = DRONE[0] + CAM_W / 2 + f * right / depth, CAM_H / 2 - f * up / depth
-            mode = "PDM-Lite" if c == "ego" else (acts.get(c) or world.advs[c].mode)
+            mode = "AV stack" if c == "ego" else (acts.get(c) or world.advs[c].mode)
             labels.append((u, v, f"{'EGO' if c == 'ego' else c} {mode}", COLORS[c]))
         tracks = []
         for t in world.tracks or []:
@@ -541,7 +541,7 @@ class Director:
             if self.last_buf is not None:
                 res = {"collision": self.collided, "min true gap in path": f"{self.min_gap:.2f} m" if self.min_gap
                        is not None else "-", "min true TTC": f"{self.min_ttc:.2f} s" if self.min_ttc else "-",
-                       "PDM-Lite peak decel": f"{self.max_decel:.2f} m/s²", "CCS (LiDAR, max)": f"{self.ccs_max:.2f}",
+                       "AV stack peak decel": f"{self.max_decel:.2f} m/s²", "CCS (LiDAR, max)": f"{self.ccs_max:.2f}",
                        "sim time": f"{self.history[-1]['t']:.2f} s" if self.history else "-"}
                 res.update(result_extras(getattr(self.world, "final_metrics", None), getattr(self.world, "plan_entry", None)))
                 for i in range(END_FRAMES):

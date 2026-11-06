@@ -18,6 +18,9 @@ MAP_OSM = ROOT / "maps" / "Town10HD_Opt.osm"
 CLOUD_FIELDS = (("x", 0), ("y", 4), ("z", 8), ("intensity", 12))  # float32 each, point_step 16
 STALL_S = 0.25  # no tick for this long after the run-up = the loop is waiting for a checkpoint decision
 TTC_CLOSING_MIN = 0.05
+TTC_LINE_S = 1.5  # HMI reference line on the TTC plot (display only)
+HMI_SPEED_CARS = ("ego", "adversary", "A", "B", "C", "D")  # /faultline/hmi/speed/<car>, the HMI layout's series
+HMI_EVERY, HMI_MAX = 2, 1200  # HMI history: every 2nd tick (10 Hz), at most 120 s
 
 
 def to_map(x: float, y: float, z: float = 0.0) -> tuple[float, float, float]:
@@ -39,6 +42,14 @@ def lidar_points(raw: bytes) -> np.ndarray:
 
 def ttc(gap, closing) -> float:
     return gap / closing if gap is not None and closing is not None and closing > TTC_CLOSING_MIN else math.nan
+
+
+def push_history(h: tuple, row: tuple, cap: int = HMI_MAX) -> tuple:
+    """Append one (t, a, b) row to the ([t], [a], [b]) columns, keeping the last `cap`."""
+    for col, v in zip(h, row):
+        col.append(float(v))
+        del col[:-cap]
+    return h
 
 
 def mode_of(decision, t_s: float, runup_s: float, stalled: bool) -> str:
@@ -99,14 +110,14 @@ class RosBridge:
         from nav_msgs.msg import Odometry
         from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
         from rosgraph_msgs.msg import Clock
-        from sensor_msgs.msg import PointCloud2, PointField
+        from sensor_msgs.msg import JointState, PointCloud2, PointField
         from std_msgs.msg import Bool, Float64, String
         from tf2_msgs.msg import TFMessage
         from visualization_msgs.msg import MarkerArray
 
         self.M = dict(TransformStamped=TransformStamped, Odometry=Odometry, Clock=Clock, PointCloud2=PointCloud2,
                       PointField=PointField, Bool=Bool, Float64=Float64, String=String, TFMessage=TFMessage,
-                      MarkerArray=MarkerArray)
+                      MarkerArray=MarkerArray, JointState=JointState)
         self._own_init = not rclpy.ok()
         if self._own_init:
             rclpy.init()
@@ -126,6 +137,11 @@ class RosBridge:
         for name in ("adversary_action", "decision", "mode"):
             self.pub[name] = n.create_publisher(String, f"/faultline/{name}", 10)
         self.pub["safe_halt"] = n.create_publisher(Bool, "/faultline/safe_halt", 10)
+        # HMI plots: this run's whole history per message (JointState: position = sim time [s], velocity/effort =
+        # values), plotted x-vs-y from the latest message, so the x axis is sim time and a new run replaces the curves
+        for name in ("hmi/gap", "hmi/ttc") + tuple(f"hmi/speed/{c}" for c in HMI_SPEED_CARS):
+            self.pub[name] = n.create_publisher(JointState, f"/faultline/{name}", 10)
+        self.hist = {}
 
         self.world = world
         self.runup_s = getattr(getattr(world, "s", None), "runup_s", 3.0)
@@ -183,7 +199,7 @@ class RosBridge:
             tx.header, tx.ns, tx.id, tx.type, tx.action = mk.header, ns + "_label", i, Marker.TEXT_VIEW_FACING, Marker.ADD
             tx.pose.position.x, tx.pose.position.y = mk.pose.position.x, mk.pose.position.y
             tx.pose.position.z, tx.pose.orientation.w = mk.pose.position.z + height / 2 + 0.8, 1.0
-            tx.scale.z, tx.text = 0.9, text
+            tx.scale.z, tx.text = 0.9, text.replace("PDM-Lite", "AV stack")  # on screen the ego is the stack under test
             tx.color.r, tx.color.g, tx.color.b, tx.color.a = 1.0, 1.0, 1.0, 1.0
             out.append(tx)
         return out
@@ -252,6 +268,21 @@ class RosBridge:
                         ("gap_lidar", math.nan if st.lidar_gap is None else st.lidar_gap),
                         ("ttc", ttc(st.lidar_gap, st.lidar_closing))):
             P[name].publish(F(data=float(v)))
+        advs = getattr(world, "advs", None)  # swarm world: every attacker; otherwise the single adversary
+        rows = {"hmi/gap": (math.nan if st.lidar_gap is None else st.lidar_gap,
+                            math.nan if st.gt_gap is None else st.gt_gap),
+                "hmi/ttc": (ttc(st.lidar_gap, st.lidar_closing), TTC_LINE_S), "hmi/speed/ego": (st.ego_v, 0.0)}
+        for c, v in ({c: a.v for c, a in advs.items()} if advs else {"adversary": st.lead_v}).items():
+            if f"hmi/speed/{c}" in P:
+                rows[f"hmi/speed/{c}"] = (v, 0.0)
+        self._n_tick = getattr(self, "_n_tick", -1) + 1
+        if self._n_tick % HMI_EVERY == 0:
+            for name, (a, b) in rows.items():
+                h = push_history(self.hist.setdefault(name, ([], [], [])), (st.t_s, a, b))
+                js = M["JointState"]()
+                js.header.stamp, js.header.frame_id = stamp, "map"
+                js.position, js.velocity, js.effort = h
+                P[name].publish(js)
         d = getattr(world, "last_decision", None)
         base = mode_of(d, st.t_s, self.runup_s, stalled=False)
         P["adversary_action"].publish(S(data="RUNUP" if d is None else (d.get("action") or "SAFE_HALT")))

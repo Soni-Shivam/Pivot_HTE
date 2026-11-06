@@ -5,7 +5,7 @@ import struct
 import numpy as np
 import pytest
 
-from faultline.rosbridge import CLOUD_FIELDS, decision_line, lidar_points, mode_of, to_map, ttc, yaw_quat
+from faultline.rosbridge import CLOUD_FIELDS, decision_line, lidar_points, mode_of, push_history, to_map, ttc, yaw_quat
 
 
 def _ros():
@@ -46,6 +46,13 @@ def test_mode_ttc_and_decision_line():
     assert mode_of({**d, "action": None, "source": "none"}, 6.0, 3.0, stalled=True) == "SAFE_HALT"
     assert decision_line(d) == "cp 3 · BRAKE_HARD · 0g · req ffa5d0… · 2215 ms"
     assert ttc(20.0, 4.0) == 5.0 and math.isnan(ttc(20.0, 0.0)) and math.isnan(ttc(None, 3.0))
+
+
+def test_push_history_caps():
+    h = ([], [], [])
+    for i in range(5):
+        push_history(h, (i * 0.1, i, math.nan), cap=3)
+    assert h[0] == pytest.approx([0.2, 0.3, 0.4]) and h[1] == [2.0, 3.0, 4.0] and all(map(math.isnan, h[2]))
 
 
 @pytest.mark.carla

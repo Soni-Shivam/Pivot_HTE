@@ -5,11 +5,11 @@ tools/make_*layout.py, the user's own repo), and optionally install it as a loca
     python3 viz/foxglove_layout.py                       # rewrite viz/faultline_hmi.json
     python3 viz/foxglove_layout.py --install DATA_DIR    # + DATA_DIR/studio-datastores/layouts-local/<LAYOUT_ID>
 
-One tall column (it sits right of the chase camera): mode / SAFE_HALT, the decision line, a 3D view
-following the ego, then speed, gap, TTC, steer/accel plots and the adversary action.
+One column (640x960 right of the chase camera; RViz shows the LiDAR): mode / SAFE_HALT, the decision line, three large
+plots against simulation time (each /faultline/hmi/* message holds the run's sim-time history): speed (ego vs each
+attacker), gap (LiDAR vs ground truth), TTC with the 1.5 s line, then the attackers' current actions.
 """
 import argparse
-import copy
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,23 +17,34 @@ from pathlib import Path
 OUT = Path(__file__).resolve().parent / "faultline_hmi.json"
 LAYOUT_ID = "faultline-hmi"  # opened with foxglove://open?...&layoutId=faultline-hmi
 
-GRID = {"grid": {"visible": True, "frameLocked": True, "label": "Grid (10 m)", "instanceId": "grid",
-                 "layerId": "foxglove.Grid", "size": 200, "divisions": 20, "lineWidth": 1, "color": "#ffffff20",
-                 "position": [0, 0, 0], "rotation": [0, 0, 0], "order": 1}}
+def titled(title):  # Lichtblick reads lichtblickPanelTitle, Foxglove Studio foxglovePanelTitle
+    return {"foxglovePanelTitle": title, "lichtblickPanelTitle": title}
 
 
 def raw(path, title, size):
     return {"topicPath": path, "diffEnabled": False, "diffMethod": "custom", "diffTopicPath": "",
-            "showFullMessageForDiff": False, "fontSize": size, "defaultExpanded": True, "foxglovePanelTitle": title}
+            "showFullMessageForDiff": False, "fontSize": size, "defaultExpanded": True, **titled(title)}
 
 
-def plot(title, *series, window=30):
-    return {"foxglovePanelTitle": title,
-            "paths": [{"value": f"{topic}.data", "label": label, "enabled": True, "timestampMethod": "receiveTime",
-                       "showLine": True} for topic, label in series],
-            "showXAxisLabels": True, "showYAxisLabels": True, "showYAxisGridLines": True, "showLegend": True,
-            "legendDisplay": "floating", "floatingLegendPosition": "top-left", "showPlotValuesInLegend": True,
-            "isSynced": False, "xAxisVal": "timestamp", "timeWindowMode": "sliding", "followingViewWidth": window}
+# director.COLORS (ego green, A red, B yellow taxi, C blue, D magenta) so the plots match the video
+COLORS = {"ego": "#28dc78", "adversary": "#f5c300", "A": "#e62828", "B": "#f5c300", "C": "#2878f5", "D": "#d23cdc"}
+
+
+def plot(title, xpath, *series, ymin=None, ymax=None):
+    """series: (message path, label, colour), arrays from each topic's latest message, against the sim-time array
+    `xpath` (Lichtblick's "Path (current)" x axis: the run's history, replaced when a new run starts)."""
+    p = {**titled(title),
+         "paths": [{"value": path, "label": label, "color": color, "enabled": True, "timestampMethod": "headerStamp",
+                    "showLine": True, "lineSize": 2} for path, label, color in series],
+         "showXAxisLabels": True, "showYAxisLabels": True, "showYAxisGridLines": True, "showLegend": True,
+         "legendDisplay": "floating", "floatingLegendPosition": "top-right", "showPlotValuesInLegend": False,
+         "isSynced": False, "xAxisVal": "currentCustom", "xAxisPath": {"value": xpath, "enabled": True},
+         "xAxisLabel": "sim time [s]"}
+    if ymin is not None:
+        p["minYValue"] = ymin
+    if ymax is not None:
+        p["maxYValue"] = ymax
+    return p
 
 
 def col(first, second, pct=50.0):
@@ -52,34 +63,21 @@ def layout() -> dict:
         "RawMessages!halt": raw("/faultline/safe_halt.data", "safe_halt", 15),
         "RawMessages!decision": raw("/faultline/decision.data",
                                     "adversary decision (cp · action · source · request · latency)", 13),
-        "3D!scene": {
-            "cameraState": {"distance": 45, "perspective": True, "phi": 50, "thetaOffset": 90, "target": [0, 0, 0],
-                            "targetOffset": [10, 0, 0], "targetOrientation": [0, 0, 0, 1], "fovy": 45, "near": 0.5,
-                            "far": 5000},
-            "followMode": "follow-pose", "followTf": "ego",
-            "scene": {"enableStats": False, "backgroundColor": "#161a20",
-                      "transforms": {"showLabel": False, "lineColor": "#ffffff00", "lineWidth": 0.0}},
-            "transforms": {},
-            "topics": {"/faultline/lidar": {"visible": True, "pointSize": 2, "pointShape": "circle",
-                                            "colorMode": "colormap", "colorMap": "turbo", "colorField": "z",
-                                            "decayTime": 0},
-                       "/faultline/lanelet_map": {"visible": True}, "/faultline/gt": {"visible": True},
-                       "/faultline/tracks": {"visible": True}},
-            "layers": copy.deepcopy(GRID), "imageMode": {},
-            "foxglovePanelTitle": "3D: LiDAR (turbo by z), lanelet map, GT boxes (green ego / orange adversary), tracks (cyan)"},
-        "Plot!speed": plot("speed [m/s]: ego vs adversary", ("/faultline/ego/speed", "ego"),
-                           ("/faultline/adversary/speed", "adversary")),
-        "Plot!gap": plot("gap [m]: LiDAR vs ground truth", ("/faultline/gap_lidar", "LiDAR"),
-                         ("/faultline/gap_gt", "GT")),
-        "Plot!ttc": plot("TTC from LiDAR [s]", ("/faultline/ttc", "TTC")),
-        "Plot!ctl": plot("ego accel [m/s2] and steer [-1..1]", ("/faultline/ego/accel", "accel"),
-                         ("/faultline/ego/steer", "steer")),
+        "Plot!speed": plot("speed [m/s]: AV stack (ego) vs each attacker", "/faultline/hmi/speed/ego.position[:]",
+                           *((f"/faultline/hmi/speed/{c}.velocity[:]", "AV stack" if c == "ego" else c, COLORS[c])
+                             for c in ("ego", "adversary", "A", "B", "C", "D")), ymin=0),
+        "Plot!gap": plot("gap ahead [m]: LiDAR vs ground truth", "/faultline/hmi/gap.position[:]",
+                         ("/faultline/hmi/gap.velocity[:]", "LiDAR", "#3cc8ff"),
+                         ("/faultline/hmi/gap.effort[:]", "ground truth", "#ff9a1f"), ymin=0),
+        "Plot!ttc": plot("TTC from LiDAR [s]", "/faultline/hmi/ttc.position[:]",
+                         ("/faultline/hmi/ttc.velocity[:]", "TTC", "#3cc8ff"),
+                         ("/faultline/hmi/ttc.effort[:]", "1.5 s line", "#ff4040"), ymin=0, ymax=8),
         # StateTransitions stayed empty on live String topics in the same way as Indicator: a text panel instead
-        "RawMessages!action": raw("/faultline/adversary_action.data", "adversary action", 14),
+        "RawMessages!action": raw("/faultline/adversary_action.data", "attackers' current actions", 14),
     }
     head = col(row("RawMessages!mode", "RawMessages!halt", 65.0), "RawMessages!decision", 50.0)
-    plots = col(col("Plot!speed", "Plot!gap"), col("Plot!ttc", col("Plot!ctl", "RawMessages!action", 60.0), 33.0))
-    tree = col(head, col("3D!scene", plots, 42.0), 22.0)
+    plots = col("Plot!speed", col("Plot!gap", col("Plot!ttc", "RawMessages!action", 78.0), 50.0), 34.0)
+    tree = col(head, plots, 19.0)
     return {"configById": cfg, "globalVariables": {}, "userNodes": {}, "playbackConfig": {"speed": 1}, "layout": tree}
 
 

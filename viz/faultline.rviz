@@ -91,13 +91,13 @@ Visualization Manager:
       Class: rviz_default_plugins/ThirdPersonFollower
       Name: Follow ego
       Target Frame: ego
-      Distance: 38
+      Distance: 34
       Focal Point:
-        X: 14
+        X: 15
         Y: 0
         Z: 0
-      Pitch: 0.55
-      Yaw: 3.14159
+      Pitch: 1.52
+      Yaw: -1.5708
       Near Clip Distance: 0.01
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05
@@ -107,9 +107,9 @@ Visualization Manager:
 Window Geometry:
   Displays:
     collapsed: true
-  Height: 416
+  Height: 458
   Width: 1280
   X: 0
-  Y: 784
+  Y: 722
   Hide Left Dock: true
   Hide Right Dock: true

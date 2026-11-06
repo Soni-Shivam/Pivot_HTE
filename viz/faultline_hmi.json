@@ -8,7 +8,8 @@
       "showFullMessageForDiff": false,
       "fontSize": 15,
       "defaultExpanded": true,
-      "foxglovePanelTitle": "mode (RUNUP / AWAITING_0G / EXECUTING / SAFE_HALT)"
+      "foxglovePanelTitle": "mode (RUNUP / AWAITING_0G / EXECUTING / SAFE_HALT)",
+      "lichtblickPanelTitle": "mode (RUNUP / AWAITING_0G / EXECUTING / SAFE_HALT)"
     },
     "RawMessages!halt": {
       "topicPath": "/faultline/safe_halt.data",
@@ -18,7 +19,8 @@
       "showFullMessageForDiff": false,
       "fontSize": 15,
       "defaultExpanded": true,
-      "foxglovePanelTitle": "safe_halt"
+      "foxglovePanelTitle": "safe_halt",
+      "lichtblickPanelTitle": "safe_halt"
     },
     "RawMessages!decision": {
       "topicPath": "/faultline/decision.data",
@@ -28,109 +30,66 @@
       "showFullMessageForDiff": false,
       "fontSize": 13,
       "defaultExpanded": true,
-      "foxglovePanelTitle": "adversary decision (cp \u00b7 action \u00b7 source \u00b7 request \u00b7 latency)"
-    },
-    "3D!scene": {
-      "cameraState": {
-        "distance": 45,
-        "perspective": true,
-        "phi": 50,
-        "thetaOffset": 90,
-        "target": [
-          0,
-          0,
-          0
-        ],
-        "targetOffset": [
-          10,
-          0,
-          0
-        ],
-        "targetOrientation": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "fovy": 45,
-        "near": 0.5,
-        "far": 5000
-      },
-      "followMode": "follow-pose",
-      "followTf": "ego",
-      "scene": {
-        "enableStats": false,
-        "backgroundColor": "#161a20",
-        "transforms": {
-          "showLabel": false,
-          "lineColor": "#ffffff00",
-          "lineWidth": 0.0
-        }
-      },
-      "transforms": {},
-      "topics": {
-        "/faultline/lidar": {
-          "visible": true,
-          "pointSize": 2,
-          "pointShape": "circle",
-          "colorMode": "colormap",
-          "colorMap": "turbo",
-          "colorField": "z",
-          "decayTime": 0
-        },
-        "/faultline/lanelet_map": {
-          "visible": true
-        },
-        "/faultline/gt": {
-          "visible": true
-        },
-        "/faultline/tracks": {
-          "visible": true
-        }
-      },
-      "layers": {
-        "grid": {
-          "visible": true,
-          "frameLocked": true,
-          "label": "Grid (10 m)",
-          "instanceId": "grid",
-          "layerId": "foxglove.Grid",
-          "size": 200,
-          "divisions": 20,
-          "lineWidth": 1,
-          "color": "#ffffff20",
-          "position": [
-            0,
-            0,
-            0
-          ],
-          "rotation": [
-            0,
-            0,
-            0
-          ],
-          "order": 1
-        }
-      },
-      "imageMode": {},
-      "foxglovePanelTitle": "3D: LiDAR (turbo by z), lanelet map, GT boxes (green ego / orange adversary), tracks (cyan)"
+      "foxglovePanelTitle": "adversary decision (cp \u00b7 action \u00b7 source \u00b7 request \u00b7 latency)",
+      "lichtblickPanelTitle": "adversary decision (cp \u00b7 action \u00b7 source \u00b7 request \u00b7 latency)"
     },
     "Plot!speed": {
-      "foxglovePanelTitle": "speed [m/s]: ego vs adversary",
+      "foxglovePanelTitle": "speed [m/s]: AV stack (ego) vs each attacker",
+      "lichtblickPanelTitle": "speed [m/s]: AV stack (ego) vs each attacker",
       "paths": [
         {
-          "value": "/faultline/ego/speed.data",
-          "label": "ego",
+          "value": "/faultline/hmi/speed/ego.velocity[:]",
+          "label": "AV stack",
+          "color": "#28dc78",
           "enabled": true,
-          "timestampMethod": "receiveTime",
-          "showLine": true
+          "timestampMethod": "headerStamp",
+          "showLine": true,
+          "lineSize": 2
         },
         {
-          "value": "/faultline/adversary/speed.data",
+          "value": "/faultline/hmi/speed/adversary.velocity[:]",
           "label": "adversary",
+          "color": "#f5c300",
           "enabled": true,
-          "timestampMethod": "receiveTime",
-          "showLine": true
+          "timestampMethod": "headerStamp",
+          "showLine": true,
+          "lineSize": 2
+        },
+        {
+          "value": "/faultline/hmi/speed/A.velocity[:]",
+          "label": "A",
+          "color": "#e62828",
+          "enabled": true,
+          "timestampMethod": "headerStamp",
+          "showLine": true,
+          "lineSize": 2
+        },
+        {
+          "value": "/faultline/hmi/speed/B.velocity[:]",
+          "label": "B",
+          "color": "#f5c300",
+          "enabled": true,
+          "timestampMethod": "headerStamp",
+          "showLine": true,
+          "lineSize": 2
+        },
+        {
+          "value": "/faultline/hmi/speed/C.velocity[:]",
+          "label": "C",
+          "color": "#2878f5",
+          "enabled": true,
+          "timestampMethod": "headerStamp",
+          "showLine": true,
+          "lineSize": 2
+        },
+        {
+          "value": "/faultline/hmi/speed/D.velocity[:]",
+          "label": "D",
+          "color": "#d23cdc",
+          "enabled": true,
+          "timestampMethod": "headerStamp",
+          "showLine": true,
+          "lineSize": 2
         }
       ],
       "showXAxisLabels": true,
@@ -138,29 +97,38 @@
       "showYAxisGridLines": true,
       "showLegend": true,
       "legendDisplay": "floating",
-      "floatingLegendPosition": "top-left",
-      "showPlotValuesInLegend": true,
+      "floatingLegendPosition": "top-right",
+      "showPlotValuesInLegend": false,
       "isSynced": false,
-      "xAxisVal": "timestamp",
-      "timeWindowMode": "sliding",
-      "followingViewWidth": 30
+      "xAxisVal": "currentCustom",
+      "xAxisPath": {
+        "value": "/faultline/hmi/speed/ego.position[:]",
+        "enabled": true
+      },
+      "xAxisLabel": "sim time [s]",
+      "minYValue": 0
     },
     "Plot!gap": {
-      "foxglovePanelTitle": "gap [m]: LiDAR vs ground truth",
+      "foxglovePanelTitle": "gap ahead [m]: LiDAR vs ground truth",
+      "lichtblickPanelTitle": "gap ahead [m]: LiDAR vs ground truth",
       "paths": [
         {
-          "value": "/faultline/gap_lidar.data",
+          "value": "/faultline/hmi/gap.velocity[:]",
           "label": "LiDAR",
+          "color": "#3cc8ff",
           "enabled": true,
-          "timestampMethod": "receiveTime",
-          "showLine": true
+          "timestampMethod": "headerStamp",
+          "showLine": true,
+          "lineSize": 2
         },
         {
-          "value": "/faultline/gap_gt.data",
-          "label": "GT",
+          "value": "/faultline/hmi/gap.effort[:]",
+          "label": "ground truth",
+          "color": "#ff9a1f",
           "enabled": true,
-          "timestampMethod": "receiveTime",
-          "showLine": true
+          "timestampMethod": "headerStamp",
+          "showLine": true,
+          "lineSize": 2
         }
       ],
       "showXAxisLabels": true,
@@ -168,52 +136,38 @@
       "showYAxisGridLines": true,
       "showLegend": true,
       "legendDisplay": "floating",
-      "floatingLegendPosition": "top-left",
-      "showPlotValuesInLegend": true,
+      "floatingLegendPosition": "top-right",
+      "showPlotValuesInLegend": false,
       "isSynced": false,
-      "xAxisVal": "timestamp",
-      "timeWindowMode": "sliding",
-      "followingViewWidth": 30
+      "xAxisVal": "currentCustom",
+      "xAxisPath": {
+        "value": "/faultline/hmi/gap.position[:]",
+        "enabled": true
+      },
+      "xAxisLabel": "sim time [s]",
+      "minYValue": 0
     },
     "Plot!ttc": {
       "foxglovePanelTitle": "TTC from LiDAR [s]",
+      "lichtblickPanelTitle": "TTC from LiDAR [s]",
       "paths": [
         {
-          "value": "/faultline/ttc.data",
+          "value": "/faultline/hmi/ttc.velocity[:]",
           "label": "TTC",
+          "color": "#3cc8ff",
           "enabled": true,
-          "timestampMethod": "receiveTime",
-          "showLine": true
-        }
-      ],
-      "showXAxisLabels": true,
-      "showYAxisLabels": true,
-      "showYAxisGridLines": true,
-      "showLegend": true,
-      "legendDisplay": "floating",
-      "floatingLegendPosition": "top-left",
-      "showPlotValuesInLegend": true,
-      "isSynced": false,
-      "xAxisVal": "timestamp",
-      "timeWindowMode": "sliding",
-      "followingViewWidth": 30
-    },
-    "Plot!ctl": {
-      "foxglovePanelTitle": "ego accel [m/s2] and steer [-1..1]",
-      "paths": [
-        {
-          "value": "/faultline/ego/accel.data",
-          "label": "accel",
-          "enabled": true,
-          "timestampMethod": "receiveTime",
-          "showLine": true
+          "timestampMethod": "headerStamp",
+          "showLine": true,
+          "lineSize": 2
         },
         {
-          "value": "/faultline/ego/steer.data",
-          "label": "steer",
+          "value": "/faultline/hmi/ttc.effort[:]",
+          "label": "1.5 s line",
+          "color": "#ff4040",
           "enabled": true,
-          "timestampMethod": "receiveTime",
-          "showLine": true
+          "timestampMethod": "headerStamp",
+          "showLine": true,
+          "lineSize": 2
         }
       ],
       "showXAxisLabels": true,
@@ -221,12 +175,17 @@
       "showYAxisGridLines": true,
       "showLegend": true,
       "legendDisplay": "floating",
-      "floatingLegendPosition": "top-left",
-      "showPlotValuesInLegend": true,
+      "floatingLegendPosition": "top-right",
+      "showPlotValuesInLegend": false,
       "isSynced": false,
-      "xAxisVal": "timestamp",
-      "timeWindowMode": "sliding",
-      "followingViewWidth": 30
+      "xAxisVal": "currentCustom",
+      "xAxisPath": {
+        "value": "/faultline/hmi/ttc.position[:]",
+        "enabled": true
+      },
+      "xAxisLabel": "sim time [s]",
+      "minYValue": 0,
+      "maxYValue": 8
     },
     "RawMessages!action": {
       "topicPath": "/faultline/adversary_action.data",
@@ -236,7 +195,8 @@
       "showFullMessageForDiff": false,
       "fontSize": 14,
       "defaultExpanded": true,
-      "foxglovePanelTitle": "adversary action"
+      "foxglovePanelTitle": "attackers' current actions",
+      "lichtblickPanelTitle": "attackers' current actions"
     }
   },
   "globalVariables": {},
@@ -257,32 +217,22 @@
       "splitPercentage": 50.0
     },
     "second": {
-      "first": "3D!scene",
+      "first": "Plot!speed",
       "second": {
-        "first": {
-          "first": "Plot!speed",
-          "second": "Plot!gap",
-          "direction": "column",
-          "splitPercentage": 50.0
-        },
+        "first": "Plot!gap",
         "second": {
           "first": "Plot!ttc",
-          "second": {
-            "first": "Plot!ctl",
-            "second": "RawMessages!action",
-            "direction": "column",
-            "splitPercentage": 60.0
-          },
+          "second": "RawMessages!action",
           "direction": "column",
-          "splitPercentage": 33.0
+          "splitPercentage": 78.0
         },
         "direction": "column",
         "splitPercentage": 50.0
       },
       "direction": "column",
-      "splitPercentage": 42.0
+      "splitPercentage": 34.0
     },
     "direction": "column",
-    "splitPercentage": 22.0
+    "splitPercentage": 19.0
   }
 }

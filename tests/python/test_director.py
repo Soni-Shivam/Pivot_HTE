@@ -92,9 +92,14 @@ def test_parse_windows_and_crop():
         0x2e00092 "viz/faultline.rviz* - RViz": ("rviz2" "rviz2")  1280x416+5+29  +5+813
            0x2e00013 "rviz2": ("rviz2" "rviz2")  1248x324+16+62  +21+875
 '''
-    assert stitch.parse_windows(tree) == {"hmi": [1280, 28, 640, 842], "rviz": [5, 813, 1280, 416]}
-    c = stitch.crop_cmd("d.mkv", [5, 813, 1280, 416], 1280, 288, skip_top=49)
-    assert "crop=1280:288:5:862,scale=1280:288" in c  # minus the toolbar, clamped above the dock (y < 1150)
+    w = stitch.parse_windows(tree)
+    assert w == {"hmi": [1280, 28, 640, 842], "rviz": [5, 813, 1280, 416], "rviz_view": [21, 875, 1248, 324]}
+    assert stitch.content_rect(w, "rviz") == [21, 875, 1248, 324]  # the render child, no menus/toolbar
+    assert stitch.content_rect({"hmi": [1280, 28, 640, 842]}, "hmi") == [1306, 152, 588, 691]  # legacy: no chrome
+    assert stitch.content_rect({"hmi": [1280, 56, 640, 1000], "layout": 2}, "hmi") == [1280, 96, 640, 960]
+    c = stitch.crop_cmd("d.mkv", [21, 875, 1248, 324], 1280, 360)
+    # clamped above the dock (y < 1150), letterboxed: aspect kept, never stretched
+    assert "crop=1248:274:21:875,scale=1280:360:force_original_aspect_ratio=decrease,pad=1280:360" in c[c.index("-vf") + 1]
     assert "-copyts" in c and c[-1] == "-"
 
 
@@ -104,7 +109,7 @@ def test_desk_cmd_and_index():
     t = [10.0, 10.05, 10.1, 13.0]  # a 0G pause between 10.1 and 13.0
     assert stitch.desk_index(t, 9.0) == 0 and stitch.desk_index(t, 10.07) == 1 and stitch.desk_index(t, 12.0) == 2
     e = stitch.encode_cmd("s.mp4")
-    assert e[e.index("-s") + 1] == "1920x1008"
+    assert e[e.index("-s") + 1] == "1920x1080"
 
 
 def test_decisions_html(tmp_path):

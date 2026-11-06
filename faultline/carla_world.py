@@ -8,6 +8,7 @@ LiDAR the metrics are computed from, the collision sensor and the recorder.
 """
 import fcntl
 import math
+import os
 import queue
 from dataclasses import replace
 from pathlib import Path
@@ -26,6 +27,17 @@ LIDAR_X, LIDAR_Z = 1.5, 1.9
 STRAIGHT_M = 140.0
 ROUTE_STEP_M, ROUTE_LEN_M = 2.0, 1000.0
 LOCK_PATH = "/tmp/faultline-carla.lock"  # one synchronous-mode client at a time on the shared server
+LOCAL_HOSTS = ("127.0.0.1", "localhost")
+
+
+def carla_host() -> str:
+    """Which CARLA server to use: FAULTLINE_CARLA_HOST (e.g. a second GPU machine on the tailnet), else local."""
+    return os.environ.get("FAULTLINE_CARLA_HOST", "127.0.0.1")
+
+
+def lock_path(host: str, port: int = 2000) -> str:
+    """One lock per server, so runs on different machines go in parallel; the local default keeps its old name."""
+    return LOCK_PATH if host in LOCAL_HOSTS and port == 2000 else f"/tmp/faultline-carla-{host}-{port}.lock"
 
 
 def _yaw_diff(a, b):
@@ -35,15 +47,22 @@ def _yaw_diff(a, b):
 class CarlaWorld:
     name = "carla-0.10.0"
 
-    def __init__(self, host="127.0.0.1", port=2000, map_name="Town10HD_Opt", recorder_path: Path | None = None,
+    def __init__(self, host=None, port=2000, map_name="Town10HD_Opt", recorder_path: Path | None = None,
                  idm: IdmParams = IdmParams(), view=None):
         self.view = view  # optional faultline.viewer.ChaseView (display only)
+        host = host or carla_host()
+        self.host, self.port = host, port
         self.client = carla.Client(host, port)
         self.client.set_timeout(120.0)
         self.map_name, self.recorder_path, self.idm_params = map_name, recorder_path, idm
         self.world = self.client.get_world()
         self.actors, self.recording, self.on_tick = [], False, None
         self.tracks, self.last_decision, self.last_scan = [], None, None  # display hooks (viewer / ROS bridge)
+
+    def recorder_target(self) -> str:
+        """The recorder file is written by the server: local path for a local server, a server-side path otherwise."""
+        p = Path(self.recorder_path).resolve()
+        return str(p) if self.host in LOCAL_HOSTS else f"/tmp/faultline-recorder/{p.parent.name}-{p.name}"
 
     def _candidates(self, m):
         out = []
@@ -62,7 +81,7 @@ class CarlaWorld:
     def _acquire(self, s) -> None:
         """Exclusive flock on the shared server, then synchronous mode at the scenario's dt (undone in close())."""
         self.s = s
-        self._lock = open(LOCK_PATH, "w")
+        self._lock = open(lock_path(self.host, self.port), "w")
         fcntl.flock(self._lock, fcntl.LOCK_EX)  # blocks while another faultline process drives CARLA
         if self.map_name not in self.world.get_map().name:
             self.world = self.client.load_world(self.map_name)
@@ -108,7 +127,7 @@ class CarlaWorld:
         self.col.listen(self.hits.put)
         self.actors += [self.lidar, self.col]
         if self.recorder_path:
-            self.client.start_recorder(str(Path(self.recorder_path).resolve()), True)
+            self.client.start_recorder(self.recorder_target(), True)
             self.recording = True
         self.tracker = GapTracker(dt_s=s.dt_s)
         self.collided = False

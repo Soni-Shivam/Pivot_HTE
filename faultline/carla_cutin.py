@@ -113,7 +113,7 @@ class CutInCarlaWorld(CarlaWorld):
         self.tracker = LidarTracker(s.dt_s, l_min=-w2 + 0.15, l_max=3 * w2 + 0.3, to_world=self._to_world)
         self.gap_tracker = GapTracker(dt_s=s.dt_s)
         if self.recorder_path:
-            self.client.start_recorder(str(Path(self.recorder_path).resolve()), True)
+            self.client.start_recorder(self.recorder_target(), True)
             self.recording = True
         self.world.tick()
         while not self.scans.empty():

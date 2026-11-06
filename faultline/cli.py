@@ -91,7 +91,12 @@ def print_summary(out: Path, m: dict) -> None:
 
 
 def npm(cmd: str, out: Path) -> None:
-    subprocess.run(["npm", "run", "-s", "faultline", "--", cmd, str(out)], cwd=ROOT, check=True)
+    import shutil
+    args = ["npm", "run", "-s", "faultline", "--", cmd, str(out)]
+    if shutil.which("npm"):  # Node 22 npm on PATH (sourcing nvm broke on one teammate's npm prefix)
+        subprocess.run(args, cwd=ROOT, check=True)
+    else:
+        subprocess.run(["bash", "-c", ". ~/.nvm/nvm.sh >/dev/null && " + " ".join(args)], cwd=ROOT, check=True)
 
 
 def cmd_run(a) -> int:

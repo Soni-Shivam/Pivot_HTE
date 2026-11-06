@@ -9,6 +9,7 @@ import time
 from dataclasses import asdict
 from pathlib import Path
 
+from faultline.chaos import MODES, TIMEOUT_S as CHAOS_TIMEOUT_S, FakeRouter
 from faultline.config import Scenario, canonical, scenario_hash
 from faultline.episode import _iso, run_episode
 from faultline.log import verify_chain
@@ -16,6 +17,7 @@ from faultline.router import DEFAULT_MODEL, Decision, ZgRouter
 
 ROOT = Path(__file__).resolve().parent.parent
 UNREACHABLE_URL = "http://127.0.0.1:1"  # a real refused connection, not a fake Router
+FAKE_MODES = tuple(m for m in MODES if m != "ok")
 
 
 def load_dotenv(path: Path = ROOT / ".env") -> None:
@@ -76,8 +78,13 @@ def cmd_run(a) -> int:
     if out.exists() and any(out.iterdir()):
         sys.exit(f"refusing to overwrite {out}")
     out.mkdir(parents=True, exist_ok=True)
+    extra, fake = {}, None
     if a.decider == "maintain":
         decider = MaintainBaseline()
+    elif a.chaos in FAKE_MODES:
+        print(f"\033[31mCHAOS MODE: {a.chaos} (fake router, test only)\033[0m")
+        fake = FakeRouter(a.chaos).__enter__()
+        decider, extra = ZgRouter(fake.url, "chaos-test", model=a.model, timeout_s=CHAOS_TIMEOUT_S), {"chaos": a.chaos}
     else:
         url = UNREACHABLE_URL if a.chaos == "unreachable" else (a.router_url or os.environ.get("ZG_ROUTER_URL"))
         key = os.environ.get("ZG_API_KEY")
@@ -86,9 +93,15 @@ def cmd_run(a) -> int:
         decider = ZgRouter(url, key, model=a.model)
     s = Scenario(seed=a.seed)
     if not a.anchor:
-        m = run_episode(make_world(a.world, out, a.view, a.display), decider, s, out)
+        try:
+            m = run_episode(make_world(a.world, out, a.view, a.display), decider, s, out, extra=extra)
+        finally:
+            if fake:
+                fake.__exit__()
         print_summary(out, m)
         return 0
+    if fake:
+        sys.exit("--anchor is for evidence runs; it cannot be combined with a chaos mode")
     # Commit-before: scenario.json + preliminary manifest, Galileo commitScenario, only then the first 0G call.
     started_at = _iso(time.time())
     (out / "scenario.json").write_text(canonical(asdict(s)) + "\n")
@@ -144,7 +157,8 @@ def main(argv=None) -> int:
     r.add_argument("--out")
     r.add_argument("--model", default=DEFAULT_MODEL)
     r.add_argument("--router-url")
-    r.add_argument("--chaos", choices=["none", "unreachable"], default="none")
+    r.add_argument("--chaos", choices=["none", "unreachable", *FAKE_MODES], default="none",
+                   help="unreachable = real refused connection; the others use an in-process fake router (test only)")
     r.add_argument("--decider", choices=["0g", "maintain"], default="0g")
     r.add_argument("--view", action="store_true", help="chase-camera window + screen.mp4 (CARLA only)")
     r.add_argument("--anchor", action="store_true", help="Galileo commit before the loop, publish + finalize after")

@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { existsSync, readFileSync } from 'node:fs'
 import assert from 'node:assert/strict'
 import { randomBytes } from '@noble/hashes/utils.js'
 import { open, unpackTar } from '@sealedai/protocol'
@@ -38,4 +39,14 @@ test('sealed tar round-trips with the right key and fails with another or a flip
   const bad = blob.slice()
   bad[bad.length - 20] ^= 1
   assert.throws(() => open(bad, key))
+})
+
+// Tenant isolation on the real demo-002 bundle (runs/ is local, so this skips on a fresh clone).
+const DEMO = new URL('../../../runs/demo-002/', import.meta.url).pathname
+test('a second tenant key cannot open demo-002; its public JSON leaks no scenario, history or salt', { skip: !existsSync(DEMO + 'sealed.bin') }, () => {
+  const blob = new Uint8Array(readFileSync(DEMO + 'sealed.bin'))
+  assert.throws(() => open(blob, randomBytes(32)), /tag|invalid/i)
+  const s = readFileSync(DEMO + 'public.json', 'utf8')
+  const salt = JSON.parse(readFileSync(DEMO + 'anchor.json', 'utf8')).salt.slice(2)
+  for (const k of ['initial_gap_m', '"history"', '"salt"', salt]) assert.ok(!s.includes(k), k.slice(0, 20))
 })

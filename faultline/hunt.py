@@ -394,6 +394,8 @@ def _manifest(out, a, extra):
          "thinking": a.thinking, "prompt_sha256": prompt_hashes(), "experiment_sha256": _sha_file(ROOT / "faultline/experiment.py"),
          "safety_definition": SAFETY_DEFINITION, "files": files, **extra}
     (out / "manifest.json").write_text(json.dumps(m, indent=2, sort_keys=True) + "\n")
+    from faultline import ledger
+    ledger.record(out)  # performance ledger (runs/ only)
 
 
 def _fmt(x, nd=2):

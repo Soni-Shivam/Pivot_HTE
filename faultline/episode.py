@@ -194,4 +194,6 @@ def run_episode(world, decider, scenario, out_dir: Path, clock=time, started_at:
                 "decisions_halt": decels["none"], "log_head": log.head, "files": files, "started_at": started_at,
                 "finished_at": _iso(clock.time()), "world": getattr(world, "name", type(world).__name__), **(extra or {})}
     (out_dir / "manifest.json").write_text(json.dumps(manifest, sort_keys=True, indent=2) + "\n")
+    from faultline import ledger
+    ledger.record(out_dir)  # performance ledger; only for runs under runs/
     return manifest

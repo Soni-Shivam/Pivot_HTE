@@ -804,6 +804,8 @@ def _manifest(out: Path, extra: dict):
          "prompt_sha256": prompt_hashes(), "code_sha256": code_sha(), "simulator": SIM, "safety_definition": SAFETY_DEFINITION,
          "ctrl_bounds": CTRL_BOUNDS, "j_weights": {"alpha": ALPHA, "beta": BETA, "delta": DELTA}, "files": files, **extra}
     (out / "manifest.json").write_text(json.dumps(m, indent=2, sort_keys=True) + "\n")
+    from faultline import ledger
+    ledger.record(out)  # performance ledger (runs/ only)
 
 
 def _print_turns(tool_log):

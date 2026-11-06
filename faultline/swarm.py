@@ -500,6 +500,8 @@ def run_swarm_episode(world, router: JointRouter, s: SwarmScenario, out_dir: Pat
         manifest.update(plan_name=(plan or {}).get("name"), plan_sha256=plan_entry.get("content_sha256"),
                         plan_request_id=plan_entry.get("request_id"), plan_latency_ms=plan_entry.get("latency_ms"))
     (out_dir / "manifest.json").write_text(json.dumps(manifest, sort_keys=True, indent=2) + "\n")
+    from faultline import ledger
+    ledger.record(out_dir)  # performance ledger; only for runs under runs/
     return manifest
 
 

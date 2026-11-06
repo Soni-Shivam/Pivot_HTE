@@ -50,9 +50,10 @@ def _cars(r, lw):
 
 def usage_of_entry(e: dict):
     """(usage, cost_usd) of a logged 0G call: its own fields, else decoded from the logged raw body (older runs)."""
-    from faultline.router import usage_of
+    from faultline.router import cost_usd, usage_of
     if e.get("usage") is not None or e.get("cost_usd") is not None:
-        return e.get("usage"), e.get("cost_usd")
+        b = e.get("billing") if isinstance(e.get("billing"), dict) else None
+        return e.get("usage"), e["cost_usd"] if e.get("cost_usd") is not None else cost_usd(e.get("usage"), b)
     if e.get("raw_b64"):
         try:
             return usage_of(json.loads(base64.b64decode(e["raw_b64"])))

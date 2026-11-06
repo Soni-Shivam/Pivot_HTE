@@ -71,6 +71,14 @@ def test_cards():
     p = director.plan_card(base, PLAN, 0.0)
     f = director.plan_card(base, {"plan": None, "plan_reason": "bad_plan"}, 0.0)
     assert (p != f).any()
+    x = {"tet_s": 0.5, "tit_s2": 0.1, "min_thw_s": 0.8, "pet_s": None, "brake_reaction_s": 0.1, "escape_space_m": 0.0,
+         "ego_efficiency": 0.6, "comfort_index": 0.7, "parse_rate": 1.0, "latency_p95_ms": 3000.0,
+         "prompt_tokens": 100, "completion_tokens": 10, "cost_usd": 1.3e-5}
+    res = director.result_extras({"extended": x, "behaviour_cell": ["lateral", "early"]}, PLAN)
+    assert res["plan"] == PLAN["plan"]["name"] and res["behaviour cell"] == "lateral × early"
+    assert res["min headway / PET"] == "0.80 s / -" and res["tokens in/out · cost"] == "100/10 · $0.00001"
+    assert director.result_extras(None, None) == {}
+    assert director.result_card(base, {"collision": False, **res}, 1.0).shape == base.shape
 
 
 def test_ffmpeg_cmd():

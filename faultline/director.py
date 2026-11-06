@@ -365,8 +365,29 @@ def plan_card(base, pe: dict, progress: float):
                 progress, (170, 120, 255))
 
 
+def result_extras(metrics: dict | None, pe: dict | None) -> dict:
+    """Extended ground-truth metrics, plan and behaviour cell for the result card (empty when unavailable)."""
+    x, out = (metrics or {}).get("extended") or {}, {}
+    f = lambda v, fmt: "-" if v is None else fmt.format(v)
+    if pe and (pe.get("plan") or {}).get("name"):
+        out["plan"] = pe["plan"]["name"]
+    if (metrics or {}).get("behaviour_cell"):
+        out["behaviour cell"] = " × ".join(metrics["behaviour_cell"])
+    if x:
+        out.update({"TET / TIT (TTC<1.5 s)": f"{x['tet_s']:.2f} s / {x['tit_s2']:.2f} s²",
+                    "min headway / PET": f"{f(x['min_thw_s'], '{:.2f} s')} / {f(x['pet_s'], '{:.2f} s')}",
+                    "brake reaction / escape": f"{f(x['brake_reaction_s'], '{:.2f} s')} / "
+                                               f"{f(x['escape_space_m'], '{:.1f} m')}",
+                    "efficiency / comfort": f"{f(x['ego_efficiency'], '{:.2f}')} / {f(x['comfort_index'], '{:.2f}')}",
+                    "0G parse rate / p95": f"{f(x['parse_rate'], '{:.0%}')} / {f(x['latency_p95_ms'], '{:.0f} ms')}",
+                    "tokens in/out · cost": f"{x['prompt_tokens'] or 0}/{x['completion_tokens'] or 0} · "
+                                            f"{f(x['cost_usd'], '${:.5f}')}"})
+    return out
+
+
 def result_card(base, res: dict, progress: float):
-    body = [(f"{k:<28}{v}", (235, 235, 235), 24, False, True) for k, v in res.items()]
+    size = 24 if len(res) <= 9 else 19
+    body = [(f"{k:<28}{v}", (235, 235, 235), size, False, True) for k, v in res.items()]
     return card(base, "Episode result (ground truth)", "PDM-Lite drove on its own LiDAR; the swarm drove on 0G",
                 body, ["not anchored · decisions.html lists every call verbatim"], progress, (60, 200, 120))
 
@@ -522,6 +543,7 @@ class Director:
                        is not None else "-", "min true TTC": f"{self.min_ttc:.2f} s" if self.min_ttc else "-",
                        "PDM-Lite peak decel": f"{self.max_decel:.2f} m/s²", "CCS (LiDAR, max)": f"{self.ccs_max:.2f}",
                        "sim time": f"{self.history[-1]['t']:.2f} s" if self.history else "-"}
+                res.update(result_extras(getattr(self.world, "final_metrics", None), getattr(self.world, "plan_entry", None)))
                 for i in range(END_FRAMES):
                     self._write(result_card(self.last_buf, res, i / END_FRAMES), self.wall[-1] if self.wall else 0)
             self.ff.stdin.close()

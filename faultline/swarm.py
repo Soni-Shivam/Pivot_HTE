@@ -30,6 +30,7 @@ from faultline.episode import HALT_MAX_S, STOPPED_HOLD_S, STOPPED_V, _iso, _lida
     ground_truth_metrics
 from faultline.log import ChainLog
 from faultline.metrics.ccs_v2 import score_episode
+from faultline.metrics.extended import extended_metrics
 from faultline.router import ZgRouter
 
 CUT_IN_MIN_GAP_M = 3.0
@@ -423,7 +424,7 @@ def run_swarm_episode(world, router: JointRouter, s: SwarmScenario, out_dir: Pat
     world.reset(s)
     cars = list(world.advs)
     state, n, last, k, halt_n, stopped_n = "READY", 0, None, 0, None, 0
-    rows, items, counts, adv_contact = [], [], {"0g": 0, "none": 0}, False
+    rows, items, counts, adv_contact, entries = [], [], {"0g": 0, "none": 0}, False, []
     if plan_entry is not None and plan is None:  # the planner failed: every car halts from the first checkpoint
         state = "PLAN_FAILED"
     try:
@@ -455,6 +456,7 @@ def run_swarm_episode(world, router: JointRouter, s: SwarmScenario, out_dir: Pat
                                 {"action": None, "reason": "plan_failed", "request_id": None, "latency_ms": 0,
                                  "content": None})}
                     log.append(entry)
+                    entries.append(entry)
                     world.last_decision = entry
                     items.append({"cp": k, "phase": phase, "actions": acts, "ego_speed_mps": obs["ego_speed_mps"],
                                   "gaps_m": {c: obs["cars"][c]["gap_m"] for c in cars}})
@@ -475,11 +477,13 @@ def run_swarm_episode(world, router: JointRouter, s: SwarmScenario, out_dir: Pat
                         break
                 elif n >= horizon_n or stopped_n * dt >= STOPPED_HOLD_S:
                     break
+            ep = score_episode([r["drac_mps2"] for r in rows], [r["ttc_s"] for r in rows], [r["thw_s"] for r in rows])
+            metrics = {**ep, "collision": bool(rows and rows[-1]["collision"]), "adv_contact": adv_contact,
+                       "ground_truth": ground_truth_metrics(rows, bool(rows and rows[-1]["collision"])),
+                       "extended": extended_metrics(rows, entries, asdict(s), plan_entry)}
+            world.final_metrics = metrics  # the director's result card reads it in world.close()
     finally:
         world.close()
-    ep = score_episode([r["drac_mps2"] for r in rows], [r["ttc_s"] for r in rows], [r["thw_s"] for r in rows])
-    metrics = {**ep, "collision": bool(rows and rows[-1]["collision"]), "adv_contact": adv_contact,
-               "ground_truth": ground_truth_metrics(rows, bool(rows and rows[-1]["collision"]))}
     (out_dir / "metrics.json").write_text(canonical(metrics) + "\n")
     fl = ("scenario.json", "decisions.jsonl", "trajectory.jsonl", "metrics.json") + \
         (("plan.json",) if (out_dir / "plan.json").exists() else ())

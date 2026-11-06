@@ -14,6 +14,7 @@ from faultline.config import Scenario, canonical, scenario_hash
 from faultline.controller import G
 from faultline.log import ChainLog
 from faultline.metrics.ccs_v2 import score, score_episode
+from faultline.metrics.extended import extended_metrics
 from faultline.metrics.kinematics import drac, thw, ttc_1d
 from faultline.policy import ACTION_DECEL, ACTIONS, SAFE_HALT_DECEL, prompt_hash
 
@@ -93,7 +94,7 @@ def run_episode(world, decider, scenario, out_dir: Path, clock=time, started_at:
     items, decels = [], {"0g": 0, "none": 0, "scripted-baseline": 0, "replayed": 0}
     lead_decelerating, onset_t, reaction_delay, min_ttc, prev_a = False, None, None, None, None
     halt_n, stopped_n, collision = None, 0, False
-    rows = []
+    rows, entries = [], []
     try:
         while True:
             if state in ("READY", "EXECUTING") and last is not None and n >= runup_n and (n - runup_n) % cp_n == 0 \
@@ -132,6 +133,7 @@ def run_episode(world, decider, scenario, out_dir: Path, clock=time, started_at:
                          "observation": obs, "obs_sha256": hashlib.sha256(canonical(obs).encode()).hexdigest(),
                          "history": history, **ctl, "source": source, **asdict(d)}
                 log.append(entry)
+                entries.append(entry)
                 world.last_decision = entry  # display hook (viewer / ROS bridge); never read back
                 items.append({"cp": k, "your_action": d.action, "gap_m": obs["gap_m"],
                               "ego_speed_mps": obs["ego_speed_mps"], "ego_accel_mps2": obs["ego_accel_mps2"],
@@ -178,6 +180,7 @@ def run_episode(world, decider, scenario, out_dir: Path, clock=time, started_at:
                               "scans_without_target": len(rows) - len(ok)}}
     if cut:
         metrics["ground_truth"] = ground_truth_metrics(rows, collision)
+    metrics["extended"] = extended_metrics(rows, entries, asdict(s))
     (out_dir / "metrics.json").write_text(canonical(metrics) + "\n")
 
     files = {f: _sha(out_dir / f) for f in ("scenario.json", "decisions.jsonl", "trajectory.jsonl", "metrics.json")}

@@ -1,11 +1,11 @@
 import 'dotenv/config'
 import express from 'express'
-import { createHash } from 'node:crypto'
 import { verifyMessage } from 'viem'
 import { HTTPFacilitatorClient } from '@x402/core/server'
 import { paymentMiddleware, x402ResourceServer } from '@x402/express'
 import { ExactHederaScheme } from '@x402/hedera/exact/server'
 import { acceptJob, authorizedJob, intentToken, updateJob } from './job-store.ts'
+import { SUITES, requestHash as hashRequest, startAllowed, suiteOf } from './suites.ts'
 
 const merchant = process.env.HEDERA_MERCHANT_ACCOUNT_ID
 const amount = process.env.HEDERA_PAYMENT_AMOUNT
@@ -23,10 +23,9 @@ const resourceServer = new x402ResourceServer(facilitator)
   .register('hedera:testnet', new ExactHederaScheme())
 const app = express()
 app.use(express.json({ limit: '4kb' }))
-const suite = 'cut-in-v1'
 app.get('/.well-known/faultline-service.json', (_req, res) => res.json({
   service: 'faultline', version: 1, network, asset, merchant, price: amount,
-  suites: [{ id: suite, maxRuns: 1 }], endpoint: '/v1/stress-tests',
+  suites: Object.entries(SUITES).map(([id, s]) => ({ id, simulator: s.simulator, maxRuns: 1 })), endpoint: '/v1/stress-tests',
 }))
 app.use(paymentMiddleware({
   'GET /v1/paid-ping': {
@@ -43,23 +42,22 @@ app.use(paymentMiddleware({
 app.get('/v1/paid-ping', (_req, res) => res.json({ ok: true, service: 'faultline', network }))
 app.post('/v1/stress-tests', (req, res) => {
   const body = req.body as Record<string, unknown> | undefined
-  if (!body || body.suite !== suite || body.maxRuns !== 1 ||
+  if (!body || !Object.hasOwn(SUITES, String(body.suite)) || body.maxRuns !== 1 ||
       typeof body.policyCommitment !== 'string' || !/^0x[0-9a-fA-F]{64}$/.test(body.policyCommitment) ||
       typeof body.idempotencyKey !== 'string' || !/^[a-zA-Z0-9_-]{16,128}$/.test(body.idempotencyKey)) {
     res.status(400).json({ error: 'invalid_test_request' })
     return
   }
-  const requestHash = createHash('sha256').update(JSON.stringify({
-    suite, maxRuns: 1, policyCommitment: body.policyCommitment.toLowerCase(), idempotencyKey: body.idempotencyKey,
-  })).digest('hex')
+  const { suite, simulator } = suiteOf(body.suite)
+  const requestHash = hashRequest(suite, body.policyCommitment, body.idempotencyKey)
   // This response is released by x402 only after facilitator settlement.
   // Job activation separately confirms that settlement on Mirror Node.
-  res.json({ suite, requestHash, intentToken: intentToken(requestHash), activationEndpoint: '/v1/stress-tests/activate' })
+  res.json({ suite, simulator, requestHash, intentToken: intentToken(requestHash), activationEndpoint: '/v1/stress-tests/activate' })
 })
 app.post('/v1/stress-tests/activate', async (req, res) => {
   try {
     const b = req.body as Record<string, unknown>
-    if (!b || b.suite !== suite || b.maxRuns !== 1 ||
+    if (!b || !Object.hasOwn(SUITES, String(b.suite)) || b.maxRuns !== 1 ||
         typeof b.policyCommitment !== 'string' || !/^0x[0-9a-fA-F]{64}$/.test(b.policyCommitment) ||
         typeof b.idempotencyKey !== 'string' || !/^[a-zA-Z0-9_-]{16,128}$/.test(b.idempotencyKey) ||
         typeof b.paymentResponse !== 'string' || b.paymentResponse.length > 4096) {
@@ -81,9 +79,8 @@ app.post('/v1/stress-tests/activate', async (req, res) => {
       t.transfers?.some(x => x.account === receipt.payer && x.amount === -Number(amount)))
     if (!settled) { res.status(402).json({ error: 'settlement_not_confirmed' }); return }
     const policyCommitment = b.policyCommitment.toLowerCase()
-    const requestHash = createHash('sha256').update(JSON.stringify({
-      suite, maxRuns: 1, policyCommitment, idempotencyKey: b.idempotencyKey,
-    })).digest('hex')
+    const { suite, simulator } = suiteOf(b.suite)
+    const requestHash = hashRequest(suite, policyCommitment, b.idempotencyKey)
     const accountResponse = await fetch(`https://testnet.mirrornode.hedera.com/api/v1/accounts/${receipt.payer}`)
     if (!accountResponse.ok) { res.status(503).json({ error: 'payer_lookup_unavailable' }); return }
     const payerAccount = await accountResponse.json() as { evm_address?: string }
@@ -93,9 +90,9 @@ app.post('/v1/stress-tests/activate', async (req, res) => {
           signature: b.payerSignature as `0x${string}` })) {
       res.status(403).json({ error: 'payer_signature_invalid' }); return
     }
-    const { job, permit } = acceptJob({ suite, maxRuns: 1, policyCommitment, idempotencyKey: b.idempotencyKey,
+    const { job, permit } = acceptJob({ suite, simulator, maxRuns: 1, policyCommitment, idempotencyKey: b.idempotencyKey,
       requestHash, payer: receipt.payer, transaction: receipt.transaction })
-    res.status(201).json({ jobId: job.jobId, status: job.status, permit, expiresAt: job.expiresAt, transaction: job.transaction })
+    res.status(201).json({ jobId: job.jobId, status: job.status, suite: job.suite, simulator: job.simulator, permit, expiresAt: job.expiresAt, transaction: job.transaction })
   } catch (e) {
     res.status((e as Error).message === 'idempotency_conflict' || (e as Error).message === 'payment_already_bound' ? 409 : 400)
       .json({ error: (e as Error).message })
@@ -104,18 +101,17 @@ app.post('/v1/stress-tests/activate', async (req, res) => {
 app.get('/v1/stress-tests/:jobId', (req, res) => {
   const job = authorizedJob(req.params.jobId as string, String(req.header('authorization') ?? '').replace(/^Bearer /, ''))
   if (!job) { res.status(403).json({ error: 'invalid_permit' }); return }
-  res.json({ jobId: job.jobId, status: job.status, suite: job.suite, report: job.report ?? null })
+  res.json({ jobId: job.jobId, status: job.status, suite: job.suite, simulator: job.simulator ?? null, report: job.report ?? null })
 })
 app.post('/v1/stress-tests/:jobId/start', (req, res) => {
   const job = authorizedJob(req.params.jobId as string, String(req.header('authorization') ?? '').replace(/^Bearer /, ''))
   if (!job) { res.status(403).json({ error: 'invalid_permit' }); return }
-  if (job.status !== 'accepted' || req.body?.suite !== job.suite ||
-      req.body?.policyCommitment?.toLowerCase() !== job.policyCommitment) {
+  if (!startAllowed(job, req.body ?? {})) {
     res.status(409).json({ error: 'run_not_authorized' }); return
   }
   job.status = 'running'
   updateJob(job)
-  res.json({ jobId: job.jobId, status: job.status, maxRuns: job.maxRuns })
+  res.json({ jobId: job.jobId, status: job.status, suite: job.suite, simulator: job.simulator, maxRuns: job.maxRuns })
 })
 app.post('/v1/stress-tests/:jobId/report', (req, res) => {
   const job = authorizedJob(req.params.jobId as string, String(req.header('authorization') ?? '').replace(/^Bearer /, ''))

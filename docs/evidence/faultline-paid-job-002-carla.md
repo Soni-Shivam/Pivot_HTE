@@ -1,0 +1,38 @@
+# Faultline paid job 002 — Hedera x402 to a CARLA run on 0G
+
+Date: 2026-11-07 IST. Suite `cut-in-v1-carla`, simulator `carla-0.10.0-cut-in` (CARLA 0.10, Town10HD_Opt, road 7), PDM-Lite ego on its own LiDAR, adversary chosen by private-tier 0G. Policy commitment: SHA-256 of `faultline/ego/pdm_lite.py`, `0x8edf01447b050b384dc02eaf2284d991276c58dcd67ab8c6ab8c6b0aa6ffd168` (same as job 001). Chain signer: `FAULTLINE_CHAIN_SIGNER` unset, so the default `PRIVATE_KEY`.
+
+| Stage | Evidence |
+| --- | --- |
+| Hedera x402 settlement | [0.001 HBAR transaction](https://hashscan.io/testnet/transaction/0.0.9185802@1794006563.434123686) `0.0.9185802@1794006563.434123686`. Mirror Node: `SUCCESS`, `CRYPTOTRANSFER`, consensus `1794006571.571909686`. Payer `0.0.11345424` −100,000 and merchant `0.0.11345316` +100,000 tinybars. The facilitator `0.0.9185802` paid the 294,227-tinybar fee |
+| Activation | First activation returned **HTTP 503** (Mirror Node had not indexed the transfer yet). `npm run hedera:recover` with the saved activation file succeeded. There was no second payment |
+| Accepted job | `de2d56fd2f3cd49fb30c1a7633f9d8c1`, bound to that transaction and the payer signature. The job record, the payer-signed request hash and the permit HMAC bind `suite: cut-in-v1-carla`, `simulator: carla-0.10.0-cut-in`, `maxRuns: 1` and the policy commitment |
+| Suite refusal (live, before consuming) | Runner asked for `cut-in-v1-kinematic` with this permit → refused before `/start` ("Permit is for suite cut-in-v1-carla (carla-0.10.0-cut-in)…"). A `/start` with a kinematic suite/simulator body → **409**. The job stayed `accepted` |
+| Galileo pre-run commit | `0x512ead9bd41cbf78313df571195226533d7bfaaeec02501b7c8e2f7f39643372`, block 64245811, registry `0xeE2260cE4835059F0e0f1FB9C9948Ca5a7d4b5A4` seq 6, configHash `0x4c2118126af8fc8e87baaeea27f685c3f2a1a2fb47cf6dfc8a23710875e2aa41` (git `823e39ee`, dirty tree: these changes were uncommitted) |
+| Episode | `6838553de9b62ee08b8785d73b142d16fa7c0dcadd83b5303f1e01f723cf5278`, world `carla-0.10.0-cut-in`, episode status **`interrupted`**. Eight decisions: 7 from 0G, then an honest SAFE_HALT at checkpoint 7 (t = 9.0 s, `bad_nonce`: the model's JSON left out the binding nonce). No collision. CCS 0.929, min TTC 1.03 s, min gap 3.84 m. Ground truth: CCS 0.908, min TTC 1.11 s, max ego decel 7.06 m/s² |
+| 0G request ids (8) | `95718d4a-8007-40eb-b859-b4019ad1c70f`, `7328bb44-70e9-45ef-90bd-8500ebc1d20f`, `d2480ba0-4106-4478-b26c-61a2bebf1fd8`, `303245bc-a537-40d5-87b5-34c6eae139d3`, `23bab5af-f604-45fe-8595-d215be1867a2`, `47a59ce2-b051-4e37-b391-c55700f6e325`, `8e22fec5-f81a-4e5c-9679-bc5a25ea74df`, `6577c4a8-d694-42e8-aabe-41dc17a3a29d` (the halted one) |
+| 0G Storage | Public root `0xc1219e48d517edabbea12db2bddf21294bcd5ddb106b00d963d8837cb75f6748` (tx `0x5b9adb9f695a1b39ef2b53e14de5fe24c87ecaf0ef4066f5acc96b54363d3f4f`). Sealed root `0x47b995a796e09cb39372e901b12da52edb5c4299add069416baccc440d9a71fa` (tx `0xc2ce8f1a3bded032e0e9877086c4fbad170270997b402b35824a88fad788ec4b`, envelope v2) |
+| Galileo finalize | `0x1ece91e630a9dcdcd326515b57934e02c0c1c5e84e339020fe0a6819e3f7f7ab`. `onchainMatches: true`. On-chain status 2 (interrupted), committed 1794006605, finalized 1794006674 |
+| Job report | `GET /v1/stress-tests/de2d56fd…` → 200, job `completed` (run delivered and published). The report carries `world: carla-0.10.0-cut-in`, episode `status: interrupted`, both roots and both txs |
+| Permit reuse | Second `/start` → **409** `run_not_authorized`. `npm run hedera:run` with the same permit → `Run permit rejected: HTTP 409` |
+| Evidence verification (`verify --key env`) | `publicRootOk`, `filesOk`, `decisionsWellFormed`, `metricsRecomputedOk`, `aggregatesOk` all true. Sealed: opened, key version 2, manifest matches public, file hashes match, chain ok, public decisions match sealed. Signatures archived and recovered: **7/7**, quote signer `0xf4FB…B250` matches the chain. On chain: anchored, registry pinned, `publicRootMatches`, `committedBeforeFirstCall` (first 0G call 2026-11-06T23:10:19.269Z) |
+| File hashes (manifest) | decisions.jsonl `8f0f4ef9…b092`, metrics.json `d0860faf…5ef2`, scenario.json `9dd3b8be…d486`, trajectory.jsonl `62dcf03b…1c5b` |
+| CARLA replay | `faultline replay … --world carla`: `decisions_match: true`, `trajectory_sha256_match: true`, 194/194 ticks, max gap diff 0.0 m, max LiDAR gap diff 0.0 m, max speed diff 0.0 m/s, recorder `playback_ok: true` (198 playback ticks, 2 vehicles). LiDAR is not guaranteed bit-deterministic in CARLA; on this replay the differences were zero |
+| Browser verifier | `headless.mjs --root 0xc121…6748`: 8 decision rows, badge "red · CCS 0.929", file hashes, metrics for 194 ticks, 7/7 signatures to the on-chain TEE signer, nonce echoed in 7/7 accepted answers, commit before the first call, scenario reveal. 5/5 PASS, no page errors |
+| Wall time | Buy (pay + 503) 3 s, recovery under 1 s, paid run 84 s (commit → CARLA episode → publish → finalize → report), replay 13 s |
+
+Dry runs without payment, same command shape (`run --world carla --family cut_in --seed 7 --anchor --view`):
+- `runs/paid-dryrun-carla-001`: SAFE_HALT at decision 0 (`bad_nonce`), 0 0G decisions. Commit `0x50adc71a5b6c5232d04817ab0976415ad9c59ceaf6699b1194b19dd971c5d1f5`, finalize `0xe710b6734afb6081d53206525cf13124a1e1b31574b097da1daa26c5da4369f8`, public `0xcdf5321b55d20f9c198004939532cdbb423c874ddb945d74866fe99116c5c690`. 70 s.
+- `runs/paid-dryrun-carla-002`: 5 0G decisions, then SAFE_HALT (`bad_nonce`). Commit `0x835f6f293de3b9d70b2a6551c2f54f02a4c2401063323b0f33e12343a8f8a93c`, finalize `0xff54b2b21cbeced9d31ed590537f8a001e8c6509c0af57e7c00e6cb73fd7156c`, public `0x8141e3b30ceae734b0c08c65c1d548750595f6ed4a50a0e67bb5739b5f5e56ac`. 81 s.
+
+Interruption reason: in all three CARLA runs the 0G model sometimes answers `{"action","why"}` without the `"nonce"` it was asked for. That happened 3 times in 15 CARLA cut-in decisions here (job 001 had 0 in 10 kinematic decisions). The parser treats a missing nonce as a failure (audit A3) and the episode halts. This is the intended fail-closed behaviour. It also means a 10-decision CARLA episode rarely finishes. The prompt sentence in `faultline/cutin.py` makes the nonce conditional and lists it after the schema. Putting `"nonce"` inside the required JSON schema is the likely fix. It changes the prompt hash, so the next runs would need re-baselining.
+
+## Claims, kept separate
+
+- **Hedera** proves that 0.001 testnet HBAR settled from the payer to the merchant in one transaction. The service bound that transaction to one job for one suite/simulator.
+- **0G signatures** prove which provider signer answered (7/7 recover to the on-chain TEE signer). They do not bind the logged plaintext content: the provider signs the E2EE ciphertext turn (`docs/faultline-audit.md` A2).
+- **Galileo** proves that the scenario and config were committed before the first 0G call and that the roots were finalized after the run. The on-chain record matches the published roots.
+- **Replay** supports simulation integrity: the CARLA world reproduced the logged decisions and the trajectory hash.
+- **The report** is posted by the customer's local runner. The job status `completed` means the paid run was delivered and published. The episode itself ended `interrupted`.
+
+Also re-verified: paid job 001 (kinematic) with its own tenant key (`verify 0xad84…ac12 --sealed 0x9a88…fc40 --key env:FAULTLINE_TENANT_KEY_VEDANT`). Public root, files, metrics, aggregates, sealed open/match/chain all true; 10/10 signatures; on chain anchored, registry pinned, `publicRootMatches`, `committedBeforeFirstCall`.

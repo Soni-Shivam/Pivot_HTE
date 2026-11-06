@@ -1,4 +1,4 @@
-// npm run faultline -- publish <dir> | verify <publicRoot> [--sealed <root> --key <hex>] [--out file] | sigs <jsonl>
+// npm run faultline -- publish <dir> | verify <publicRoot> [--sealed <root> --key <hex|env|env:NAME>] [--out file] | sigs <jsonl>
 // Env from .env: RPC_URL, STORAGE_INDEXER, PRIVATE_KEY, FAULTLINE_TENANT_KEY. Values are never printed.
 import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -23,7 +23,7 @@ if (cmd === 'publish' && target) {
   console.log(JSON.stringify(await (cmd === 'commit' ? commit(target, cfg) : finalize(target, cfg)), null, 2))
 } else if (cmd === 'verify' && target) {
   const key = flag(rest, '--key')
-  const v = await verify(target, { ...base(), sealedRoot: flag(rest, '--sealed'), tenantKeyHex: key === 'env' ? env('FAULTLINE_TENANT_KEY') : key })
+  const v = await verify(target, { ...base(), sealedRoot: flag(rest, '--sealed'), tenantKeyHex: key === 'env' ? env('FAULTLINE_TENANT_KEY') : key?.startsWith('env:') ? env(key.slice(4)) : key })
   const out = flag(rest, '--out')
   if (out) writeFileSync(out, JSON.stringify(v, null, 2) + '\n')
   console.log(JSON.stringify(v, null, 2))
@@ -34,7 +34,7 @@ if (cmd === 'publish' && target) {
   writeFileSync(`${target}.sigs.json`, JSON.stringify(r, null, 2) + '\n')
   console.log(JSON.stringify({ total: r.total, verified: r.verified, out: `${target}.sigs.json` }))
 } else {
-  console.error('usage: faultline commit|publish|finalize <dir> | register-agent <card.json> | verify <publicRoot> [--sealed <root> --key <hex|env>] [--out file] | sigs <jsonl>')
+  console.error('usage: faultline commit|publish|finalize <dir> | register-agent <card.json> | verify <publicRoot> [--sealed <root> --key <hex|env|env:NAME>] [--out file] | sigs <jsonl>')
   process.exit(2)
 }
 process.exit(0)

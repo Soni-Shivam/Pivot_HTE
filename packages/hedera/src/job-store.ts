@@ -4,7 +4,8 @@ import { join } from 'node:path'
 
 export type Job = {
   jobId: string
-  suite: 'cut-in-v1'
+  suite: string // an id from suites.ts (legacy job 001: 'cut-in-v1')
+  simulator?: string
   maxRuns: 1
   policyCommitment: string
   idempotencyKey: string

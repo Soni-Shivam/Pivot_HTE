@@ -4,32 +4,40 @@ import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import { runnerArgs, suiteOf } from './suites.ts'
 
-const [jobId, permit, policyCommitment] = process.argv.slice(2)
+const [jobId, permit, policyCommitment, wantedSuite] = process.argv.slice(2)
 if (!/^[0-9a-f]{32}$/.test(jobId ?? '') || !/^[0-9a-f]{64}$/.test(permit ?? '') ||
-    !/^0x[0-9a-fA-F]{64}$/.test(policyCommitment ?? '')) {
-  throw new Error('usage: npm run hedera:run -- <jobId> <permit> <0x-policy-commitment>')
+    !/^0x[0-9a-fA-F]{64}$/.test(policyCommitment ?? '') || !wantedSuite) {
+  throw new Error('usage: npm run hedera:run -- <jobId> <permit> <0x-policy-commitment> <cut-in-v1-kinematic|cut-in-v1-carla>')
 }
+const { suite, simulator } = suiteOf(wantedSuite)
 const actualPolicyCommitment = `0x${createHash('sha256').update(readFileSync(resolve('faultline/ego/pdm_lite.py'))).digest('hex')}`
 if (policyCommitment.toLowerCase() !== actualPolicyCommitment) throw new Error('Policy commitment does not match the local PDM-Lite policy')
 const base = `http://127.0.0.1:${process.env.HEDERA_DEMO_PORT ?? '8787'}`
-// Local hackathon runner may use the funded studio signer when no dedicated 0G signer is configured.
-if (!process.env.PRIVATE_KEY && process.env.STUDIO_PRIVATE_KEY) process.env.PRIVATE_KEY = process.env.STUDIO_PRIVATE_KEY
+// Explicit choice of which .env key signs Galileo txs (job 001 used FAULTLINE_CHAIN_SIGNER=STUDIO_PRIVATE_KEY).
+const signer = process.env.FAULTLINE_CHAIN_SIGNER ?? 'PRIVATE_KEY'
+if (signer !== 'PRIVATE_KEY' && signer !== 'STUDIO_PRIVATE_KEY') throw new Error('FAULTLINE_CHAIN_SIGNER must be PRIVATE_KEY or STUDIO_PRIVATE_KEY')
+if (!process.env[signer]) throw new Error(`FAULTLINE_CHAIN_SIGNER names ${signer}, which is not set`)
+process.env.PRIVATE_KEY = process.env[signer]
 for (const name of ['ZG_ROUTER_URL', 'ZG_API_KEY', 'RPC_URL', 'STORAGE_INDEXER', 'PRIVATE_KEY', 'FAULTLINE_TENANT_KEY']) {
   if (!process.env[name]) throw new Error(`${name} is required for a paid anchored run`)
 }
 const endpoint = `${base}/v1/stress-tests/${jobId}`
 const headers = { authorization: `Bearer ${permit}`, 'content-type': 'application/json' }
+const jobResponse = await fetch(endpoint, { headers })
+if (!jobResponse.ok) throw new Error(`Job lookup failed: HTTP ${jobResponse.status}`)
+const args = runnerArgs(suite, await jobResponse.json() as Record<string, unknown>) // throws before the permit is consumed
 const start = await fetch(`${endpoint}/start`, { method: 'POST', headers,
-  body: JSON.stringify({ suite: 'cut-in-v1', policyCommitment }) })
+  body: JSON.stringify({ suite, simulator, policyCommitment }) })
 if (!start.ok) throw new Error(`Run permit rejected: HTTP ${start.status}`)
 
 const out = resolve('runs', `paid-${jobId}-${Date.now()}`)
 // The existing Faultline CLI sources nvm for its 0G commands; npm's global prefix conflicts with nvm.
 const childEnv = { ...process.env }
 delete childEnv.npm_config_prefix
-const child = spawn(resolve('.venv/bin/python'), ['-m', 'faultline', 'run', '--world', 'kinematic', '--family', 'cut_in',
-  '--decider', '0g', '--anchor', '--out', out], { stdio: 'inherit', env: childEnv })
+const child = spawn(resolve('.venv/bin/python'), ['-m', 'faultline', 'run', ...args, '--out', out],
+  { stdio: 'inherit', env: childEnv })
 const exitCode = await new Promise<number>((done, reject) => {
   child.on('error', reject)
   child.on('exit', code => done(code ?? 1))
@@ -37,11 +45,13 @@ const exitCode = await new Promise<number>((done, reject) => {
 let report: Record<string, unknown> = { outputDirectory: out }
 try {
   const manifest = JSON.parse(await readFile(resolve(out, 'manifest.json'), 'utf8')) as Record<string, unknown>
-  report = { episodeId: manifest.episode_id, status: manifest.status, publicRoot: manifest.public_root,
+  report = { suite, simulator, world: manifest.world, episodeId: manifest.episode_id, status: manifest.status, publicRoot: manifest.public_root,
     sealedRoot: manifest.sealed_root, commitTx: manifest.commit_tx, finalizeTx: manifest.finalize_tx,
     logHead: manifest.log_head, outputDirectory: out }
 } catch { /* An interrupted run may not have produced a manifest. */ }
-const status = exitCode === 0 && report.publicRoot && report.finalizeTx ? 'completed' : 'interrupted'
+const status = exitCode === 0 && report.publicRoot && report.finalizeTx && report.world === simulator ? 'completed' : 'interrupted'
+if (status !== 'completed') report.interruption = exitCode !== 0 ? `faultline exited ${exitCode}`
+  : report.world !== simulator ? `ran ${String(report.world)}, paid for ${simulator}` : 'no anchored publication'
 const response = await fetch(`${endpoint}/report`, { method: 'POST', headers,
   body: JSON.stringify({ status, report }) })
 if (!response.ok) throw new Error(`Could not record run outcome: HTTP ${response.status}`)

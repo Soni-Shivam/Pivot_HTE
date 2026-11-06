@@ -9,6 +9,7 @@ import { createClientHederaSigner } from '@x402/hedera'
 import { ExactHederaScheme } from '@x402/hedera/exact/client'
 import { wrapFetchWithPayment } from '@x402/fetch'
 import { authorizePayment, type HederaExactRequirements } from './spending-policy.ts'
+import { requestHash as hashRequest, suiteOf } from './suites.ts'
 
 const base = `http://127.0.0.1:${process.env.HEDERA_DEMO_PORT ?? '8787'}`
 const payer = process.env.HEDERA_PAYER_ACCOUNT_ID
@@ -21,15 +22,16 @@ if (!payer || !key || !/^[0-9a-fA-F]{64}$/.test(key) || !merchant || !cap || !/^
 if (BigInt(cap) > 100_000n) throw new Error('Demo buyer cap is 0.001 HBAR')
 const manifestResponse = await fetch(`${base}/.well-known/faultline-service.json`)
 if (!manifestResponse.ok) throw new Error('Service discovery failed')
-const manifest = await manifestResponse.json() as { network: string, asset: string, merchant: string, price: string, suites: Array<{ id: string }> }
+const manifest = await manifestResponse.json() as { network: string, asset: string, merchant: string, price: string, suites: Array<{ id: string, simulator: string }> }
+const { suite, simulator } = suiteOf(process.argv[3])
 if (manifest.network !== 'hedera:testnet' || manifest.asset !== '0.0.0' ||
     manifest.merchant !== merchant || BigInt(manifest.price) > BigInt(cap) ||
-    !manifest.suites.some(x => x.id === 'cut-in-v1')) throw new Error('Service manifest outside buyer policy')
+    !manifest.suites.some(x => x.id === suite && x.simulator === simulator)) throw new Error('Service manifest outside buyer policy')
 const policyCommitment = process.argv[2]
-const recoveryTx = process.argv[3]
+const recoveryTx = process.argv[4]
 if (!/^0x[0-9a-fA-F]{64}$/.test(policyCommitment ?? '')) throw new Error('Pass a 0x-prefixed 32-byte policy commitment')
 if (recoveryTx && !/^0\.0\.[0-9]+@[0-9]+\.[0-9]+$/.test(recoveryTx)) throw new Error('Invalid recovery transaction')
-const request = { suite: 'cut-in-v1', maxRuns: 1, policyCommitment,
+const request = { suite, maxRuns: 1, policyCommitment,
   idempotencyKey: randomBytes(16).toString('hex') }
 const url = `${base}/v1/stress-tests`
 const init = { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(request) }
@@ -63,9 +65,8 @@ paymentResponse = paid.headers.get('payment-response')
 if (!paymentResponse || !intent.intentToken) throw new Error('Missing settlement receipt or paid intent')
 }
 const receipt = JSON.parse(Buffer.from(paymentResponse!, 'base64').toString('utf8')) as { transaction: string }
-const requestHash = (await import('node:crypto')).createHash('sha256').update(JSON.stringify({
-  suite: request.suite, maxRuns: 1, policyCommitment: policyCommitment.toLowerCase(), idempotencyKey: request.idempotencyKey,
-})).digest('hex')
+const requestHash = hashRequest(suite, policyCommitment, request.idempotencyKey)
+if (intent.requestHash && intent.requestHash !== requestHash) throw new Error('Service bound a different request than the one paid for')
 const payerSignature = await privateKeyToAccount(`0x${key}`).signMessage({ message: `faultline:v1:${receipt.transaction}:${requestHash}` })
 const activationBody = { ...request, paymentResponse, intentToken: intent.intentToken, payerSignature }
 const stateDir = process.env.HEDERA_JOB_STATE_DIR ?? join(process.cwd(), '.faultline-hedera-state')

@@ -971,4 +971,17 @@ $('judge-btn').addEventListener('click', () => judge(0))
 $('j-prev').addEventListener('click', () => judge(jstep - 1))
 $('j-next').addEventListener('click', () => { if (jstep === JUDGE.length - 1) { $('judge').classList.add('hidden'); document.querySelectorAll('.hl').forEach((e) => e.classList.remove('hl')) } else judge(jstep + 1) })
 $('j-close').addEventListener('click', () => { $('judge').classList.add('hidden'); document.querySelectorAll('.hl').forEach((e) => e.classList.remove('hl')) })
+
+// ---------- scenario families: scripted illustration clips (scripts/clips/make_clips.py: no 0G decisions drive them) ----------
+const FAMILIES = [['cut-in', 'Cut-in', 'live with 0G (cut-in suite)'], ['lead-brake', 'Lead vehicle brakes', 'scripted clip'], ['pedestrian', 'Pedestrian crossing', 'scripted clip'],
+  ['lidar-dropout', 'LiDAR dropout', 'scripted clip'], ['intersection', 'Intersection conflict', 'scripted clip']]
+document.querySelectorAll('[data-families]').forEach((el) => {
+  el.innerHTML = FAMILIES.map(([f, t, st]) => `<figure><video muted loop playsinline preload="none" poster="/clips/${f}.jpg" data-loop="/clips/${f}.mp4" aria-label="${esc(t)}: scripted CARLA scenario clip"></video><b>${esc(t)}</b><small>${esc(st)}</small></figure>`).join('')
+})
+// play loops only while visible (and never under reduced motion)
+const famObs = new IntersectionObserver((es) => es.forEach((e) => {
+  const v = e.target as HTMLVideoElement
+  if (e.isIntersecting && !matchMedia('(prefers-reduced-motion: reduce)').matches) { if (!v.getAttribute('src')) v.src = v.dataset.loop!; v.play().catch(() => { /* blocked */ }) } else v.pause()
+}))
+document.querySelectorAll<HTMLVideoElement>('video[data-loop]').forEach((v) => famObs.observe(v))
 boot()

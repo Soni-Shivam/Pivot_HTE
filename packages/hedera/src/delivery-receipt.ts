@@ -50,7 +50,7 @@ export async function verifyDelivery(receipt: DeliveryReceipt, cfg: { rpcUrl: st
   const bindingHash = `0x${createHash('sha256').update(JSON.stringify(sorted)).digest('hex')}`
   if (!b || Object.entries(expectedBinding).some(([k, v]) => b[k] !== v) ||
       m.config?.paid_binding_hash !== bindingHash || m.episode_id !== receipt.episodeId ||
-      m.world !== 'kinematic' || m.family !== 'cut_in' || m.status !== 'completed') {
+      m.world !== 'kinematic-cut-in' || m.family !== 'cut_in' || m.status !== 'completed') {
     throw new Error('paid_evidence_binding_mismatch')
   }
   const checks = checkPublic(pub)

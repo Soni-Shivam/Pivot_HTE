@@ -11,6 +11,16 @@ from faultline.log import verify_chain
 from faultline.router import Decision
 
 
+def _kinematic_policy_commitment() -> str:
+    root = Path(__file__).resolve().parent.parent
+    h = hashlib.sha256(b"faultline-kinematic-idm-v1\0")
+    for name in ("faultline/controller.py", "faultline/cutin.py"):
+        h.update(name.encode())
+        h.update(b"\0")
+        h.update((root / name).read_bytes())
+    return "0x" + h.hexdigest()
+
+
 def _lines(p: Path) -> list[dict]:
     return [json.loads(l) for l in Path(p).read_text().splitlines()]
 
@@ -40,7 +50,11 @@ def replay(run_dir: Path, world, out_dir: Path) -> dict:
     if not verify_chain(run_dir / "decisions.jsonl", manifest["log_head"]):
         raise ValueError("log chain broken")
     scenario = load_scenario(json.loads((run_dir / "scenario.json").read_text()))
-    run_episode(world, RecordedDecider(run_dir / "decisions.jsonl"), scenario, out_dir)
+    commitment = _kinematic_policy_commitment() if manifest.get("world") == "kinematic-cut-in" else None
+    run_episode(world, RecordedDecider(run_dir / "decisions.jsonl"), scenario, out_dir,
+                extra={"replay_policy_commitment": commitment} if commitment else None)
+    if commitment and commitment != _kinematic_policy_commitment():
+        raise ValueError("kinematic policy source changed during replay")
 
     a, b = _lines(run_dir / "trajectory.jsonl"), _lines(out_dir / "trajectory.jsonl")
     pairs = list(zip(a, b))

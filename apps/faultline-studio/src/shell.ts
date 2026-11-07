@@ -19,7 +19,8 @@ export function initShell(route: () => void) {
     <div class="hdr-right">
       <span class="pill sm" id="status-pill" role="status" tabindex="0" data-tip="Checking the local test runner"><i class="dot" id="status-dot"></i><span id="status-txt">Checking runner…</span></span>
       <a class="btn y" href="${href.lab()}" id="run-cta">Run a test</a>
-      <button class="pill" id="wallet-btn" data-tip="Connects your browser wallet here. It only ever signs a readable test request.">Connect wallet</button>
+      <button class="pill" id="wallet-btn" aria-haspopup="true" aria-expanded="false" aria-controls="wallet-pop">Connect wallet</button>
+      <div id="wallet-pop" class="wallet-pop hidden" role="dialog" aria-label="Connect a wallet"></div>
     </div>`
 
   // phone menu: labelled button, aria-expanded, Escape closes and returns focus
@@ -54,17 +55,37 @@ export function initShell(route: () => void) {
   }
   onHealth(paintHealth); paintHealth()
 
-  // wallet: connects in place, never navigates
-  const wb = $('wallet-btn')
+  // wallet: connects in place, never navigates. One wallet → connect on click; several → pick one (Coinbase first).
+  // Errors stay visible in the panel with "Connect again" (Coinbase rejects a new site's first request with a warning).
+  const wb = $('wallet-btn'), pop = $('wallet-pop')
   const paintWallet = () => { wb.textContent = wallet.current ? `● ${wallet.current.address.slice(0, 6)}…${wallet.current.address.slice(-4)}` : 'Connect wallet' }
   onWallet(paintWallet); paintWallet()
-  const flash = (text: string, tip: string) => { wb.textContent = text; wb.dataset.tip = tip; setTimeout(() => { if (!wallet.current) wb.textContent = 'Connect wallet' }, 3000) }
-  wb.addEventListener('click', async () => {
+  const ordered = () => walletOptions().slice().sort((x, y) => Number(/coinbase/i.test(y.info.name + y.info.rdns)) - Number(/coinbase/i.test(x.info.name + x.info.rdns)))
+  const setPop = (html: string | null) => {
+    pop.classList.toggle('hidden', html == null); wb.setAttribute('aria-expanded', String(html != null))
+    if (html != null) { pop.innerHTML = html; pop.querySelector<HTMLElement>('button, a')?.focus() }
+  }
+  const choices = (msg = '') => {
+    const list = ordered()
+    setPop(`${msg ? `<p class="wp-err" role="alert">${esc(msg)}</p>` : '<p class="wp-h">Choose a wallet. It only signs a readable test request; nothing is paid.</p>'}
+      ${list.map((w, i) => `<button class="btn ${i ? '' : 'y'}" data-wi="${i}">${w.info.icon?.startsWith('data:image/') ? `<img src="${esc(w.info.icon)}" alt="" width="20" height="20">` : ''}${msg ? 'Connect again: ' : 'Connect '}${esc(w.info.name)}</button>`).join('')}`)
+  }
+  const tryConnect = async (w: ReturnType<typeof walletOptions>[number]) => {
+    wb.textContent = 'Check your wallet…'
+    try { await connect(w); setPop(null) } // still inside the click: the wallet popup needs a user gesture
+    catch (e) { paintWallet(); choices(walletErr(e, 'connection')) }
+  }
+  wb.addEventListener('click', () => {
     if (wallet.current) return
-    if (!walletOptions().length) { flash('No wallet found', 'Install a browser wallet such as Coinbase Wallet and reload. Free runs work without one.'); return }
-    try { await connect() } // still inside the click: the wallet popup needs a user gesture
-    catch (e) { flash('Not connected', walletErr(e, 'connection')) }
+    if (!pop.classList.contains('hidden')) { setPop(null); return }
+    const list = ordered()
+    if (!list.length) { setPop('<p class="wp-h">No browser wallet found. Install the <a href="https://www.coinbase.com/wallet/downloads" target="_blank" rel="noopener">Coinbase Wallet extension</a> (or any browser wallet) and reload. Free runs work without one.</p>'); return }
+    if (list.length === 1) { void tryConnect(list[0]); return }
+    choices()
   })
+  pop.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest<HTMLElement>('[data-wi]'); if (b) void tryConnect(ordered()[Number(b.dataset.wi)]) })
+  pop.addEventListener('keydown', (e) => { if (e.key === 'Escape') { setPop(null); wb.focus() } })
+  document.addEventListener('click', (e) => { if (!pop.classList.contains('hidden') && !pop.contains(e.target as Node) && e.target !== wb) setPop(null) })
   setTimeout(resumeWallet, 400) // reconnect a wallet the visitor already approved (no popup)
 
   // judge mode: any [data-judge] button opens it

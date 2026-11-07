@@ -345,6 +345,10 @@
       main { padding: 8px 16px 40px } #offline-strip { margin: 0 16px 16px }
     }
     @media (max-width: 399px) { .brand { font-size: 18px } #wallet-btn, #menu-btn { padding: 0 10px } }
+    .hdr-right { position: relative }
+    .wallet-pop { position: absolute; right: 0; top: calc(100% + 8px); z-index: 40; width: min(340px, calc(100vw - 32px)); background: var(--paper); color: var(--ink); border: 1.5px solid var(--line); border-radius: 18px; padding: 14px; display: grid; gap: 8px; box-shadow: 0 10px 30px #0008 }
+    .wallet-pop .btn { justify-content: center } .wallet-pop img { border-radius: 5px }
+    .wallet-pop p { margin: 0; font-size: 14px } .wallet-pop .wp-err { color: #9c005d; font-weight: 500 } .wallet-pop a { color: inherit; font-weight: 600 }
   </style>
 </head>
 <body>

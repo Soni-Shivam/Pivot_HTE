@@ -37,3 +37,16 @@ export function runnerArgs(wanted: string, job: { suite?: unknown, simulator?: u
   }
   return [...SUITES[suite].args]
 }
+
+// Free demo runs only: the coordinated four-car attack (faultline.carla_swarm). Not in SUITES, so no payment can buy it.
+// Its ego is fixed to PDM-Lite on LiDAR (CutInCarlaWorld), so other policies are refused rather than silently swapped.
+export const DEMO_SWARM = 'swarm-v1-carla'
+export function demoSuite(suite: unknown, mode: unknown, policy: unknown): { lane: 'carla' | 'kin', swarm: boolean } | { error: string } {
+  if (suite === DEMO_SWARM) {
+    if (mode !== 'free') return { error: 'the coordinated four-car attack runs as a free demo only; paid tests cover the cut-in suites' }
+    if (policy !== 'pdm-lite') return { error: 'the coordinated four-car attack runs against PDM-Lite only' }
+    return { lane: 'carla', swarm: true }
+  }
+  if (typeof suite !== 'string' || !Object.hasOwn(SUITES, suite)) return { error: `suite must be one of: ${[...Object.keys(SUITES), DEMO_SWARM].join(', ')}` }
+  return { lane: suite === 'cut-in-v1-carla' ? 'carla' : 'kin', swarm: false }
+}

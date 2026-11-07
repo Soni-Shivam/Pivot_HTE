@@ -19,7 +19,7 @@ import { join, relative, resolve } from 'node:path'
 import { buy, buyerConfigFromEnv, hashscanTx, MIRROR, type Activation } from './buyer.ts'
 import { verifyMessage } from 'viem'
 import { clientIp, DailyCaps, mediaPath, parseOrigins, RateLimit, verifyRunRequest, WalletCaps } from './console-guard.ts'
-import { SUITES, suiteOf } from './suites.ts'
+import { DEMO_SWARM, SUITES, demoSuite, suiteOf } from './suites.ts'
 
 const PORT = Number(process.env.FAULTLINE_CONSOLE_PORT ?? 8788)
 const MAX_BUYS = Number(process.env.FAULTLINE_CONSOLE_MAX_BUYS ?? 6)
@@ -197,12 +197,12 @@ function runSummary(name: string) {
   return {
     name, jobId: jobId ?? null, status: m?.preliminary ? 'running' : m?.status ?? 'running', world: m?.world ?? null, family: m?.family ?? null,
     episodeId: m?.episode_id ?? null, model: m?.model ?? null, decisions: m?.decisions_total ?? null, decisions0g: m?.decisions_0g ?? null,
-    ccs: met?.ccs ?? null, minTtc: met?.min_ttc_s ?? null, minGap: met?.min_gap_m ?? null, collision: met?.collision ?? null,
+    ccs: met?.ccs ?? null, minTtc: met?.min_ttc_s ?? met?.ground_truth?.min_ttc_s ?? null, minGap: met?.min_gap_m ?? met?.ground_truth?.min_gap_in_path_m ?? null, collision: met?.collision ?? null,
     startedAt: m?.started_at ?? null, finishedAt: m?.finished_at ?? null, mtime: statSync(dir).mtimeMs,
     chain: a ? { registry: a.registry, commitTx: a.commitTx, commitBlockTimestamp: a.commitBlockTimestamp, finalizeTx: a.finalizeTx ?? null, onchainMatches: a.onchainMatches ?? null } : null,
     storage: p ? { publicRoot: p.publicRoot, sealedRoot: p.sealedRoot, publicTx: p.publicTx, sealedTx: p.sealedTx, signaturesArchived: p.signatures_archived ?? null, signatures0g: p.signatures_0g ?? null, signaturesVerified: sig?.verified ?? null } : null,
     // ERC-8004 adversary identity (docs/submission/CHECKLIST.md) shown only for anchored runs; no per-run Arkiv entity exists
-    video: mediaUrl(`runs/${name}/screen.mp4`) ?? mediaUrl(`runs/${name}/chase_raw.mp4`),
+    video: mediaUrl(`runs/${name}/screen.mp4`) ?? mediaUrl(`runs/${name}/chase_raw.mp4`) ?? mediaUrl(`runs/${name}/director.mp4`),
     agentId: a ? 579 : null, arkivEntity: null, free: name.startsWith('demo-free-'), requestedBy: readJson(join(dir, 'requested_by.json'))?.requested_by ?? null,
     payment: job ? { transaction: job.transaction, payer: job.payer, suite: job.suite, hashscan: hashscanTx(job.transaction) } : null,
   }
@@ -224,9 +224,11 @@ app.get('/api/runs/:name', (req, res) => {
 })
 
 // Episode events. Live: tail the files while the runner works. Replay: pace recorded files by sim time.
-const DECISION_FIELDS = ['cp', 'sim_time_s', 'wall_clock_utc', 'action', 'source', 'reason', 'request_id', 'provider', 'zg_res_key', 'latency_ms', 'http_status', 'content'] as const
-const TICK_FIELDS = ['t_s', 'ego_x', 'ego_v', 'ego_a', 'ego_lat_m', 'lead_x', 'lead_v', 'adv_lat_m', 'gt_gap', 'gt_ttc_s', 'ttc_s', 'lidar_gap', 'ccs', 'collision', 'gt_in_path'] as const
+const DECISION_FIELDS = ['cp', 'sim_time_s', 'wall_clock_utc', 'action', 'source', 'reason', 'request_id', 'provider', 'zg_res_key', 'latency_ms', 'http_status', 'content', 'phase'] as const
+const TICK_FIELDS = ['t_s', 'ego_x', 'ego_v', 'ego_a', 'ego_lat_m', 'lead_x', 'lead_v', 'adv_lat_m', 'gt_gap', 'gt_ttc_s', 'ttc_s', 'lidar_gap', 'ccs', 'collision', 'gt_in_path', 'cars'] as const
 const pick = (o: any, keys: readonly string[]) => Object.fromEntries(keys.map((k) => [k, o[k] ?? null]))
+// The 0G strategist's plan (swarm runs): name, summary, roles, phases and its request id; no prompt, no reasoning text.
+const planEvent = (dir: string) => { const p = readJson(join(dir, 'plan.json')); return p?.plan ? { t: 'plan', plan: { name: p.plan.name, summary: p.plan.summary, roles: p.plan.roles, phases: p.plan.phases }, requestId: p.request_id ?? null, source: p.source ?? null } : null }
 
 class Tail {
   private off = 0; private rest = ''
@@ -256,6 +258,7 @@ app.post('/api/stream', async (req, res) => {
     const decisions = readFileSync(join(dir, 'decisions.jsonl'), 'utf8').split('\n').filter(Boolean).map((l) => pick(JSON.parse(l), DECISION_FIELDS))
     const ticks = readFileSync(join(dir, 'trajectory.jsonl'), 'utf8').split('\n').filter(Boolean).map((l) => pick(JSON.parse(l), TICK_FIELDS))
     send({ t: 'meta', run: s, totalTicks: ticks.length, totalDecisions: decisions.length, mode: 'replay' })
+    const pe = planEvent(dir); if (pe) send(pe)
     if (s.payment) phase('payment', 'ok', 'Payment settled on Hedera', s.payment)
     if (s.jobId) phase('permit', 'ok', 'Run permit accepted', { jobId: s.jobId })
     if (s.chain) phase('commit', 'ok', 'Scenario committed on 0G Galileo', { tx: s.chain.commitTx })
@@ -346,11 +349,11 @@ const lanes = { carla: [] as Job[], kin: [] as Job[] } // index 0 = running
 const MAX_WAITING = Number(process.env.FAULTLINE_QUEUE_MAX ?? 4)
 const queuePos = (j: Job) => lanes[j.lane].indexOf(j) // 0 running, n = jobs ahead, -1 finished
 // shortcut: fixed per-kind estimates (measured once: kinematic ~30 s, CARLA demo ~55 s); replace with a running average if needed
-const estS = (j: Job) => (j.kind === 'arena' ? 240 : j.lane === 'carla' ? 90 : 40) + (j.mode === 'paid' ? 120 : 0)
+const estS = (j: Job) => (j.kind === 'arena' ? 240 : j.suite === DEMO_SWARM ? 120 : j.lane === 'carla' ? 90 : 40) + (j.mode === 'paid' ? 120 : 0)
 const etaS = (j: Job) => { const i = queuePos(j); if (i < 0) return null; return lanes[j.lane].slice(0, i + 1).reduce((t, x) => t + (x.startedAt ? Math.max(5, estS(x) - (Date.now() - x.startedAt) / 1000) : estS(x)), 0) }
 const arenaRows = (j: Job) => ((j.result as any)?.results ?? []).map((r: any, i: number) => ({ policy: j.policies?.[i] ?? r.stack, name: POLICIES[j.policies?.[i] as PolicyId]?.name ?? r.stack,
   drivingScore: r.driving_score ?? null, ccs: r.ccs_gt ?? null, minTtc: r.min_ttc_s ?? null, minGap: r.min_gap_m ?? null, collision: r.collision ?? null, routeCompletionPct: r.route_completion_pct ?? null }))
-const jobVideo = (j: Job) => j.kind === 'arena' ? ((j.result as any)?.sideBySide ?? null) : j.dirs[0] && existsSync(join(j.dirs[0], 'screen.mp4')) ? relative(ROOT, join(j.dirs[0], 'screen.mp4')) : null
+const jobVideo = (j: Job) => j.kind === 'arena' ? ((j.result as any)?.sideBySide ?? null) : j.dirs[0] ? (['screen.mp4', 'director.mp4'].map((f) => join(j.dirs[0], f)).filter((f) => existsSync(f)).map((f) => relative(ROOT, f))[0] ?? null) : null
 const jobPublic = (j: Job) => ({ id: j.id, kind: j.kind, lane: j.lane, policy: j.policy ?? null, policies: j.policies ?? null, suite: j.suite ?? null,
   site: j.site, seed: j.seed, mode: j.mode, label: j.label, status: j.status, error: j.error ?? null, queuePos: queuePos(j),
   requested_by: j.requestedBy ?? null, createdAt: j.createdAt, startedAt: j.startedAt ?? null, finishedAt: j.finishedAt ?? null, runs: j.dirs.map((d) => relative(RUNS, d)), result: j.result ?? null,
@@ -393,7 +396,10 @@ async function runJob(j: Job) {
     j.result = cmp && { label: cmp.label, results: cmp.results, sideBySide: existsSync(join(out, `${j.site}__side_by_side.mp4`)) ? `runs/arena-live-${stamp}/${j.site}__side_by_side.mp4` : null }
   } else if (j.mode === 'free') {
     const p = POLICIES[j.policy!]
-    if (j.suite === 'cut-in-v1-kinematic') {
+    if (j.suite === DEMO_SWARM) { // the 0G strategist plans, then one 0G call per second steers all four cars (faultline/carla_swarm.py)
+      const out = join(RUNS, `demo-free-swarm-${stamp}`); j.dirs = [out]
+      code = await spawnPy(j, ['-m', 'faultline.carla_swarm', '--out', out, '--seed', String(j.seed), '--display', ''])
+    } else if (j.suite === 'cut-in-v1-kinematic') {
       const out = join(RUNS, `demo-free-kin-${stamp}`); j.dirs = [out]
       code = await spawnPy(j, ['-m', 'faultline', 'run', '--world', 'kinematic', '--family', 'cut_in', '--decider', '0g', '--seed', String(j.seed), '--ego', p.ego, '--out', out])
     } else {
@@ -437,8 +443,8 @@ app.get('/api/policies', (_req, res) => {
 app.post('/api/demo-run', async (req, res) => {
   const { policy, suite, mode } = req.body ?? {}
   if (!isPolicy(policy)) return deny(res, 400, 'policy must be one of: ' + Object.keys(POLICIES).join(', '))
-  if (!Object.hasOwn(SUITES, suite)) return deny(res, 400, 'suite must be cut-in-v1-kinematic or cut-in-v1-carla')
   if (mode !== 'free' && mode !== 'paid') return deny(res, 400, 'mode must be free or paid')
+  const ds = demoSuite(suite, mode, policy); if ('error' in ds) return deny(res, 400, ds.error)
   const seed = req.body?.seed === undefined ? Math.floor(Math.random() * 1000) : Number(req.body.seed)
   if (!Number.isInteger(seed) || seed < 0 || seed > 100000) return deny(res, 400, 'seed must be an integer 0..100000')
   if (!process.env.ZG_ROUTER_URL || !process.env.ZG_API_KEY) return deny(res, 503, '0G Router is not configured on the backend')
@@ -447,7 +453,7 @@ app.post('/api/demo-run', async (req, res) => {
     const notReady = runnerError(); if (notReady) return deny(res, 503, `runner not ready, nothing was paid: ${notReady}`)
     try { buyerConfigFromEnv() } catch (e) { return deny(res, 503, (e as Error).message) }
   }
-  const lane = suite === 'cut-in-v1-carla' ? 'carla' : 'kin'
+  const lane = ds.lane
   if (lanes[lane].length > MAX_WAITING) return deny(res, 429, 'The queue is full. Try again in a few minutes or replay a recorded run')
   if (caps.left().runs_left < 1 || (mode === 'paid' && caps.left().buys_left < 1)) return deny(res, 429, PAUSED)
   const visitor = typeof req.body?.address === 'string' ? req.body.address.toLowerCase() : `ip:${guestKey(req)}`
@@ -468,7 +474,7 @@ app.post('/api/demo-run', async (req, res) => {
   if (mode === 'paid' && !caps.take('buys')) return deny(res, 429, PAUSED)
   caps.take('runs')
   const j: Job = { id: randomBytes(8).toString('hex'), kind: 'demo', lane, policy, suite, site: DEFAULT_SITE, seed, mode, status: 'queued', requestedBy: v.address,
-    label: mode === 'free' ? 'demo, unpaid, not anchored' : 'paid: Hedera x402, anchored on 0G Galileo',
+    label: ds.swarm ? 'coordinated four-car attack, unpaid, not anchored' : mode === 'free' ? 'demo, unpaid, not anchored' : 'paid: Hedera x402, anchored on 0G Galileo',
     createdAt: Date.now(), dirs: [], events: [], log: [] }
   enqueue(j); recentStart.set(visitor, { jobId: j.id, at: Date.now() })
   res.json({ jobId: j.id, queuePos: queuePos(j), label: j.label, kinematicNote: lane === 'kin' ? POLICIES[policy].kinematic : null })
@@ -519,7 +525,7 @@ async function streamJob(id: string, send: (o: unknown) => void, res: Response) 
   if (!j) { send({ t: 'error', message: 'unknown job' }); res.end(); return }
   let closed = false; res.on('close', () => { closed = true })
   send({ t: 'meta', job: jobPublic(j), mode: 'live' })
-  let ei = 0, li = 0, lastPos = -2, di = -1, dec: Tail | null = null, traj: Tail | null = null
+  let ei = 0, li = 0, lastPos = -2, di = -1, dec: Tail | null = null, traj: Tail | null = null, planSent = false
   const flush = () => {
     for (; ei < j.events.length; ei++) send(j.events[ei])
     for (; li < j.log.length; li++) send({ t: 'log', line: j.log[li] })
@@ -529,6 +535,7 @@ async function streamJob(id: string, send: (o: unknown) => void, res: Response) 
       di = cur; dec = new Tail(join(j.dirs[cur], 'decisions.jsonl')); traj = new Tail(join(j.dirs[cur], 'trajectory.jsonl'))
       send({ t: 'phase', id: 'sim', status: 'run', title: j.policies ? `Simulation: ${j.policies[cur]}` : 'Simulation running', data: { run: relative(RUNS, j.dirs[cur]), index: cur } })
     }
+    if (!planSent && di >= 0) { const pe = planEvent(j.dirs[di]); if (pe) { planSent = true; send(pe) } }
     if (dec) for (const d of dec.lines()) send({ t: 'decision', d: pick(d, DECISION_FIELDS) })
     if (traj) { const r = traj.lines(); if (r.length) send({ t: 'ticks', rows: r.map((x) => pick(x, TICK_FIELDS)) }) }
   }

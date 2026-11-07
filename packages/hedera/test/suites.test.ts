@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
-import { requestHash, runnerArgs, startAllowed, suiteOf } from '../src/suites.ts'
+import { DEMO_SWARM, demoSuite, requestHash, runnerArgs, startAllowed, suiteOf } from '../src/suites.ts'
 
 const policy = `0x${'ab'.repeat(32)}`
 const carlaJob = { suite: 'cut-in-v1-carla', simulator: 'carla-0.10.0-cut-in', policyCommitment: policy, status: 'accepted' }
@@ -33,4 +33,14 @@ test('server start needs the exact bought suite, simulator and policy, once', ()
   assert.equal(startAllowed(carlaJob, { ...body, policyCommitment: `0x${'cd'.repeat(32)}` }), false)
   assert.equal(startAllowed({ ...carlaJob, status: 'completed' }, body), false)
   assert.equal(startAllowed({ ...carlaJob, suite: 'cut-in-v1', simulator: undefined }, { ...body, suite: 'cut-in-v1', simulator: undefined }), false)
+})
+
+test('demo suites: the four-car swarm is free-only, PDM-Lite only, on the CARLA lane; cut-in suites keep their lanes', () => {
+  assert.equal(DEMO_SWARM, 'swarm-v1-carla')
+  assert.deepEqual(demoSuite('swarm-v1-carla', 'free', 'pdm-lite'), { lane: 'carla', swarm: true })
+  assert.match((demoSuite('swarm-v1-carla', 'paid', 'pdm-lite') as { error: string }).error, /free/)
+  assert.match((demoSuite('swarm-v1-carla', 'free', 'idm-cautious') as { error: string }).error, /PDM-Lite/)
+  assert.deepEqual(demoSuite('cut-in-v1-kinematic', 'free', 'idm-cautious'), { lane: 'kin', swarm: false })
+  assert.deepEqual(demoSuite('cut-in-v1-carla', 'paid', 'pdm-lite'), { lane: 'carla', swarm: false })
+  for (const bad of ['nope', 'toString', undefined]) assert.ok('error' in demoSuite(bad, 'free', 'pdm-lite'))
 })

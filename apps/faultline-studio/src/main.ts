@@ -48,9 +48,9 @@ async function post(path: string, body: unknown, onEvent: (e: any) => void) {
 }
 
 // ---------- navigation ----------
-type View = 'home' | 'flow' | 'explore' | 'stack' | 'mission' | 'verify'
+type View = 'home' | 'flow' | 'explore' | 'stack' | 'mission' | 'verify' | 'results2' | 'research'
 function show(view: View) {
-  for (const v of ['home', 'flow', 'explore', 'stack', 'mission', 'verify']) $(`v-${v}`).classList.toggle('hidden', v !== view)
+  for (const v of ['home', 'flow', 'explore', 'stack', 'mission', 'verify', 'results2', 'research']) $(`v-${v}`).classList.toggle('hidden', v !== view)
   if (view === 'explore') renderExplore()
   window.scrollTo({ top: 0 })
   requestAnimationFrame(resizeAll)
@@ -551,14 +551,9 @@ function renderExplore() {
     section('paid002', 'c', 'Paid test run', 'Our agent paid 0.001 ℏ on Hedera, got a single-use permit, locked the test setup on 0G Galileo, ran it in CARLA with 0G decisions, stored the evidence on 0G Storage, and finalized the result on-chain.',
       `<div class="split"><div>${clip('videos/paid-job-002-replay-view__chase.mp4', 'paid', 'Chase camera of paid test 002 in CARLA')}</div><div><dl class="kv">${kv([['Payment', link(PAID002.hedera!.hashscan, 'Hedera receipt')], ['Setup locked (block 64245811)', link(galileoTx(PAID002.commitTx!), short(PAID002.commitTx, 8, 4))], ['Moves from 0G', '7 of 8 (one safe stop)'], ['Evidence stored', `root ${short(PAID002.publicRoot, 8, 4)}`], ['Result finalized', link(galileoTx(PAID002.finalizeTx!), short(PAID002.finalizeTx, 8, 4))], ['Permit reused?', 'refused (409)'], ['Result', 'danger 0.93 · tightest TTC 1.0 s · no crash']])}</dl></div></div>
        <div class="rail" style="margin-top:14px">${railHtml(PAID002)}</div>`),
-    section('research', 'l', 'Research mission', 'The 0G agent ran experiments to find the edge between safe and unsafe settings, found a crash, and tested a proposed fix. Each dot below is one experiment it chose.',
-      `<canvas id="hunt" style="width:100%;height:260px;display:block;margin-top:12px" aria-label="Experiments chosen by the 0G agent"></canvas>
-       <dl class="kv">${kv([['Smallest failing case', 'speed 18.75 m/s · gap 25 m · reaction delay 0.6 s → crash'], ['0G’s suggested fix (min gap 3 m)', 'did not help (0.36 m)'], ['Grid-searched fix', 'safe: unsafe cases 19 → 0'], ['Self-audit of its claims', '5 supported · 2 contradicted']])}</dl>
-       <details class="more"><summary>Experiment log</summary><div class="feed" id="hunt-feed" style="max-height:220px"></div></details>
-       <div class="rail" style="margin-top:14px">${railHtml({ decisions0g: 9, decisions: 9, requestId: 'a00eb00f-1205-4518-ad7d-095c6e6a2ffb', provider: PROVIDER, sigsVerified: 47, sigsTotal: 47, agentId: 579 })}</div>`),
   ].join('')
   $('ab-run').addEventListener('click', runArena)
-  loadRuns(); drawHunt(); armClips($('explore'))
+  loadRuns(); armClips($('explore'))
 }
 async function loadRuns() {
   try { allRuns = await getJson('/api/runs') } catch { /* offline: keep what we have */ }
@@ -672,12 +667,14 @@ function go(path: string) { history.pushState(null, '', path); route() }
 function route() {
   const [, a = '', ...rest] = location.pathname.split('/'), b = rest.join('/') // run names can contain '/' (CARLA demo runs)
   const navKey = a === '' ? 'home' : a === 'lab' ? 'flow' : a
-  document.querySelectorAll<HTMLAnchorElement>('nav.top a').forEach((x) => x.classList.toggle('on', x.dataset.nav === navKey || (navKey === 'library' && x.dataset.nav === 'research')))
+  document.querySelectorAll<HTMLAnchorElement>('nav.top a').forEach((x) => x.classList.toggle('on', x.dataset.nav === navKey || ((navKey === 'library' || navKey === 'results') && x.dataset.nav === 'research')))
   if (a === 'lab') { show('flow'); step(Math.max(1, Math.min(3, cur))) }
   else if (a === 'mission') { show('mission'); openMission(decodeURIComponent(b || FEATURED)) }
   else if (a === 'verify') { show('verify'); openVerify(decodeURIComponent(b || FEATURED)) }
   else if (a === 'stack') show('stack')
-  else if (a === 'library' || a === 'research' || a === 'results') show('explore')
+  else if (a === 'results') { show('results2'); openResults2(decodeURIComponent(b || FEATURED)) }
+  else if (a === 'research') { show('research'); renderResearch() }
+  else if (a === 'library') show('explore')
   else show('home')
 }
 window.addEventListener('popstate', route)
@@ -804,7 +801,7 @@ function mcVerdict() {
   $('mc-verdict').innerHTML = `<h2 class="sec">${esc(words)}</h2>
     <div class="stats"><div><b>${num(r?.minGap, 2)} m</b><span>closest gap</span></div><div><b>${num(r?.minTtc, 2)} s</b><span>minimum time to collision</span></div>
     <div><b>${num(r?.ccs, 2)}</b><span>peak criticality (CCS, 0 to 1)</span></div><div><b>${esc(r?.decisions0g ?? mc.ds.filter((d) => d.source === '0g').length)} of ${esc(r?.decisions ?? mc.ds.length)}</b><span>decisions from 0G</span></div></div>
-    <div class="row" style="margin-top:14px"><a class="btn k" href="/verify/${name.split('/').map(encodeURIComponent).join('/')}">Check the evidence for this run</a><a class="btn" href="/lab">Run your own test</a></div>`
+    <div class="row" style="margin-top:14px"><a class="btn k" href="/verify/${name.split('/').map(encodeURIComponent).join('/')}">Check the evidence for this run</a><a class="btn" href="/results/${name.split('/').map(encodeURIComponent).join('/')}">See the results</a><a class="btn" href="/lab">Run your own test</a></div>`
 }
 $<HTMLVideoElement>('mc-video').addEventListener('timeupdate', () => {
   if (!mc?.aligned) return
@@ -871,4 +868,64 @@ async function openVerify(id: string) {
   $('vf-groups').querySelectorAll('[data-recheck]').forEach((b) => b.addEventListener('click', () => openVerify(runName)))
 }
 $('vf-go').addEventListener('click', () => go(`/verify/${encodeURIComponent($<HTMLInputElement>('vf-in').value.trim() || FEATURED)}`))
+
+// ---------- Results (/results/:id): verdict and worst moment first, then tabs ----------
+async function loadRun(id: string) {
+  let run: Run | null = null; const ticks: Tick[] = [], ds: Decision[] = []
+  await post('/api/stream', /^[0-9a-f]{16}$/.test(id) ? { job: id, mode: 'live' } : { run: id, mode: 'replay', speed: 8 }, (e) => {
+    if (e.t === 'meta') run = e.run ?? e.job?.result ?? null
+    if (e.t === 'ticks') ticks.push(...e.rows)
+    if (e.t === 'decision') ds.push(e.d)
+    if (e.t === 'done' || e.t === 'error') run = e.run ?? e.job?.result ?? run
+  })
+  return { run: run as Run | null, ticks, ds }
+}
+let rs: { id: string, run: Run | null, ticks: Tick[], ds: Decision[] } | null = null
+async function openResults2(id: string) {
+  $('rs-verdict').textContent = 'Loading…'; $('rs-body').innerHTML = ''
+  try { const d = await loadRun(id); rs = { id, ...d } } catch (e) { $('rs-verdict').textContent = `Could not load this run: ${(e as Error).message}`; return }
+  const { run: r, ticks } = rs!, name = r?.name ?? id, path = name.split('/').map(encodeURIComponent).join('/')
+  const crashed = r?.collision ?? ticks.some((t) => t.collision)
+  const w = ticks.reduce((m, t, i) => (t.gt_gap < (ticks[m]?.gt_gap ?? Infinity) ? i : m), 0), wt = ticks[w]?.t_s ?? 0
+  $('rs-kind').textContent = `Results · ${name === FEATURED ? 'paid test 002' : name}`
+  $('rs-verdict').textContent = crashed ? 'The vehicle collided with the attacker.' : `The vehicle avoided collision. The minimum TTC was ${num(r?.minTtc, 2)} s.`
+  $('rs-sub').textContent = `Closest approach ${num(r?.minGap, 2)} m at ${num(wt, 1)} s · peak CCS ${num(r?.ccs, 2)} · ${r?.decisions0g ?? '-'} of ${r?.decisions ?? '-'} decisions from 0G`
+  $<HTMLAnchorElement>('rs-mission').href = `/mission/${path}`; $<HTMLAnchorElement>('rs-verify').href = `/verify/${path}`
+  const rv = RUN_VIDEO[name] ?? ((r as any)?.video ? { path: (r as any).video, aligned: true } : null)
+  const fr = $<HTMLVideoElement>('rs-frame')
+  if (rv?.aligned) { fr.src = api('/media/' + rv.path); fr.onloadedmetadata = () => { fr.currentTime = Math.min(fr.duration, wt) }; $('rs-frame-cap').textContent = `Recorded frame at ${num(wt, 1)} s, the closest approach` }
+  else { fr.removeAttribute('src'); $('rs-frame-cap').textContent = 'No time-aligned recording for this run' }
+  rsTab('replay')
+}
+function rsTab(t: string) {
+  document.querySelectorAll<HTMLButtonElement>('[data-rtab]').forEach((b) => b.classList.toggle('on', b.dataset.rtab === t))
+  if (!rs) return
+  const { run: r, ds } = rs, name = r?.name ?? rs.id, path = name.split('/').map(encodeURIComponent).join('/'), rv = RUN_VIDEO[name] ?? ((r as any)?.video ? { path: (r as any).video, aligned: true } : null)
+  let h = ''
+  if (t === 'replay') h = rv ? `<video class="clip" controls muted playsinline preload="metadata" src="${esc(api('/media/' + rv.path))}" aria-label="Recorded CARLA camera"></video>${rv.note ? `<p class="muted">${esc(rv.note)}</p>` : ''}<p><a class="btn k" href="/mission/${path}">Replay with the decision timeline</a></p>` : '<p>No camera recording exists for this run.</p>'
+  if (t === 'metrics') h = `<div class="stats"><div><b>${r?.collision ? 'Yes' : 'No'}</b><span>collision</span></div><div><b>${num(r?.minGap, 2)} m</b><span>closest gap (ground truth)</span></div><div><b>${num(r?.minTtc, 2)} s</b><span>minimum time to collision</span></div><div><b>${num(r?.ccs, 3)}</b><span>peak CCS (0 to 1, recomputed)</span></div></div>
+    <dl class="kv" style="max-width:640px">${kv([['World', esc(r?.world)], ['Scenario family', esc(r?.family)], ['Attacker model', `<code>${esc(r?.model)}</code>`], ['Status', esc(r?.status)]])}</dl>`
+  if (t === 'reasoning') h = (name === 'swarm-carla-010' ? `<p><b>Plan:</b> “Staggered Cut-in”</p><ul class="roles" data-roles>${rolesHtml()}</ul>` : '') +
+    `<ol class="reason">${ds.map((d) => `<li><b>${num(d.sim_time_s, 1)} s · ${esc(say(d.action))}</b>${why(d) ? `<span>“${esc(why(d))}”</span>` : ''}<small>${d.source === '0g' ? `0G request ${esc(d.request_id)} · ${d.latency_ms} ms` : 'no valid 0G answer: safe stop'}</small></li>`).join('')}</ol>
+    <p class="muted">Claim audits for research runs are on the <a href="/research">research page</a>.</p>`
+  if (t === 'compare') h = `<p><b>Scripted replay:</b> both policies face the identical recorded attacker script (no fresh 0G calls), so differences come from the policy.</p><div class="tscroll">${arenaTable(ARENA_RECORDED)}</div>
+    <p style="margin-top:14px"><b>Fresh 0G loop:</b> each policy faces a live 0G attacker, so the attacks differ between the two runs.</p>${clip('videos/arena-live0g-video-001__r7l-2s3__side_by_side.mp4', 'ab', 'Both policies against a live 0G attacker')}`
+  if (t === 'evidence') { const tr = trustFromRun(r, ds, !!r?.free); h = `<div class="rail">${railHtml(tr)}</div><p style="margin-top:14px"><a class="btn k" href="/verify/${path}">Open the Proof Explorer</a></p>` }
+  $('rs-body').innerHTML = h; armClips($('rs-body'))
+}
+document.querySelectorAll<HTMLButtonElement>('[data-rtab]').forEach((b) => b.addEventListener('click', () => rsTab(b.dataset.rtab!)))
+
+// ---------- Research: claim audit ----------
+const CLAIMS: { claim: string, who: string, st: PS, check: string }[] = [
+  { claim: 'The crash was caused by friction-limited braking.', who: 'research-mission-001 report', st: 'failed', check: 'In run 21 the car peaked at 5.76 m/s² against a friction limit of 6.28 m/s²: it never used the available grip. The measured mechanism is delayed, under-braking IDM.' },
+  { claim: 'Runs are safe above about 30 m.', who: 'research run 003 report', st: 'failed', check: 'Runs 4 and 10 were unsafe above 30 m; the audit marks the claim contradicted.' },
+  { claim: 'At 1.5 s reaction delay the boundary is 61.0 m.', who: 'old 0G designer', st: 'failed', check: 'Unsafe outcomes at gaps 61.0 m and 65.0 m are at or above the claimed boundary; the true boundary is 73.63 m.' },
+  { claim: 'At 0.3 s reaction delay the boundary is about 29.19 m.', who: 'old 0G designer', st: 'verified', check: 'The ground-truth boundary at 0.3 s is 29.10 m: supported.' },
+  { claim: 'Reducing delay from 0.6 s to 0.4 s fixes the case.', who: '0G + tools, open benchmark', st: 'failed', check: 'The model read a counterfactual delta (+0.2 s) as an absolute value; the audit flagged the claim as contradicted.' },
+]
+function renderResearch() {
+  $('claims').innerHTML = CLAIMS.map((c) => `<details class="claim"><summary><span>“${esc(c.claim)}” <small class="muted">· ${esc(c.who)}</small></span><span class="st ${c.st}">${c.st === 'failed' ? 'Contradicted' : 'Supported'}</span></summary><div class="body">${esc(c.check)}</div></details>`).join('')
+  armClips($('v-research')); drawHunt()
+}
+
 boot()

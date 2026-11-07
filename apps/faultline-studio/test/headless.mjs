@@ -105,6 +105,22 @@ try {
   check(/Hedera x402 payment\s*Verified/.test(vf) && /Attacker identity \(ERC-8004 #579\)\s*Not checked/.test(vf), 'verify: payment verified, identity honest')
   await shot(page, 'verify', true)
 
+  // Results and Research
+  await page.goto(`${base}/results/${meta.name}`)
+  await page.waitForFunction(() => /avoided collision|collided/.test(document.getElementById('rs-verdict').textContent), null, { timeout: 30000 })
+  check(/minimum TTC was 1\.03 s/.test(await text(page, '#rs-verdict')), 'results: verdict and minimum TTC first')
+  await page.click('[data-rtab="reasoning"]')
+  check(/0G request/.test(await text(page, '#rs-body')), 'results: reasoning tab lists the 0G decisions with reasons')
+  await page.click('[data-rtab="compare"]')
+  check(/Scripted replay/.test(await text(page, '#rs-body')) && /Fresh 0G loop/.test(await text(page, '#rs-body')), 'results: compare labels scripted replay vs fresh 0G loop')
+  await shot(page, 'results', true)
+  await page.click('nav.top a[data-nav="research"]')
+  await page.waitForSelector('#claims .claim')
+  await page.click('#claims .claim summary')
+  check(/5\.76 m\/s²/.test(await text(page, '#claims')) && /Contradicted/.test(await text(page, '#claims')), 'research: claim opens the contradicting experiment')
+  check(/0\.57 m/.test(await text(page, '#v-research')) && /0\.73 m/.test(await text(page, '#v-research')), 'research: honest benchmark (bisection wins)')
+  await shot(page, 'research', true)
+
   // Safety Lab with a wallet: connect → policy → attack → signed request → Mission Control (live)
   await page.click('nav.top a[data-nav="flow"]')
   check(await page.locator('#s1').isVisible() && await page.locator('#s1-next').isDisabled(), 'lab step 1: connect wallet first')

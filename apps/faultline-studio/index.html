@@ -172,6 +172,10 @@
     .st { font: 600 12px var(--mono); padding: 3px 8px; border-radius: 6px; border: 1px solid currentColor; white-space: nowrap }
     .st.verified { color: #2b8a3e } .st.failed { color: #c92a2a } .st.unavailable { color: #a06200 } .st.notchecked, .st.na { color: #666 }
     .note-a2 { font-size: 14px }
+    .res-head { display: grid; grid-template-columns: 1.1fr 1fr; gap: 24px; align-items: center }
+    .reason { padding-left: 20px; display: grid; gap: 10px } .reason li span { display: block } .reason small { display: block; font: 12px var(--mono); color: var(--muted) }
+    .claims { display: grid; gap: 8px } .claim { border: 1px solid #ddd; border-radius: 14px; background: #fff } .claim summary { cursor: pointer; padding: 12px 14px; display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap }
+    .claim .body { padding: 0 14px 14px; font-size: 14px } tr.win td { background: #eefbe6 }
     .why-line { font-size: 14px; margin-top: 2px } 
     .plan b { display: block; margin-bottom: 8px } .plan ul { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px }
     .plan li { display: flex; gap: 8px; align-items: center; font-size: 14px } .plan li i { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--ink); flex: none }
@@ -254,6 +258,7 @@
     #offline { margin-bottom: 16px }
 
     @media (max-width: 1000px) {
+      .res-head { grid-template-columns: 1fr }
       .hero2, .mc-grid, .groups3 { grid-template-columns: 1fr } .vtl { grid-template-columns: 1fr 1fr }
       .pit, .split { grid-template-columns: minmax(0, 1fr) } .how { grid-template-columns: 1fr 1fr } .choices.three { grid-template-columns: 1fr }
       .board { grid-template-columns: 1fr 1fr } .hdr-right #console-pill { display: none }
@@ -419,6 +424,66 @@
         <canvas id="mc-tele" style="width:100%;height:220px;display:block" aria-label="Telemetry over simulation time"></canvas>
       </div>
       <div class="card" id="mc-verdict"></div>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="v-results2" class="hidden">
+    <div class="grid">
+      <div class="card k res-head">
+        <div><p class="kicker" id="rs-kind">Results</p><h2 class="sec" id="rs-verdict" style="color:var(--paper)">Loading…</h2><p class="lede" id="rs-sub"></p>
+          <div class="row" style="margin-top:12px"><a class="btn y" id="rs-mission" href="/">Open in Mission Control</a><a class="btn" id="rs-verify" href="/verify">Check the evidence</a></div></div>
+        <figure class="hero-clip" style="margin:0"><video id="rs-frame" muted playsinline preload="auto" aria-label="Recorded frame at the worst moment"></video><figcaption id="rs-frame-cap">Worst moment</figcaption></figure>
+      </div>
+      <div class="tabs" role="tablist" id="rs-tabs">
+        <button class="pill on" data-rtab="replay" role="tab">Replay</button><button class="pill" data-rtab="metrics" role="tab">Driving metrics</button>
+        <button class="pill" data-rtab="reasoning" role="tab">Reasoning</button><button class="pill" data-rtab="compare" role="tab">Compare</button><button class="pill" data-rtab="evidence" role="tab">Evidence</button>
+      </div>
+      <div class="card" id="rs-body"></div>
+    </div>
+  </section>
+
+  <!-- RESEARCH -->
+  <section id="v-research" class="hidden">
+    <div class="grid">
+      <div class="card k"><p class="kicker">Results &amp; Research</p><h2 class="sec" style="color:var(--paper)">What the agent found, and where it lost</h2>
+        <p class="lede">We don’t force a language model to do what deterministic algorithms do better. 0G handles experiment strategy and hypotheses; classical tools handle search and physical validity; every claim is audited against the results.</p>
+        <div class="row" style="margin-top:12px"><a class="btn y" href="/results/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051">Featured result: paid test 002</a><a class="btn" href="/library">All recorded tests</a></div></div>
+      <div class="card">
+        <h2 class="sec">Finding the safety boundary</h2>
+        <p class="lede" style="margin-top:-6px">hunt-bench-002: where does a car-following policy go from safe to unsafe as reaction delay grows? Each dot is one experiment the 0G designer chose; the dashed line is the true boundary.</p>
+        <canvas id="hunt" style="width:100%;height:280px;display:block;margin-top:12px" aria-label="Experiments chosen by the 0G designer against the true safety boundary"></canvas>
+        <details class="more"><summary>Why it chose each experiment</summary><div class="feed" id="hunt-feed" style="max-height:240px"></div></details>
+      </div>
+      <div class="card">
+        <h2 class="sec">Benchmark: the honest result</h2>
+        <div class="split2">
+          <div class="tscroll"><table><thead><tr><th>Boundary search (budget 24)</th><th>Boundary error</th><th>Model calls</th></tr></thead><tbody>
+            <tr><td>Grid 6×4</td><td class="mono">5.87 m</td><td class="mono">0</td></tr>
+            <tr><td>Random</td><td class="mono">6.84 m</td><td class="mono">0</td></tr>
+            <tr class="win"><td><b>Per-delay bisection</b></td><td class="mono"><b>0.57 m</b></td><td class="mono">0</td></tr>
+            <tr><td>Old 0G designer</td><td class="mono">5.57 m</td><td class="mono">25</td></tr>
+            <tr><td>0G + tools (final)</td><td class="mono">0.73 m</td><td class="mono">6</td></tr></tbody></table></div>
+          <div class="tscroll"><table><thead><tr><th>Open discovery (budget 16)</th><th>Failure types found</th><th>Coverage</th></tr></thead><tbody>
+            <tr class="win"><td><b>Random</b></td><td class="mono"><b>7</b></td><td class="mono">0.93</td></tr>
+            <tr><td>Old 0G designer</td><td class="mono">3</td><td class="mono">0.47</td></tr>
+            <tr><td>0G + tools</td><td class="mono">4</td><td class="mono">0.50</td></tr></tbody></table></div>
+        </div>
+        <p style="margin:12px 0 0">Bisection beats every model-driven search on boundary accuracy, and random search found more failure types. The model’s value is cheaper strategy (6 calls instead of 25) and hypotheses, which we then audit.</p>
+      </div>
+      <div class="card">
+        <h2 class="sec">Claim audit</h2>
+        <p class="lede" style="margin-top:-6px">Open a claim the agent made to see the experiment that checks it.</p>
+        <div class="claims" id="claims"></div>
+      </div>
+      <div class="card">
+        <h2 class="sec">Counterfactual: the failure and the fix</h2>
+        <p class="lede" style="margin-top:-6px">research-mission-001: the smallest failing case (18.75 m/s, gap 25 m, reaction delay 0.6 s) crashes; the model’s suggested fix did not help, a grid-searched fix did (unsafe cases 19 → 0).</p>
+        <div class="split2" style="margin-top:12px">
+          <figure class="still"><video class="clip" controls muted playsinline preload="metadata" data-src="videos/research-mission-001__carla-failure.mp4" aria-label="CARLA: the minimized failing case"></video><figcaption><b>Failing case</b><span>collision, minimum gap −0.008 m</span></figcaption></figure>
+          <figure class="still"><video class="clip" controls muted playsinline preload="metadata" data-src="videos/research-mission-001__carla-fix-baseline.mp4" aria-label="CARLA: the grid-searched fix"></video><figcaption><b>Grid-searched fix</b><span>safe, minimum gap 4.74 m</span></figcaption></figure>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -614,7 +679,7 @@ your stack answers on
     <div class="card k" style="margin-bottom:16px"><h2 style="font-size:28px">Test library</h2><p class="lede">Recorded tests and deeper results for judges and engineers.</p>
       <div class="explore-nav" id="explore-nav" style="margin-top:14px">
         <a class="pill" href="#x-runs">Recorded tests</a><a class="pill" href="#x-swarm">Coordinated multi-vehicle attack</a><a class="pill" href="#x-ab">A/B policy comparison</a>
-        <a class="pill" href="#x-paid002">Paid test run</a><a class="pill" href="#x-research">Research mission</a></div></div>
+        <a class="pill" href="#x-paid002">Paid test run</a><a class="pill" href="/research">Research</a></div></div>
     <div class="grid" id="explore"></div>
   </section>
 </main>

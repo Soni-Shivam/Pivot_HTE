@@ -298,7 +298,7 @@ export const page = {
       else if (d.w) { $('lab-wallet-err').textContent = ''; try { await connect(walletOptions()[Number(d.w)]); guest = false; save() } catch (err) { $('lab-wallet-err').textContent = walletErr(err, 'connection') } renderChoices() }
       else if (d.launch) {
         t.setAttribute('disabled', '')
-        try { const r = await postJson('/api/launch', { jobId: d.launch }); go(href.mission(String(r.run))) } catch (err) { $('lab-start-why').textContent = `Not launched: ${(err as Error).message}. The paid test stays launchable; nothing was paid again.`; t.removeAttribute('disabled') }
+        try { const r = await postJson('/api/launch', { jobId: d.launch }); go(href.mission(String(r.run)) + '?live=1') } catch (err) { $('lab-start-why').textContent = `Not launched: ${(err as Error).message}. The paid test stays launchable; nothing was paid again.`; t.removeAttribute('disabled') }
       } else if (t.id === 'lab-w-other') { disconnect(); renderChoices() }
       else if (t.id === 'lab-guest') { guest = true; disconnect(); if (mode === 'paid') mode = 'free'; save(); renderChoices() }
       else if (t.id === 'lab-recheck') { $('lab-health').innerHTML = `<span class="note-start">${orb('connecting', 20)}Checking runner…</span>`; await refreshHealth() }

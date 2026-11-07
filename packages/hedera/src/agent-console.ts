@@ -250,7 +250,8 @@ app.post('/api/stream', async (req, res) => {
   if (req.body?.job !== undefined) { await streamJob(String(req.body.job), send, res); return }
   const name = req.body?.run
   if (!isRunName(name) && !procs.has(name)) { send({ t: 'error', message: 'unknown run' }); res.end(); return }
-  const dir = join(RUNS, name), live = req.body?.mode === 'live' && procs.has(name)
+  // a paid run still in progress can only be tailed: its files are incomplete, so a replay would fail
+  const dir = join(RUNS, name), live = procs.has(name) && (req.body?.mode === 'live' || procs.get(name)!.exit === null)
   const speed = Math.min(Math.max(Number(req.body?.speed) || 1, 0.25), 8)
   let closed = false; res.on('close', () => { closed = true })
   const phase = (id: string, status: string, title: string, data?: Record<string, unknown>) => send({ t: 'phase', id, status, title, data })

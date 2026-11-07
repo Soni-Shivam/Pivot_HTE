@@ -341,7 +341,7 @@ async function connect(me: Mc) {
   ctl?.abort(); ctl = new AbortController()
   $('mc-lost').classList.add('hidden'); me.lost = false
   try {
-    await stream('/api/stream', me.live ? { job: me.id, mode: 'live' } : { run: me.id, mode: 'replay', speed: 8 }, onEvent, ctl.signal)
+    await stream('/api/stream', me.live ? (isJob(me.id) ? { job: me.id, mode: 'live' } : { run: me.id, mode: 'live', speed: 8 }) : { run: me.id, mode: 'replay', speed: 8 }, onEvent, ctl.signal)
     if (mc === me && !me.done && !me.gone) throw new Error('the stream ended early')
   } catch (err) {
     if (mc !== me || ctl.signal.aborted) return
@@ -457,7 +457,7 @@ function mount(root: HTMLElement) {
 function open(id: string | null) {
   leave()
   if (!id) return
-  const live = isJob(id)
+  const live = isJob(id) || new URLSearchParams(location.search).has('live') // ?live=1: a paid run just launched from the Lab
   const me: Mc = mc = { id, run: null, ticks: [], ds: [], sel: -1, aligned: false, live, swarm: id.includes('swarm'), plan: null, state: 'Ready', done: false,
     paid: false, job: {}, queue: '', error: null, gone: false, lost: false, t0: performance.now() }
   cursorT = undefined

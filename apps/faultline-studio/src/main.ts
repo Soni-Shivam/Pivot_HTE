@@ -53,6 +53,7 @@ function show(view: View) {
   for (const v of ['home', 'flow', 'explore']) $(`v-${v}`).classList.toggle('hidden', v !== view)
   document.querySelectorAll<HTMLButtonElement>('nav.top button').forEach((b) => { b.classList.toggle('on', b.dataset.view === view); b.setAttribute('aria-current', b.dataset.view === view ? 'page' : 'false') })
   if (view === 'explore') renderExplore()
+  history.replaceState(null, '', view === 'flow' ? '#run' : location.pathname)
   window.scrollTo({ top: 0 })
   requestAnimationFrame(resizeAll)
 }
@@ -75,7 +76,7 @@ document.addEventListener('error', (e) => {
 const HERO_VIDEO = 'videos/swarm-carla-010__stitched.mp4'
 const hv = $<HTMLVideoElement>('hero-video'); hv.src = media(HERO_VIDEO); hv.dataset.fallback = RAW + HERO_VIDEO
 $('cta-run').addEventListener('click', () => { show('flow'); step(wallet ? 2 : 1) })
-$('cta-watch').addEventListener('click', () => { hv.scrollIntoView({ block: 'center' }); hv.play().catch(() => { /* autoplay blocked: controls stay */ }) })
+$('cta-watch').addEventListener('click', () => { $('example').scrollIntoView({ block: 'center' }); hv.play().catch(() => { /* autoplay blocked: controls stay */ }) })
 
 // ---------- wallet: EIP-6963 discovery, window.ethereum fallback; only eth_requestAccounts + personal_sign ----------
 type Eip1193 = { request: (a: { method: string, params?: unknown[] }) => Promise<any>, on?: (ev: string, f: (x: any) => void) => void }
@@ -96,19 +97,32 @@ function renderWallets() {
   $('wallets').querySelectorAll<HTMLButtonElement>('[data-w]').forEach((b) => b.addEventListener('click', () => connect(list[Number(b.dataset.w)])))
   document.getElementById('w-disconnect')?.addEventListener('click', () => { wallet = null; renderWallets(); paintWallet() })
 }
+let lastTried: { info: WalletInfo, provider: Eip1193 } | null = null
+const walletErr = (e: any, what: string) => {
+  const code = e?.code ?? e?.data?.originalError?.code
+  return code === 4001 || /reject|denied|cancel/i.test(String(e?.message)) ? `You declined the ${what} in your wallet. Nothing was sent.`
+    : code === -32002 ? 'Your wallet already has a request open — open the wallet extension to finish it.'
+    : `The wallet did not complete the ${what}: ${e?.message ?? e}`
+}
+function showWalletErr(msg: string) {
+  $('wallet-err').innerHTML = `${esc(msg)} <button class="btn" id="w-retry" style="margin-left:8px">Try again</button>`
+  document.getElementById('w-retry')?.addEventListener('click', () => { if (lastTried) connect(lastTried); else { $('wallet-err').textContent = ''; window.dispatchEvent(new Event('eip6963:requestProvider')); renderWallets() } })
+}
 async function connect(w: { info: WalletInfo, provider: Eip1193 }) {
-  $('wallet-err').textContent = ''
+  $('wallet-err').textContent = ''; lastTried = w; save()
   try {
     const accts: string[] = await w.provider.request({ method: 'eth_requestAccounts' })
     if (!accts?.[0]) throw new Error('The wallet returned no account')
     wallet = { address: accts[0], provider: w.provider, name: w.info.name }
     w.provider.on?.('accountsChanged', (a: string[]) => { if (wallet) { if (a?.[0]) wallet.address = a[0]; else wallet = null; renderWallets(); paintWallet() } })
-  } catch (e) { $('wallet-err').textContent = `Wallet connection was not completed: ${(e as any)?.message ?? e}` }
+    guest = false
+  } catch (e) { showWalletErr(walletErr(e, 'connection')) }
   renderWallets(); paintWallet()
 }
 function paintWallet() {
   $('wallet-btn').textContent = wallet ? `● ${short(wallet.address, 6, 4)}` : 'Connect wallet'
-  $<HTMLButtonElement>('s1-next').disabled = !wallet
+  $<HTMLButtonElement>('s1-next').disabled = !wallet && !guest
+  $('guest').textContent = guest ? '✓ Continuing without a wallet' : 'Continue without a wallet'
   renderStepper(); renderSummary()
 }
 $('wallet-btn').addEventListener('click', () => { show('flow'); step(1) })
@@ -117,17 +131,18 @@ const message = (nonce: string, issued: string) => `Faultline test request\npoli
 
 // ---------- guided flow ----------
 let cur = 1, maxStep = 1
-const STEPS = ['Connect wallet', 'Choose policy', 'Choose attack', 'Watch live', 'Results & proof']
+const STEPS = ['Connect wallet', 'Driving policy', 'Attack and run type', 'Live view', 'Results and proof']
 function renderStepper() {
   $('stepper').innerHTML = STEPS.map((t, i) => {
-    const n = i + 1, can = n <= maxStep && (n < 2 || !!wallet || n >= 4)
+    const n = i + 1, can = n <= maxStep && (n < 2 || !!wallet || guest || n >= 4)
     return `<li><button class="${n === cur ? 'on' : ''} ${n < maxStep && n !== cur ? 'done' : ''}" data-s="${n}" ${can ? '' : 'disabled'} ${n === cur ? 'aria-current="step"' : ''}><i>${n < maxStep && n !== cur ? '✓' : n}</i><span>${t}</span></button></li>`
   }).join('')
   $('stepper').querySelectorAll<HTMLButtonElement>('[data-s]').forEach((b) => b.addEventListener('click', () => step(Number(b.dataset.s))))
 }
 function step(n: number) {
-  if (n < 1) { show('home'); return }
-  cur = n; maxStep = Math.max(maxStep, n)
+  if (n < 1) { history.replaceState(null, '', location.pathname); show('home'); return }
+  cur = n; maxStep = Math.max(maxStep, n); save()
+  if (location.hash !== '#run') history.replaceState(null, '', '#run')
   for (let i = 1; i <= 5; i++) $(`s${i}`).classList.toggle('hidden', i !== n)
   renderStepper(); if (n === 3) renderSummary()
   window.scrollTo({ top: 0 }); requestAnimationFrame(resizeAll)
@@ -145,7 +160,12 @@ let policies: Policy[] = [
   { id: 'pdm-lite', name: 'PDM-Lite', description: '', digest: '0x537db480f1840d95832fa2b2bd855075ad45b5f4cafb7b64f9eed6c2dd266bba', compatible: true, paid: true },
   { id: 'idm-cautious', name: 'Cautious IDM', description: '', digest: null, compatible: true, paid: false },
 ]
-let policy = 'pdm-lite', attack = 'cut-in-v1-kinematic', mode: 'free' | 'paid' = 'free'
+let policy = 'pdm-lite', attack = 'cut-in-v1-kinematic', mode: 'free' | 'paid' = 'free', guest = false
+// The flow survives a reload or a wallet warning page: state is saved on every change and restored on load.
+const FKEY = 'faultline.flow'
+function save() { try { localStorage.setItem(FKEY, JSON.stringify({ step: Math.min(cur, 3), policy, attack, mode, guest, wallet: lastTried?.info.rdns ?? null })) } catch { /* private mode */ } }
+function restore(): any { try { return JSON.parse(localStorage.getItem(FKEY) ?? 'null') } catch { return null } }
+$('guest').addEventListener('click', () => { guest = true; wallet = null; mode = 'free'; save(); renderWallets(); paintWallet(); renderChoices(); step(2) })
 const BYO = 'https://github.com/Soni-Shivam/Pivot_HTE/blob/main/docs/INTEGRATE_YOUR_STACK.md'
 $<HTMLAnchorElement>('byo').href = BYO
 async function loadPolicies() {
@@ -153,9 +173,9 @@ async function loadPolicies() {
   renderChoices()
 }
 const ATTACKS = [
-  { id: 'cut-in-v1-kinematic', name: 'Cut-in · fast sim', line: 'The attacker swerves into your lane and brakes. Simple 2D physics, about 40 seconds.', live: true },
-  { id: 'cut-in-v1-carla', name: 'Cut-in · CARLA 3D', line: 'The same attack in the CARLA 3D simulator with real sensors. About 90 seconds.', live: true },
-  { id: 'swarm', name: '4-car swarm', line: 'Four AI cars coordinate to box you in. Recorded run — watch it in Explore.', live: false },
+  { id: 'cut-in-v1-kinematic', name: 'Cut-in (fast simulation)', line: 'The attacker swerves into your lane and brakes. Simple 2D physics, about 40 seconds.', live: true },
+  { id: 'cut-in-v1-carla', name: 'Cut-in (CARLA 3D)', line: 'The same attack in the CARLA 3D simulator with real sensors. About 90 seconds.', live: true },
+  { id: 'swarm', name: 'Coordinated multi-vehicle attack', line: 'Four attacker cars coordinate to box the car in. Recorded run — opens in Explore.', live: false },
 ]
 let health: any = null
 function radio(group: string, items: { id: string, html: string, disabled?: boolean }[], sel: string) {
@@ -167,27 +187,34 @@ function renderChoices() {
   const carlaDown = health && !health.carla
   $('attacks').innerHTML = radio('atk', ATTACKS.map((a) => ({ id: a.id, disabled: a.id === 'cut-in-v1-carla' && carlaDown,
     html: `<b>${esc(a.name)}</b><span>${esc(a.line)}</span>${a.id === 'cut-in-v1-carla' && carlaDown ? '<small>CARLA is offline right now</small>' : a.live ? '' : '<small>Opens the recording →</small>'}` })), attack)
-  const paidOk = policies.find((p) => p.id === policy)?.paid !== false
+  const paidOk = policies.find((p) => p.id === policy)?.paid !== false && !guest
   $('modes').innerHTML = radio('mode', [
     { id: 'free', html: '<b>Free demo run</b><span>Real 0G decisions. Not paid and not anchored on-chain.</span>' },
-    { id: 'paid', disabled: !paidOk, html: `<b>Paid run · 0.001 ℏ</b><span>Our agent pays on Hedera (x402); the result is anchored on 0G Galileo and stored on 0G Storage.</span>${paidOk ? '' : '<small>Paid runs are bound to PDM-Lite</small>'}` },
+    { id: 'paid', disabled: !paidOk, html: `<b>Paid run (0.001 ℏ)</b><span>Our agent pays on Hedera (x402); the result is anchored on 0G Galileo and stored on 0G Storage.</span>${paidOk ? '' : guest ? '<small>Paid runs need a wallet signature</small>' : '<small>Paid runs are bound to PDM-Lite</small>'}` },
   ], mode)
-  document.querySelectorAll<HTMLButtonElement>('[data-pol]').forEach((b) => b.addEventListener('click', () => { policy = b.dataset.pol!; if (policies.find((p) => p.id === policy)?.paid === false) mode = 'free'; renderChoices() }))
-  document.querySelectorAll<HTMLButtonElement>('[data-atk]').forEach((b) => b.addEventListener('click', () => { if (b.dataset.atk === 'swarm') { gotoExplore('swarm'); return } attack = b.dataset.atk!; renderChoices() }))
-  document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => b.addEventListener('click', () => { mode = b.dataset.mode as 'free' | 'paid'; renderChoices() }))
+  document.querySelectorAll<HTMLButtonElement>('[data-pol]').forEach((b) => b.addEventListener('click', () => { policy = b.dataset.pol!; if (policies.find((p) => p.id === policy)?.paid === false) mode = 'free'; save(); renderChoices() }))
+  document.querySelectorAll<HTMLButtonElement>('[data-atk]').forEach((b) => b.addEventListener('click', () => { if (b.dataset.atk === 'swarm') { gotoExplore('swarm'); return } attack = b.dataset.atk!; save(); renderChoices() }))
+  document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => b.addEventListener('click', () => { mode = b.dataset.mode as 'free' | 'paid'; save(); renderChoices() }))
   renderSummary()
 }
 function renderSummary() {
   const p = policies.find((x) => x.id === policy), a = ATTACKS.find((x) => x.id === attack)
   $('summary').innerHTML = kv([['Policy', esc(p?.name ?? policy)], ['Attack', esc(a?.name ?? attack)], ['Run type', mode === 'paid' ? 'Paid · our agent pays 0.001 ℏ on Hedera' : 'Free demo · not paid, not anchored'],
-    ['Requested by', wallet ? `<code>${esc(wallet.address)}</code>` : 'connect a wallet first']])
+    ['Requested by', wallet ? `<code>${esc(wallet.address)}</code>` : guest ? 'Guest (no wallet) · free demo run' : 'connect a wallet first']])
   $('msg-preview').textContent = message('<random nonce>', '<time you click>')
-  $<HTMLButtonElement>('start').disabled = !wallet || !online
-  $('start-err').textContent = !wallet ? 'Connect a wallet in step 1 first.' : !online ? 'The live console is offline — watch a recorded test in Explore instead.' : ''
+  $<HTMLButtonElement>('start').disabled = (!wallet && !guest) || !online
+  $('start').textContent = guest ? 'Start free guest run' : 'Sign and start test'
+  $('start-err').textContent = !wallet && !guest ? 'Connect a wallet (or continue without one) in step 1 first.' : !online ? 'The live console is offline — watch a recorded test in Explore instead.' : ''
 }
 $('start').addEventListener('click', async () => {
+  if (guest && !wallet) {
+    const btn = $<HTMLButtonElement>('start'); btn.disabled = true
+    try { const r = await postJson('/api/demo-run', { policy, suite: attack, mode: 'free', guest: true }); startStream(r.jobId, 'live', 'job', true) }
+    catch (e) { $('start-err').textContent = `Not started: ${(e as Error).message}` } finally { btn.disabled = false }
+    return
+  }
   if (!wallet) return
-  const btn = $<HTMLButtonElement>('start'); btn.disabled = true; $('start-err').textContent = 'Waiting for your wallet signature…'
+  const btn = $<HTMLButtonElement>('start'); btn.disabled = true; $('start-err').textContent = 'Waiting for your wallet signature…'; save()
   try {
     const nonce = [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('')
     const msg = message(nonce, new Date().toISOString())
@@ -196,7 +223,7 @@ $('start').addEventListener('click', async () => {
     const r = await postJson('/api/demo-run', { policy, suite: attack, mode, address: wallet.address, message: msg, signature })
     $('start-err').textContent = ''
     startStream(r.jobId, 'live', 'job', mode === 'free')
-  } catch (e) { $('start-err').textContent = `Not started: ${(e as any)?.message ?? e}` } finally { btn.disabled = false }
+  } catch (e) { const m = (e as any)?.code != null ? walletErr(e, 'signature') : `Not started: ${(e as any)?.message ?? e}`; $('start-err').textContent = m } finally { btn.disabled = false }
 })
 
 // ---------- live ----------
@@ -456,27 +483,21 @@ function renderExplore() {
   explored = true
   $('explore').innerHTML = [
     section('runs', '', 'Recorded tests', 'Replay any finished test decision by decision — free, no wallet needed.', `<div class="tscroll" style="margin-top:12px"><table><thead><tr>${th('Test')}${th('Simulator')}${th('AI moves from 0G')}${th('Danger', TIP.ccs)}${th('Tightest TTC', TIP.ttc)}${th('')}</tr></thead><tbody id="runs"><tr><td colspan="6">Loading…</td></tr></tbody></table></div>`),
-    section('swarm', 'c', 'Four AI cars against one', 'One planning call to 0G assigns roles to four cars; then a 0G call every second steers all four at once to box the self-driving car in.',
+    section('swarm', 'c', 'Coordinated multi-vehicle attack', 'One planning call to 0G assigns roles to four cars; then a 0G call every second steers all four at once to box the self-driving car in.',
       `<div class="split"><div>${video('videos/swarm-carla-010__stitched.mp4', 'Four-car swarm attack in CARLA')}</div><div><dl class="kv">${kv([['Moves from 0G', '10 of 10 (0 safe stops)'], ['Closest gap', '3.5 m'], ['Tightest TTC', '1.1 s'], ['Crash', 'none'], ['Plan request', RID('e1a9a298-520d-42bf-ad30-ad67d0cc5894')], ['Anchored on-chain', 'no (prototype run)']])}</dl></div></div>
        <div class="rail" style="margin-top:14px">${railHtml({ decisions0g: 10, decisions: 10, requestId: 'e1a9a298-520d-42bf-ad30-ad67d0cc5894', provider: PROVIDER, sigsVerified: 10, sigsTotal: 10, agentId: 579 })}</div>`),
-    section('ab', 'y', 'A/B arena: which policy handles the same attack better?', 'Both policies face the exact same scripted attack (replayed, no 0G calls), so the comparison is fair. Recorded at 4 sites; the result was the same at all of them.',
+    section('ab', 'y', 'A/B policy comparison', 'Both policies face the exact same scripted attack (replayed, no 0G calls), so the comparison is fair. Recorded at 4 sites; the result was the same at all of them.',
       `<div class="split"><div>${video('videos/arena-script-001__r4l2s24__side_by_side.mp4', 'Side-by-side: PDM-Lite vs cautious IDM under the same attack')}</div><div><div class="tscroll" id="ab-table">${arenaTable(ARENA_RECORDED)}</div>
        <p style="margin:10px 0 0">The cautious model keeps about 3 s to collision; PDM-Lite drops to about 1 s.</p>
        <div class="row" style="margin-top:14px"><button class="btn k" id="ab-run">Run the arena live (free)</button><span class="pill sm" id="ab-status" aria-live="polite">recorded result shown</span></div><p class="err" id="ab-err"></p></div></div>`),
-    section('paid002', 'c', 'A paid test, end to end', 'Our agent paid 0.001 ℏ on Hedera, got a single-use permit, locked the test setup on 0G Galileo, ran it in CARLA with 0G decisions, stored the evidence on 0G Storage, and finalized the result on-chain.',
+    section('paid002', 'c', 'Paid test run', 'Our agent paid 0.001 ℏ on Hedera, got a single-use permit, locked the test setup on 0G Galileo, ran it in CARLA with 0G decisions, stored the evidence on 0G Storage, and finalized the result on-chain.',
       `<div class="split"><div>${video('videos/paid-job-002-replay-view__chase.mp4', 'Paid CARLA test 002, replayed from its recorded decisions')}</div><div><dl class="kv">${kv([['Payment', link(PAID002.hedera!.hashscan, 'Hedera receipt')], ['Setup locked (block 64245811)', link(galileoTx(PAID002.commitTx!), short(PAID002.commitTx, 8, 4))], ['Moves from 0G', '7 of 8 (one safe stop)'], ['Evidence stored', `root ${short(PAID002.publicRoot, 8, 4)}`], ['Result finalized', link(galileoTx(PAID002.finalizeTx!), short(PAID002.finalizeTx, 8, 4))], ['Permit reused?', 'refused (409)'], ['Result', 'danger 0.93 · tightest TTC 1.0 s · no crash']])}</dl></div></div>
        <div class="rail" style="margin-top:14px">${railHtml(PAID002)}</div>`),
-    section('research', 'l', 'Research mission: where does the policy break?', 'The 0G agent ran experiments to find the edge between safe and unsafe settings, found a crash, and tested a proposed fix. Each dot below is one experiment it chose.',
+    section('research', 'l', 'Research mission', 'The 0G agent ran experiments to find the edge between safe and unsafe settings, found a crash, and tested a proposed fix. Each dot below is one experiment it chose.',
       `<div class="split"><div>${video('videos/research-mission-001__carla-failure.mp4', 'The crash the research agent found, reproduced in CARLA')}</div><div><canvas id="hunt" style="width:100%;height:240px;display:block" aria-label="Experiments chosen by the 0G agent"></canvas></div></div>
        <dl class="kv">${kv([['Smallest failing case', 'speed 18.75 m/s · gap 25 m · reaction delay 0.6 s → crash'], ['0G’s suggested fix (min gap 3 m)', 'did not help (0.36 m)'], ['Grid-searched fix', 'safe: unsafe cases 19 → 0'], ['Self-audit of its claims', '5 supported · 2 contradicted']])}</dl>
        <details class="more"><summary>Experiment log</summary><div class="feed" id="hunt-feed" style="max-height:220px"></div></details>
        <div class="rail" style="margin-top:14px">${railHtml({ decisions0g: 9, decisions: 9, requestId: 'a00eb00f-1205-4518-ad7d-095c6e6a2ffb', provider: PROVIDER, sigsVerified: 47, sigsTotal: 47, agentId: 579 })}</div>`),
-    section('memory', 'p', 'Version memory: did v1.1 fix what v1.0 got wrong?', '135 paired tests of a car-following policy, before and after an update. Failure fingerprints are kept on-chain so a regression would show up.',
-      `<div class="board">${([['low friction', '5/11', '1/11', 'still 1'], ['slow reaction', '9/27', '2/27', 'still 2'], ['hard braking', '6/30', '0/30', 'fixed'], ['lead car brakes', '9/67', '0/67', 'fixed']] as const)
-        .map(([c, a, b, v]) => `<div class="cell">${c}<b>${a} → ${b}</b><span class="pill sm ${v === 'fixed' ? 'l' : 'y'}">${v}</span></div>`).join('')}</div>
-       <p style="margin:10px 0 0">Crashes per category, v1.0 → v1.1. 7 failure types fixed, 3 remain, 0 new, 0 regressions.</p>
-       <div class="rail" style="margin-top:14px">${railHtml({ decisions0g: 2, decisions: 2, requestId: 'b2aed5f9-d6a8-4392-8ca2-1260ff907a7e', provider: PROVIDER, sigsVerified: 2, sigsTotal: 2,
-         publicRoot: '0x0ff260127d38daecf4debacdd03dbf0df239b42ea5285502bc6e97f8d716ed4b', sealedRoot: '0x1c76089af9ac60fe06f10ea238ffd381a750d21086b569313cf8cc175e468e2a', agentId: 579, arkiv: '0x63990b662ebd9c39cda12bf0e550e9e03302462022b8e9bdfef7fea374f89dcd' })}</div>`),
   ].join('')
   $('ab-run').addEventListener('click', runArena)
   loadRuns(); drawHunt()
@@ -537,7 +558,17 @@ function resizeAll() { if (!$('s5').classList.contains('hidden') && ticks.length
 window.addEventListener('resize', resizeAll)
 
 async function boot() {
-  renderWallets(); paintWallet(); renderChoices(); step(1); show('home')
+  const st = restore()
+  if (st) { policy = st.policy ?? policy; attack = st.attack ?? attack; mode = st.mode === 'paid' ? 'paid' : 'free'; guest = !!st.guest }
+  renderWallets(); paintWallet(); renderChoices(); renderStepper()
+  if (location.hash === '#run') { show('flow'); step(Math.max(1, Math.min(3, st?.step ?? 1))) } else show('home')
+  // Resume a wallet the user already approved (eth_accounts opens no popup)
+  if (st?.wallet !== undefined && location.hash === '#run') setTimeout(async () => {
+    const w = found.find((x) => x.info.rdns === st.wallet) ?? found[0] ?? ((window as any).ethereum ? { info: { uuid: 'injected', name: 'Browser wallet', icon: '', rdns: '' }, provider: (window as any).ethereum } : null)
+    if (!w || wallet) return
+    try { const a: string[] = await w.provider.request({ method: 'eth_accounts' }); if (a?.[0]) { wallet = { address: a[0], provider: w.provider, name: w.info.name }; lastTried = w; guest = false; renderWallets(); paintWallet(); renderChoices() } } catch { /* stays disconnected */ }
+  }, 400)
+  startLidar()
   requestAnimationFrame(frame)
   await Promise.all([pollHealth(), loadPolicies()])
   renderChoices()
@@ -566,4 +597,50 @@ async function drawHunt() {
     if (n < ex.length) setTimeout(step, 350)
   }
   step()
+}
+
+// ---------- hero background: real LiDAR point cloud captured from our CARLA Town10 run (scripts/capture_lidar_map.py) ----------
+function startLidar() {
+  const cv = $<HTMLCanvasElement>('lidar')
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  fetch('town10-lidar.bin').then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('no map')))).then((buf) => {
+    const n = new DataView(buf).getUint32(0, true), xyz = new Float32Array(buf, 4, n * 3), hc = new Uint8Array(buf, 4 + n * 12, n)
+    // height colour ramp blue → green → yellow → red, as packed ABGR for ImageData
+    const ramp = new Uint32Array(256)
+    for (let i = 0; i < 256; i++) {
+      const t = i / 255, stops = [[40, 90, 255], [40, 220, 120], [250, 230, 60], [255, 60, 60]], k = Math.min(2, Math.floor(t * 3)), f = t * 3 - k
+      const c = stops[k].map((a, j) => Math.round(a + (stops[k + 1][j] - a) * f))
+      ramp[i] = (255 << 24) | (c[2] << 16) | (c[1] << 8) | c[0]
+    }
+    let rx = 0; for (let i = 0; i < n; i++) rx = Math.max(rx, Math.abs(xyz[i * 3]), Math.abs(xyz[i * 3 + 1]))
+    const az = new Float32Array(n); for (let i = 0; i < n; i++) az[i] = Math.atan2(xyz[i * 3 + 1], xyz[i * 3])
+    let visible = true, last = 0
+    new IntersectionObserver((e) => { visible = e[0].isIntersecting; if (visible && !reduce) requestAnimationFrame(draw) }).observe(cv)
+    const draw = (now: number) => {
+      if (!visible) return
+      if (!reduce && now - last < 33) { requestAnimationFrame(draw); return }
+      last = now
+      const dpr = Math.min(window.devicePixelRatio || 1, 2), W = Math.max(1, Math.round(cv.clientWidth * dpr)), H = Math.max(1, Math.round(cv.clientHeight * dpr))
+      if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H }
+      const g = cv.getContext('2d')!, img = g.createImageData(W, H), px = new Uint32Array(img.data.buffer)
+      const a = reduce ? 0.6 : now / 1000 * 0.06, ca = Math.cos(a), sa = Math.sin(a), tilt = 0.95, ct = Math.cos(tilt), st = Math.sin(tilt)
+      const sweep = ((now / 1000) * 0.9) % (Math.PI * 2), scale = Math.min(W, H) * 0.95 / rx, cam = rx * 1.6, cx = W * 0.62, cy = H * 0.52
+      const sz = dpr > 1.5 ? 2 : 1
+      for (let i = 0; i < n; i++) {
+        const x = xyz[i * 3], y = xyz[i * 3 + 1], z = xyz[i * 3 + 2]
+        const xr = x * ca - y * sa, yr = x * sa + y * ca
+        const yv = yr * ct - z * st, zv = yr * st + z * ct + cam
+        if (zv < 1) continue
+        const p = cam / zv, X = (cx + xr * scale * p) | 0, Y = (cy + yv * scale * p) | 0
+        if (X < 0 || Y < 0 || X >= W - sz || Y >= H - sz) continue
+        let d = sweep - az[i] - a; d -= Math.floor(d / (Math.PI * 2)) * Math.PI * 2
+        const col = !reduce && d < 0.25 ? 0xffffffff : ramp[hc[i]]
+        const o = Y * W + X
+        px[o] = col; if (sz > 1) { px[o + 1] = col; px[o + W] = col; px[o + W + 1] = col }
+      }
+      g.putImageData(img, 0, 0)
+      if (!reduce) requestAnimationFrame(draw)
+    }
+    requestAnimationFrame(draw)
+  }).catch(() => { $('lidar-label').textContent = '' })
 }

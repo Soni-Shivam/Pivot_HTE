@@ -35,7 +35,7 @@ const API = {
 const { privateKeyToAccount, generatePrivateKey } = await import('viem/accounts')
 const { verifyMessage } = await import('viem')
 const acct = privateKeyToAccount(generatePrivateKey())
-let signedBody = null
+let signedBody = null, guestBody = null
 async function mock(page, online) {
   await page.route('**/*', (route) => {
     const u = new URL(route.request().url())
@@ -44,6 +44,7 @@ async function mock(page, online) {
     if (!online || u.pathname.startsWith('/media/')) return route.fulfill({ status: 404, body: '' })
     if (u.pathname === '/api/demo-run') {
       const b = JSON.parse(route.request().postData() ?? '{}')
+      if (b.guest === true && !b.signature && b.mode === 'free') { guestBody = b; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ jobId: 'guest-job', queuePos: 0 }) }) }
       if (!b.signature) return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'unsigned' }) })
       signedBody = b
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ jobId: 'fixture-job', queuePos: 0 }) })
@@ -59,14 +60,14 @@ async function wallet(page) {
   await page.exposeFunction('__fixtureSign', (hex) => acct.signMessage({ message: { raw: hex } }))
   await page.addInitScript((address) => {
     const provider = { request: async ({ method, params }) => {
-      if (method === 'eth_requestAccounts') return [address]
+      if (method === 'eth_requestAccounts' || method === 'eth_accounts') return [address]
       if (method === 'personal_sign') return window.__fixtureSign(params[0])
       throw new Error(`unexpected wallet call ${method}`) } }
     window.addEventListener('eip6963:requestProvider', () => window.dispatchEvent(new CustomEvent('eip6963:announceProvider',
       { detail: { info: { uuid: 'fixture', name: 'Fixture Wallet', icon: '', rdns: 'test.fixture' }, provider } })))
   }, acct.address)
 }
-const shot = async (page, name, full = false) => { if (shots) { await page.waitForTimeout(400); await page.screenshot({ path: `${shots}/studio-v2-${name}.png`, fullPage: full }) } }
+const shot = async (page, name, full = false) => { if (shots) { await page.waitForTimeout(400); await page.screenshot({ path: `${shots}/studio-v3-${name}.png`, fullPage: full }) } }
 
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {})
 try {
@@ -76,18 +77,26 @@ try {
   await mock(page, true); await wallet(page)
   await page.goto(base)
   await page.waitForSelector('#console-dot.up')
-  check(/AI attackers/.test(await text(page, '#v-home h1')), 'hero: one-sentence product line')
+  check(/^Adversarial testing for self-driving software$/.test(await text(page, '#v-home h1')), 'hero: plain H1')
   check(await page.locator('#v-home video').count() === 1, 'hero: exactly one video on the landing view')
-  check(await page.locator('#v-home .how li').count() === 4, 'hero: 4-step how it works')
+  check(await page.locator('#how svg.diagram').isVisible() && /What you get/.test(await text(page, '#how')), 'how Faultline works: diagram + what you get')
+  check(!/version|v1\.1/i.test(await page.locator('body').innerText()), 'no version-history content')
+  await page.waitForTimeout(800)
+  check(await page.evaluate(() => { const c = document.getElementById('lidar'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return n > 5000 }), 'hero: LiDAR point cloud rendered')
   await shot(page, 'home')
   await page.click('#cta-run')
   check(await page.locator('#s1').isVisible() && await page.locator('#s1-next').isDisabled(), 'step 1: connect wallet first')
-  check(/never a transaction/.test(await text(page, '#s1')), 'step 1: signature-only note')
+  check(/never a transaction/.test(await text(page, '#s1')) && /Continue to site/.test(await text(page, '#s1')), 'step 1: signature-only + domain-warning note')
   await page.click('[data-w="0"]')
   await page.waitForSelector('#s1-next:not([disabled])')
   check((await text(page, '#wallet-btn')).includes(acct.address.slice(0, 6)), 'wallet connected: address shown')
   await shot(page, 'connect')
   await page.click('#s1-next')
+  await page.click('[data-pol="pdm-lite"]')
+  await page.reload(); await page.waitForSelector('#s2:not(.hidden)', { timeout: 5000 })
+  check(new URL(page.url()).hash === '#run', 'resume: reload lands back on the stepper (step 2)')
+  await page.waitForSelector('#s1-next:not([disabled])', { state: 'attached', timeout: 5000 })
+  check((await text(page, '#wallet-btn')).includes(acct.address.slice(0, 6)), 'resume: approved wallet reconnects without a popup')
   check((await page.locator('#policies .choice').count()) === 2, 'step 2: two policies')
   await page.click('#s2-next')
   await page.click('[data-mode="paid"]')
@@ -114,6 +123,17 @@ try {
   check(!(await page.locator('#v-explore').innerText()).includes('source:'), 'explore: no scattered source footnotes')
   await shot(page, 'explore', true)
   check(errors.length === 0, `no page errors ${errors.join(' | ')}`)
+
+  const gctx = await browser.newContext({ viewport: { width: 1360, height: 900 } })
+  const g = await gctx.newPage(); const err3 = []; g.on('pageerror', (e) => err3.push(e.message))
+  await mock(g, true); await g.goto(base); await g.waitForSelector('#console-dot.up')
+  await g.click('#cta-run'); await g.click('#guest')
+  check(await g.locator('#s2').isVisible(), 'guest: continue without a wallet → step 2')
+  await g.click('#s2-next')
+  check(await g.locator('[data-mode="paid"]').isDisabled(), 'guest: paid run disabled (needs a signature)')
+  await g.click('#start'); await g.waitForSelector('#s4:not(.hidden)')
+  check(guestBody?.guest === true && guestBody?.mode === 'free' && !guestBody?.signature, 'guest: unsigned free run requested with guest flag')
+  check(err3.length === 0, `guest: no page errors ${err3.join(' | ')}`)
 
   const off = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: shots ? 2 : 1 })
   const p2 = await off.newPage(); const err2 = []; p2.on('pageerror', (e) => err2.push(e.message))

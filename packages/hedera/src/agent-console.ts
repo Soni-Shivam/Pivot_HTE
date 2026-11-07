@@ -39,6 +39,8 @@ const PAUSED = 'Live runs are paused for today — replay a recorded run'
 // Live runs need a wallet-signed request (EIP-191); nonces are single-use (in memory: a restart within 5 min forgets them).
 const nonces = new Map<string, number>()
 const walletCaps = new WalletCaps(Number(process.env.FAULTLINE_WALLET_MAX_RUNS ?? 3))
+// Guest path (no wallet): free demo runs only, 1 per IP per hour, 6 per day in total. Paid runs always need a signature.
+const guestPerIp = new RateLimit(1, 3600_000), guestDaily = new WalletCaps(Number(process.env.FAULTLINE_GUEST_MAX_RUNS ?? 6))
 const postLimit = new RateLimit(Number(process.env.FAULTLINE_RATE_POST ?? 12), 60_000)
 const allLimit = new RateLimit(Number(process.env.FAULTLINE_RATE_ALL ?? 600), 60_000)
 const HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`, PUBLIC_HOST, `${PUBLIC_HOST}:443`])
@@ -437,9 +439,17 @@ app.post('/api/demo-run', async (req, res) => {
   const lane = suite === 'cut-in-v1-carla' ? 'carla' : 'kin'
   if (lanes[lane].length > MAX_WAITING) return deny(res, 429, 'The queue is full — try again in a few minutes or replay a recorded run')
   if (caps.left().runs_left < 1 || (mode === 'paid' && caps.left().buys_left < 1)) return deny(res, 429, PAUSED)
-  const v = await verifyRunRequest(req.body, { policy, suite, mode }, nonces, verifyMessage)
-  if ('error' in v) return deny(res, 401, v.error)
-  if (!walletCaps.take(v.address)) return deny(res, 429, 'This wallet has used its live runs for today — replay a recorded run')
+  let v: { address: string } | { error: string }
+  if (req.body?.guest === true && !req.body?.signature) {
+    if (mode !== 'free') return deny(res, 401, 'Paid runs need a signed wallet request — connect a wallet, or use a free guest run')
+    if (!guestPerIp.allow(clientIp(req.socket.remoteAddress, req.header('x-forwarded-for')))) return deny(res, 429, 'One guest run per hour from your network — connect a wallet for more, or replay a recorded test')
+    if (!guestDaily.take('guest')) return deny(res, 429, 'Guest runs are used up for today — connect a wallet, or replay a recorded test')
+    v = { address: 'guest run' }
+  } else {
+    v = await verifyRunRequest(req.body, { policy, suite, mode }, nonces, verifyMessage)
+    if ('error' in v) return deny(res, 401, v.error)
+    if (!walletCaps.take(v.address)) return deny(res, 429, 'This wallet has used its live runs for today — replay a recorded run')
+  }
   if (mode === 'paid' && !caps.take('buys')) return deny(res, 429, PAUSED)
   caps.take('runs')
   const j: Job = { id: randomBytes(8).toString('hex'), kind: 'demo', lane, policy, suite, site: DEFAULT_SITE, seed, mode, status: 'queued', requestedBy: v.address,

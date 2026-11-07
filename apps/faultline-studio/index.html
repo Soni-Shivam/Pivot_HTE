@@ -73,18 +73,19 @@
       padding: 10px 12px; border-radius: 14px; background: var(--ink); color: var(--paper); font: 500 13px/1.4 var(--sans); white-space: normal; text-align: left; pointer-events: none }
 
     /* hero */
-    .hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 28px; align-items: center; padding: 36px }
-    .hero h1 { font-size: clamp(32px, 4.4vw, 54px); line-height: 1.04; font-weight: 700 }
-    .hero h1 em { font-style: normal; background: var(--paper); padding: 0 8px; border-radius: 12px; border: 1.5px solid var(--line) }
-    .how { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; counter-reset: s }
-    .how li { list-style: none; background: var(--paper); border: 1.5px solid var(--line); border-radius: 22px; padding: 18px; counter-increment: s }
-    .how li::before { content: counter(s); display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--ink); color: var(--paper); font-weight: 700; margin-bottom: 10px }
-    .how li:nth-child(1) { background: var(--cyan) } .how li:nth-child(2) { background: var(--pink) } .how li:nth-child(3) { background: var(--lime) } .how li:nth-child(4) { background: var(--paper) }
-    .how b { display: block; font-size: 17px; line-height: 1.25 } .how span { display: block; color: var(--muted); font-size: 14px; margin-top: 6px }
-    .how-wrap { margin: 0; padding: 0 }
-    .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px }
-    .facts .card { padding: 20px } .facts b { display: block; font-size: 30px; font-weight: 700; letter-spacing: -.03em }
-
+    .hero { position: relative; overflow: hidden; min-height: 460px; display: flex; align-items: center; padding: 48px }
+    .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .75 }
+    .hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #161616 0%, #161616e0 38%, #16161600 75%); pointer-events: none }
+    .hero-text { position: relative; z-index: 1; max-width: 560px }
+    .hero h1 { font-size: clamp(28px, 3vw, 40px); line-height: 1.15; font-weight: 600; color: var(--paper) }
+    .lidar-label { position: absolute; right: 20px; bottom: 16px; z-index: 1; font: 12px var(--mono); color: #b8b8b2 }
+    .diagram { width: 100%; max-width: 980px; height: auto; display: block; margin: 0 auto }
+    .card.k .btn:not(.k) { color: var(--ink) }
+    .diagram .bx rect { stroke: var(--ink); stroke-width: 2 }
+    .diagram text { font: 15px var(--sans); fill: var(--ink) } .diagram text.t { font-weight: 700; font-size: 19px } .diagram text.s { font-size: 14px; fill: var(--muted) }
+    .how-list { display: none; margin: 0; padding-left: 20px } .how-list li { margin: 8px 0 }
+    .get { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 10px 0 0 }
+    .get li { border: 1.5px solid var(--line); border-radius: 999px; padding: 6px 14px; background: var(--lime); font-weight: 500 }
     /* stepper */
     .stepper { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; padding: 0; list-style: none }
     .stepper button { min-height: 40px; padding: 0 16px 0 6px; border-radius: 999px; background: #1a1a1a; color: #b8b8b2; font-weight: 500; display: inline-flex; gap: 8px; align-items: center }
@@ -155,10 +156,11 @@
     #offline { margin-bottom: 16px }
 
     @media (max-width: 1000px) {
-      .hero, .pit, .split { grid-template-columns: 1fr } .how { grid-template-columns: 1fr 1fr } .choices.three { grid-template-columns: 1fr }
+      .pit, .split { grid-template-columns: 1fr } .how { grid-template-columns: 1fr 1fr } .choices.three { grid-template-columns: 1fr }
       .board { grid-template-columns: 1fr 1fr } .hdr-right #console-pill { display: none }
     }
     @media (max-width: 640px) {
+      .diagram { display: none } .how-list { display: block } .hero { padding: 24px; min-height: 420px } .hero::after { background: #161616c0 }
       header { flex-wrap: wrap; gap: 10px; padding: 12px 16px } nav.top { order: 3; width: 100% } nav.top button { flex: 1 }
       main { padding: 8px 16px 40px } .card { padding: 20px; border-radius: 22px } .hero { padding: 22px }
       .how, .choices, .facts { grid-template-columns: 1fr } .step h2 { font-size: 24px } .scene canvas { height: 260px }
@@ -186,30 +188,55 @@
   <!-- HOME -->
   <section id="v-home">
     <div class="grid">
-      <div class="card y hero">
-        <div>
-          <h1>We stress-test self-driving software with <em>AI attackers</em> — and prove every result on-chain.</h1>
-          <p class="lede">An AI on 0G plays the other drivers and tries to make your car crash. You watch it happen in the CARLA simulator, then check the receipts yourself.</p>
-          <div class="row" style="margin-top:24px">
-            <button class="btn k big" id="cta-run">Run a test →</button>
-            <button class="btn big" id="cta-watch">▶ Watch a 30-second example</button>
+      <div class="card k hero">
+        <canvas id="lidar" aria-hidden="true"></canvas>
+        <div class="hero-text">
+          <h1>Adversarial testing for self-driving software</h1>
+          <p class="lede">An AI attacker on 0G drives the other cars in a CARLA simulation and tries to make your driving policy crash; every decision and result is recorded on-chain.</p>
+          <div class="row" style="margin-top:22px">
+            <button class="btn y big" id="cta-run">Run a test</button>
+            <button class="btn big" id="cta-watch">Watch a 30-second example</button>
           </div>
         </div>
-        <div><video id="hero-video" controls muted playsinline preload="metadata" aria-label="Recorded test: four AI-controlled cars try to box in a self-driving car in CARLA"></video></div>
+        <span class="lidar-label" id="lidar-label">Live LiDAR map · CARLA Town10</span>
       </div>
-      <div class="card">
-        <div class="head"><h2>How it works</h2></div>
-        <ol class="how how-wrap">
-          <li><b>Pick a driving policy</b><span>The self-driving software under test — ours or yours.</span></li>
-          <li><b>AI attacker plans on 0G</b><span>A model on 0G's private computer decides what the other cars do, every second.</span></li>
-          <li><b>Watch it in CARLA</b><span>The attack plays out in a 3D driving simulator, live.</span></li>
-          <li><b>Verify the proof</b><span>Each decision, payment and result is recorded on 0G, Hedera and Arkiv.</span></li>
+
+      <div class="card" id="how">
+        <div class="head"><h2>How Faultline works</h2></div>
+        <svg class="diagram" viewBox="0 0 1000 470" role="img" aria-labelledby="dg-t">
+          <title id="dg-t">Your driving policy and the CARLA simulator run in a loop with the Faultline controller, which asks the 0G attacker model for a decision every second and writes evidence to 0G Storage, 0G Galileo, Hedera and Arkiv.</title>
+          <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--ink)"/></marker></defs>
+          <g class="bx"><rect x="10" y="20" width="290" height="110" rx="20" fill="var(--paper)"/><text x="30" y="56" class="t">Your driving policy</text><text x="30" y="84">The self-driving stack under test.</text><text x="30" y="106">It sees only its own sensors.</text></g>
+          <g class="bx"><rect x="355" y="20" width="290" height="110" rx="20" fill="var(--lime)"/><text x="375" y="56" class="t">CARLA simulator</text><text x="375" y="84">Physics, roads and a 64-beam LiDAR,</text><text x="375" y="106">stepped 20 times per second.</text></g>
+          <g class="bx"><rect x="700" y="20" width="290" height="110" rx="20" fill="var(--yellow)"/><text x="720" y="56" class="t">Faultline controller</text><text x="720" y="84">Asks the attacker every 1 s, enforces</text><text x="720" y="106">safety limits, stops safely on errors.</text></g>
+          <g class="bx"><rect x="700" y="190" width="290" height="110" rx="20" fill="var(--pink)"/><text x="720" y="226" class="t">0G Private Computer</text><text x="720" y="254">The attacker model decides in a TEE;</text><text x="720" y="276">each answer has a request ID + signature.</text></g>
+          <path d="M303 75H352" stroke="var(--ink)" stroke-width="2.5" fill="none" marker-start="url(#ah)" marker-end="url(#ah)"/><path d="M648 75H697" stroke="var(--ink)" stroke-width="2.5" fill="none" marker-start="url(#ah)" marker-end="url(#ah)"/><path d="M845 133V187" stroke="var(--ink)" stroke-width="2.5" fill="none" marker-start="url(#ah)" marker-end="url(#ah)"/>
+          <text x="858" y="166" class="s">decision</text>
+          <path d="M700 245H126V325" stroke="var(--ink)" stroke-width="2.5" fill="none"/><path d="M126 325V344" stroke="var(--ink)" stroke-width="2.5" fill="none" marker-end="url(#ah)"/><path d="M368 325V344" stroke="var(--ink)" stroke-width="2.5" fill="none" marker-end="url(#ah)"/><path d="M610 325V344" stroke="var(--ink)" stroke-width="2.5" fill="none" marker-end="url(#ah)"/><path d="M862 325V344" stroke="var(--ink)" stroke-width="2.5" fill="none" marker-end="url(#ah)"/>
+          <path d="M126 325H862M862 302V325" stroke="var(--ink)" stroke-width="2.5" fill="none"/>
+          <text x="140" y="238" class="s">evidence of every run</text>
+          <g class="bx"><rect x="10" y="347" width="232" height="110" rx="20" fill="var(--cyan)"/><text x="28" y="382" class="t">0G Storage</text><text x="28" y="410">Public log + sealed log</text><text x="28" y="432">of every decision.</text></g>
+          <g class="bx"><rect x="252" y="347" width="232" height="110" rx="20" fill="var(--cyan)"/><text x="270" y="382" class="t">0G Galileo</text><text x="270" y="410">Commit before the run,</text><text x="270" y="432">finalize after it.</text></g>
+          <g class="bx"><rect x="494" y="347" width="232" height="110" rx="20" fill="var(--cyan)"/><text x="512" y="382" class="t">Hedera</text><text x="512" y="410">x402 payment for the test</text><text x="512" y="432">and an HCS receipt.</text></g>
+          <g class="bx"><rect x="736" y="347" width="254" height="110" rx="20" fill="var(--cyan)"/><text x="754" y="382" class="t">Arkiv</text><text x="754" y="410">Shareable public claims</text><text x="754" y="432">about the results.</text></g>
+        </svg>
+        <ol class="how-list">
+          <li><b>Your driving policy</b> — the self-driving stack under test; it sees only its own sensors.</li>
+          <li><b>CARLA simulator</b> — physics, roads and a 64-beam LiDAR, stepped 20 times per second.</li>
+          <li><b>Faultline controller</b> — asks the attacker every 1 s, enforces safety limits, stops safely on errors.</li>
+          <li><b>0G Private Computer</b> — the attacker model decides in a TEE; each answer has a request ID and signature.</li>
+          <li><b>Evidence</b> — 0G Storage (public + sealed log), 0G Galileo (commit before, finalize after), Hedera (x402 payment + HCS receipt), Arkiv (shareable claims).</li>
         </ol>
+        <h3 style="margin-top:22px;font-size:20px">What you get</h3>
+        <ul class="get">
+          <li>Pass/fail verdict</li><li>Closest gap and time to collision</li><li>The attacker’s reasoning for each decision</li><li>Full replay</li><li>On-chain receipts</li>
+        </ul>
       </div>
-      <div class="facts">
-        <div class="card c"><b>Real AI decisions</b>Every attacker move comes from a signed 0G answer you can look up.</div>
-        <div class="card p"><b>Agents pay per test</b>Our agent pays 0.001 ℏ on Hedera for each paid run — no human approval step.</div>
-        <div class="card l"><b>No accounts</b>Connect a wallet and sign one message. We never ask for a transaction.</div>
+
+      <div class="card y" id="example">
+        <div class="head"><h2>Example test run</h2></div>
+        <p class="lede" style="margin-top:-6px">Four attacker cars coordinated by 0G try to box in the car under test in CARLA. No collision; closest gap 3.5 m.</p>
+        <video id="hero-video" controls muted playsinline preload="none" style="margin-top:14px" aria-label="Recorded coordinated multi-vehicle attack in CARLA"></video>
       </div>
     </div>
   </section>
@@ -219,24 +246,25 @@
     <ol class="stepper" id="stepper" aria-label="Test steps"></ol>
 
     <div class="card step" id="s1" data-step="1">
-      <h2>Connect your wallet</h2>
-      <p class="lede">Your wallet signs the test request so we know who asked for it. Our agent pays for the test on Hedera.</p>
+      <h2>Connect wallet</h2>
+      <p class="lede">Your wallet signs the test request so we know who asked for it. Our agent pays for paid tests on Hedera.</p>
+      <div class="note" style="margin-top:14px"><b>Coinbase Wallet may warn about this new domain — choose “Continue to site”.</b> We only ask for a signature, never a transaction: no token approvals, transfers or gas. Your progress is saved if the page reloads.</div>
       <div class="wallets" id="wallets"></div>
-      <p class="err" id="wallet-err"></p>
-      <div class="note"><b>We only ask for a signature, never a transaction.</b> The site requests your address and one readable message to sign. It never asks for token approvals, transfers or gas. If your wallet warns that this new site is unknown, that is a reputation check on a fresh domain; the message you sign is shown in full before you sign it.</div>
-      <div class="nav-btns"><button class="btn k" id="s1-next" disabled>Next: choose a policy →</button><button class="btn" data-goto-explore="runs">No wallet? Watch a recorded test</button></div>
+      <div class="err" id="wallet-err" role="alert"></div>
+      <div class="nav-btns"><button class="btn k" id="s1-next" disabled>Next: driving policy</button><button class="btn" id="guest">Continue without a wallet</button><button class="btn" data-goto-explore="runs">Watch a recorded test</button></div>
+      <p style="color:var(--muted);font-size:14px;margin:10px 0 0">Without a wallet you can start one free demo run per hour. Paid runs need a wallet signature.</p>
     </div>
 
     <div class="card step c hidden" id="s2" data-step="2">
-      <h2>Choose the driving policy to test</h2>
+      <h2>Driving policy</h2>
       <p class="lede">This is the self-driving software that has to survive the attack.</p>
       <div class="choices" role="radiogroup" aria-label="Driving policy" id="policies"></div>
-      <div class="nav-btns"><button class="btn" data-back>← Back</button><button class="btn k" id="s2-next">Next: choose the attack →</button>
+      <div class="nav-btns"><button class="btn" data-back>← Back</button><button class="btn k" id="s2-next">Next: attack and run type</button>
         <a class="btn" id="byo" target="_blank" rel="noopener">Bring your own stack ↗</a></div>
     </div>
 
     <div class="card step p hidden" id="s3" data-step="3">
-      <h2>Choose the attack and how to run it</h2>
+      <h2>Attack and run type</h2>
       <p class="lede">The AI attacker controls the other car and tries to force a crash.</p>
       <div class="choices three" role="radiogroup" aria-label="Attack" id="attacks"></div>
       <h3 style="margin-top:24px;font-size:20px">Run type</h3>
@@ -269,7 +297,7 @@
             </div>
           </div>
           <div class="card c">
-            <div class="head"><h2 style="font-size:20px">What the AI attacker decided</h2></div>
+            <div class="head"><h2 style="font-size:20px">Attacker decisions</h2></div>
             <p style="margin:-6px 0 12px;color:var(--muted);font-size:14px">Each line is one answer from the model on 0G's private computer.</p>
             <div class="feed" id="feed" aria-live="polite"></div>
           </div>
@@ -299,8 +327,8 @@
   <section id="v-explore" class="hidden">
     <div class="card k" style="margin-bottom:16px"><h2 style="font-size:28px">Explore</h2><p class="lede">Deeper material for judges and engineers. Each section is self-contained.</p>
       <div class="explore-nav" id="explore-nav" style="margin-top:14px">
-        <a class="pill" href="#x-runs">Recorded tests</a><a class="pill" href="#x-swarm">4-car swarm</a><a class="pill" href="#x-ab">A/B arena</a>
-        <a class="pill" href="#x-paid002">Paid test, end to end</a><a class="pill" href="#x-research">Research mission</a><a class="pill" href="#x-memory">Version memory</a></div></div>
+        <a class="pill" href="#x-runs">Recorded tests</a><a class="pill" href="#x-swarm">Coordinated multi-vehicle attack</a><a class="pill" href="#x-ab">A/B policy comparison</a>
+        <a class="pill" href="#x-paid002">Paid test run</a><a class="pill" href="#x-research">Research mission</a></div></div>
     <div class="grid" id="explore"></div>
   </section>
 </main>

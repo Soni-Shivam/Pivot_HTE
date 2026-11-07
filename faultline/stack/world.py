@@ -62,7 +62,10 @@ class SimClockRecorder:
         self.cam.listen(self.frames.put)
         self.ff = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgra", "-s",
                                     f"{self.W}x{self.H}", "-r", "20", "-i", "-", "-c:v", "libx264", "-preset", "veryfast",
-                                    "-pix_fmt", "yuv420p", str(self.out / "chase_raw.mp4")], stdin=subprocess.PIPE)
+                                    "-pix_fmt", "yuv420p", str(self.out / "chase_raw.mp4"),
+                                    # latest frame for the studio's live view (GET /api/live/:job), replaced atomically
+                                    "-r", "10", "-f", "image2", "-update", "1", "-atomic_writing", "1", "-q:v", "6",
+                                    str(self.out / "live.jpg")], stdin=subprocess.PIPE)
         prev = world.on_tick
         world.on_tick = lambda w, s: (prev and prev(w, s), self.on_tick(w, s))
 

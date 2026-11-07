@@ -164,7 +164,7 @@
     .statusbar { display: flex; gap: 8px 20px; align-items: center; flex-wrap: wrap; padding: 16px 20px }
     .stat small { display: block; color: var(--muted); font-size: 13px } .stat b { font-family: var(--mono); font-size: 20px; font-weight: 600 }
     .live { animation: blink 1.2s steps(2) infinite } @keyframes blink { 50% { opacity: .55 } }
-    .scene { padding: 0; overflow: hidden } .scene canvas { width: 100%; height: 360px; display: block }
+    .scene { padding: 0; overflow: hidden } .scene canvas { width: 100%; height: 360px; display: block } #live-cam { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: #000 } video.clip { margin-top: 14px }
     .feed { display: flex; flex-direction: column; gap: 8px; max-height: 560px; overflow: auto }
     .dec { background: #ffffffc0; border: 1.5px solid transparent; border-radius: 16px; padding: 10px 12px }
     .dec.new { animation: rowin .35s var(--ease); border-color: var(--line) }
@@ -285,12 +285,9 @@
       </div>
 
       <div class="card" id="replay">
-        <div class="head"><h2>Replay from run data: paid test 002</h2></div>
-        <p class="lede" style="margin-top:-6px">A paid CARLA run redrawn from its recorded trajectory. Each line on the right is the 0G model’s own reason, shown at the second it decided.</p>
-        <div class="split">
-          <div class="replay"><canvas id="ex-scene" aria-label="Replay of paid test 002: your car in purple, the attacker in pink"></canvas></div>
-          <div class="feed" id="ex-feed" aria-live="off"></div>
-        </div>
+        <div class="head"><h2>Paid test 002 in CARLA</h2></div>
+        <p class="lede" style="margin-top:-6px">A real paid run: our agent paid on Hedera, the attacker decided on 0G, and the result was finalized on 0G Galileo.</p>
+        <video class="clip" controls muted playsinline preload="none" poster="stills/paid.jpg" data-src="videos/paid-job-002-replay-view__chase.mp4" aria-label="Chase camera of paid test 002 in CARLA"></video>
       </div>
 
       <div class="card c" id="for-av">
@@ -420,7 +417,7 @@
         </div>
         <div class="grid pit">
           <div class="grid">
-            <div class="card scene"><canvas id="scene" aria-label="Top-down view: your car (purple) and the attacker (pink)"></canvas></div>
+            <div class="card scene"><img id="live-cam" class="hidden" alt="Live CARLA chase camera of your test"><canvas id="scene" aria-label="Top-down view: your car (purple) and the attacker (pink)"></canvas></div>
             <div class="card tele"><canvas id="tele" aria-label="Danger over time"></canvas></div>
             <div class="card">
               <div class="head"><h2>Progress</h2></div>

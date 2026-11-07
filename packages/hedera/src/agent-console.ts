@@ -472,6 +472,27 @@ app.post('/api/arena', (req, res) => {
   res.json({ jobId: j.id, queuePos: queuePos(j), label: j.label })
 })
 
+// Live CARLA chase camera as MJPEG: SimClockRecorder keeps runs/<run>/live.jpg current (atomic writes) while a job runs.
+app.get('/api/live/:id', async (req, res) => {
+  const j = jobs.get(req.params.id)
+  if (!j) return deny(res, 404, 'unknown job')
+  res.writeHead(200, { 'content-type': 'multipart/x-mixed-replace; boundary=frame', 'cache-control': 'no-store', 'x-accel-buffering': 'no' })
+  let closed = false, last = 0; res.on('close', () => { closed = true })
+  const until = Date.now() + 20 * 60_000
+  while (!closed && Date.now() < until) {
+    const dir = j.dirs.filter((d) => existsSync(join(d, 'live.jpg'))).at(-1)
+    if (dir) {
+      try {
+        const p = join(dir, 'live.jpg'), m = statSync(p).mtimeMs
+        if (m !== last) { last = m; const b = readFileSync(p); res.write(`--frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${b.length}\r\n\r\n`); res.write(b); res.write('\r\n') }
+      } catch { /* frame being replaced: next poll */ }
+    }
+    if (j.status === 'done' || j.status === 'error') break
+    await sleep(100)
+  }
+  res.end()
+})
+
 app.get('/api/jobs/:id', (req, res) => {
   const j = jobs.get(req.params.id)
   if (!j) return deny(res, 404, 'unknown job')

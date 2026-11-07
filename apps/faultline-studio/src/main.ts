@@ -66,7 +66,16 @@ document.addEventListener('click', (e) => {
 })
 
 for (const id of ['cta-run', 'cta-run2']) $(id).addEventListener('click', () => { show('flow'); step(wallet || guest ? 2 : 1) })
-$('cta-watch').addEventListener('click', () => { $('example').scrollIntoView({ block: 'start' }); exReplay?.restart() })
+$('cta-watch').addEventListener('click', () => { $('example').scrollIntoView({ block: 'start' }) })
+// ---------- recorded CARLA clips: served by the console at /media/<path>, falling back to the public repo ----------
+const RAW = 'https://raw.githubusercontent.com/Soni-Shivam/Pivot_HTE/main/'
+const clip = (path: string, poster: string, label: string) => `<video class="clip" controls muted playsinline preload="none" poster="stills/${poster}.jpg" data-src="${esc(path)}" aria-label="${esc(label)}"></video>`
+const armClips = (root: ParentNode) => root.querySelectorAll<HTMLVideoElement>('video[data-src]').forEach((v) => { if (!v.getAttribute('src')) v.src = api('/media/' + v.dataset.src) })
+document.addEventListener('error', (e) => {
+  const v = e.target as HTMLVideoElement
+  if (v instanceof HTMLVideoElement && v.dataset.src && !v.src.startsWith(RAW)) v.src = RAW + v.dataset.src
+}, true)
+armClips(document)
 
 // ---------- wallet: EIP-6963 discovery, window.ethereum fallback; only eth_requestAccounts + personal_sign ----------
 type Eip1193 = { request: (a: { method: string, params?: unknown[] }) => Promise<any>, on?: (ev: string, f: (x: any) => void) => void }
@@ -101,25 +110,26 @@ function renderWallets() {
   $('wallets').querySelectorAll<HTMLButtonElement>('[data-w]').forEach((b) => b.addEventListener('click', () => connect(list[Number(b.dataset.w)])))
   document.getElementById('w-disconnect')?.addEventListener('click', () => { wallet = null; renderWallets(); paintWallet() })
 }
-let lastTried: { info: WalletInfo, provider: Eip1193 } | null = null, askedAt = 0
+let lastTried: { info: WalletInfo, provider: Eip1193 } | null = null, rejects = 0
 const walletErr = (e: any, what: string) => {
   const code = e?.code ?? e?.data?.originalError?.code
   console.warn('[wallet]', what, code, e?.message ?? e)
   const rejected = code === 4001 || /reject|denied|cancel/i.test(String(e?.message))
   // a 4001 faster than any human could click means the wallet refused the site itself (Coinbase Wallet flags new domains)
-  if (rejected && performance.now() - askedAt < 1500) return 'Your wallet blocked this site before asking you. Coinbase Wallet flags new domains; open faultline-av-ethmumbai.vercel.app or continue without a wallet.'
-  return rejected ? `You declined the ${what} in your wallet. Nothing was sent.`
+  // Coinbase Wallet rejects the first request from a new site with a one-time warning; only a second rejection is the user's
+  if (rejected && what === 'connection' && rejects++ === 0) return 'Coinbase Wallet shows a one-time warning for new sites. Choose Continue in the wallet, then press Connect again.'
+  return rejected ? (what === 'connection' ? 'You declined the connection.' : 'You declined the signature in your wallet. Nothing was sent.')
     : code === -32002 ? 'Your wallet already has a request open. Open the wallet extension to finish it.'
     : `The wallet did not complete the ${what}${code != null ? ` (code ${code})` : ''}: ${e?.message ?? e}`
 }
 function showWalletErr(msg: string) {
-  $('wallet-err').innerHTML = `${esc(msg)} <button class="btn" id="w-retry" style="margin-left:8px">Try again</button>`
+  $('wallet-err').innerHTML = `${esc(msg)} <button class="btn y" id="w-retry" style="margin-left:8px">Connect again</button>`
+  document.getElementById('w-retry')?.focus()
   document.getElementById('w-retry')?.addEventListener('click', () => { if (lastTried) connect(lastTried); else { $('wallet-err').textContent = ''; window.dispatchEvent(new Event('eip6963:requestProvider')); renderWallets() } })
 }
 async function connect(w: { info: WalletInfo, provider: Eip1193 }) {
   $('wallet-err').textContent = ''; lastTried = w; save()
   try {
-    askedAt = performance.now()
     const accts: string[] = await w.provider.request({ method: 'eth_requestAccounts' })
     if (!accts?.[0]) throw new Error('The wallet returned no account')
     wallet = { address: accts[0], provider: w.provider, name: w.info.name }
@@ -173,7 +183,7 @@ let policies: Policy[] = [
   { id: 'pdm-lite', name: 'PDM-Lite', description: '', digest: '0x537db480f1840d95832fa2b2bd855075ad45b5f4cafb7b64f9eed6c2dd266bba', compatible: true, paid: true },
   { id: 'idm-cautious', name: 'Cautious IDM', description: '', digest: null, compatible: true, paid: false },
 ]
-let policy = 'pdm-lite', attack = 'cut-in-v1-kinematic', mode: 'free' | 'paid' = 'free', guest = false
+let policy = 'pdm-lite', attack = 'cut-in-v1-carla', mode: 'free' | 'paid' = 'free', guest = false
 // The flow survives a reload or a wallet warning page: state is saved on every change and restored on load.
 const FKEY = 'faultline.flow'
 function save() { try { localStorage.setItem(FKEY, JSON.stringify({ step: Math.min(cur, 3), policy, attack, mode, guest, wallet: lastTried?.info.rdns ?? null })) } catch { /* private mode */ } }
@@ -186,7 +196,6 @@ async function loadPolicies() {
   renderChoices()
 }
 const ATTACKS = [
-  { id: 'cut-in-v1-kinematic', name: 'Cut-in (fast simulation)', line: 'The attacker swerves into your lane and brakes. Simple 2D physics, about 40 seconds.', live: true },
   { id: 'cut-in-v1-carla', name: 'Cut-in (CARLA 3D)', line: 'The same attack in the CARLA 3D simulator with real sensors. About 90 seconds.', live: true },
   { id: 'swarm', name: 'Coordinated multi-vehicle attack', line: 'Four attacker cars coordinate to box the car in. Recorded run, opens in the test library.', live: false },
 ]
@@ -231,7 +240,6 @@ $('start').addEventListener('click', async () => {
   try {
     const nonce = [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('')
     const msg = message(nonce, new Date().toISOString())
-    askedAt = performance.now()
     const signature: string = await wallet.provider.request({ method: 'personal_sign', params: [hex(msg), wallet.address] })
     $('start-err').textContent = 'Signed. Queuing your test…'
     const r = await postJson('/api/demo-run', { policy, suite: attack, mode, address: wallet.address, message: msg, signature })
@@ -259,6 +267,9 @@ const logLine = (s: string) => { const el = $('log'); el.textContent += s + '\n'
 async function startStream(run: string, smode: 'live' | 'replay', by: 'run' | 'job' = 'run', free = false) {
   show('flow'); step(4)
   ticks = []; decisions = []; waiting = null; runMeta = null; runFree = free
+  const cam = $<HTMLImageElement>('live-cam'), carla = by === 'job' && attack === 'cut-in-v1-carla'
+  cam.classList.toggle('hidden', !carla); $('scene').classList.toggle('hidden', carla)
+  if (carla) cam.src = api(`/api/live/${encodeURIComponent(run)}`); else cam.removeAttribute('src')
   $('progress').innerHTML = ''; $('feed').innerHTML = ''; $('log').textContent = ''; $('to-results').classList.add('hidden')
   $('live-tag').textContent = smode === 'live' ? 'Live' : 'Replay'; $('live-tag').classList.add('live')
   $('s-job').textContent = smode === 'live' ? 'Queued' : 'Recorded test'; $('s-dec').textContent = '0'
@@ -499,14 +510,14 @@ function renderExplore() {
   $('explore').innerHTML = [
     section('runs', '', 'Recorded tests', 'Replay any finished test decision by decision. Free, no wallet needed.', `<div class="tscroll" style="margin-top:12px"><table><thead><tr>${th('Test')}${th('Simulator')}${th('AI moves from 0G')}${th('Danger', TIP.ccs)}${th('Tightest TTC', TIP.ttc)}${th('')}</tr></thead><tbody id="runs"><tr><td colspan="6">Loading…</td></tr></tbody></table></div>`),
     section('swarm', 'c', 'Coordinated multi-vehicle attack', 'One planning call to 0G assigns roles to four cars; then a 0G call every second steers all four at once to box the self-driving car in.',
-      `<div class="split"><div class="plan"><b>Plan from 0G: “Staggered cut-in”</b><ul><li><i style="background:#e5484d"></i>A · red car, your lane, 22 m ahead: slows to compress the gap</li><li><i style="background:#f3c623"></i>B · taxi, left lane, 4 m ahead: holds, then cuts in</li><li><i style="background:#3b82f6"></i>C · blue car, left lane, alongside: blocks the escape lane</li><li><i style="background:#d63384"></i>D · patrol car, your lane, 9 m behind: closes from the rear</li></ul><pre class="msg">{"actions": {"A": "SLOW_DOWN", "B": "KEEP_LANE", "C": "KEEP_LANE", "D": "KEEP_LANE"},\n "phase": "Gap Compression",\n "why": "A slows to compress gap; B holds; C waits for gap to open for cut-in."}</pre></div><div><dl class="kv">${kv([['Moves from 0G', '10 of 10 (0 safe stops)'], ['Closest gap', '3.5 m'], ['Tightest TTC', '1.1 s'], ['Crash', 'none'], ['Plan request', RID('e1a9a298-520d-42bf-ad30-ad67d0cc5894')], ['Anchored on-chain', 'no (prototype run)']])}</dl></div></div>
+      `${clip('videos/video-swarm-fog-001__stitched.mp4', 'squeeze', 'Coordinated multi-vehicle attack in fog, CARLA')}<div class="split"><div class="plan"><b>Plan from 0G: “Staggered cut-in”</b><ul><li><i style="background:#e5484d"></i>A · red car, your lane, 22 m ahead: slows to compress the gap</li><li><i style="background:#f3c623"></i>B · taxi, left lane, 4 m ahead: holds, then cuts in</li><li><i style="background:#3b82f6"></i>C · blue car, left lane, alongside: blocks the escape lane</li><li><i style="background:#d63384"></i>D · patrol car, your lane, 9 m behind: closes from the rear</li></ul><pre class="msg">{"actions": {"A": "SLOW_DOWN", "B": "KEEP_LANE", "C": "KEEP_LANE", "D": "KEEP_LANE"},\n "phase": "Gap Compression",\n "why": "A slows to compress gap; B holds; C waits for gap to open for cut-in."}</pre></div><div><dl class="kv">${kv([['Moves from 0G', '10 of 10 (0 safe stops)'], ['Closest gap', '3.5 m'], ['Tightest TTC', '1.1 s'], ['Crash', 'none'], ['Plan request', RID('e1a9a298-520d-42bf-ad30-ad67d0cc5894')], ['Anchored on-chain', 'no (prototype run)']])}</dl></div></div>
        <div class="rail" style="margin-top:14px">${railHtml({ decisions0g: 10, decisions: 10, requestId: 'e1a9a298-520d-42bf-ad30-ad67d0cc5894', provider: PROVIDER, sigsVerified: 10, sigsTotal: 10, agentId: 579 })}</div>`),
     section('ab', 'y', 'A/B policy comparison', 'Both policies face the exact same scripted attack (replayed, no 0G calls), so the comparison is fair. Recorded at 4 sites; the result was the same at all of them.',
-      `<div><div><div class="tscroll" id="ab-table">${arenaTable(ARENA_RECORDED)}</div>
+      `${clip('videos/arena-live0g-video-001__r7l-2s3__side_by_side.mp4', 'ab', 'PDM-Lite and cautious IDM side by side against a live 0G attacker')}<div><div><div class="tscroll" id="ab-table">${arenaTable(ARENA_RECORDED)}</div>
        <p style="margin:10px 0 0">The cautious model keeps about 3 s to collision; PDM-Lite drops to about 1 s.</p>
        <div class="row" style="margin-top:14px"><button class="btn k" id="ab-run">Run the arena live (free)</button><span class="pill sm" id="ab-status" aria-live="polite">recorded result shown</span></div><p class="err" id="ab-err"></p></div></div>`),
     section('paid002', 'c', 'Paid test run', 'Our agent paid 0.001 ℏ on Hedera, got a single-use permit, locked the test setup on 0G Galileo, ran it in CARLA with 0G decisions, stored the evidence on 0G Storage, and finalized the result on-chain.',
-      `<div class="split"><div class="replay"><canvas id="x-replay" aria-label="Replay of paid test 002"></canvas></div><div><dl class="kv">${kv([['Payment', link(PAID002.hedera!.hashscan, 'Hedera receipt')], ['Setup locked (block 64245811)', link(galileoTx(PAID002.commitTx!), short(PAID002.commitTx, 8, 4))], ['Moves from 0G', '7 of 8 (one safe stop)'], ['Evidence stored', `root ${short(PAID002.publicRoot, 8, 4)}`], ['Result finalized', link(galileoTx(PAID002.finalizeTx!), short(PAID002.finalizeTx, 8, 4))], ['Permit reused?', 'refused (409)'], ['Result', 'danger 0.93 · tightest TTC 1.0 s · no crash']])}</dl></div></div>
+      `<div class="split"><div>${clip('videos/paid-job-002-replay-view__chase.mp4', 'paid', 'Chase camera of paid test 002 in CARLA')}</div><div><dl class="kv">${kv([['Payment', link(PAID002.hedera!.hashscan, 'Hedera receipt')], ['Setup locked (block 64245811)', link(galileoTx(PAID002.commitTx!), short(PAID002.commitTx, 8, 4))], ['Moves from 0G', '7 of 8 (one safe stop)'], ['Evidence stored', `root ${short(PAID002.publicRoot, 8, 4)}`], ['Result finalized', link(galileoTx(PAID002.finalizeTx!), short(PAID002.finalizeTx, 8, 4))], ['Permit reused?', 'refused (409)'], ['Result', 'danger 0.93 · tightest TTC 1.0 s · no crash']])}</dl></div></div>
        <div class="rail" style="margin-top:14px">${railHtml(PAID002)}</div>`),
     section('research', 'l', 'Research mission', 'The 0G agent ran experiments to find the edge between safe and unsafe settings, found a crash, and tested a proposed fix. Each dot below is one experiment it chose.',
       `<canvas id="hunt" style="width:100%;height:260px;display:block;margin-top:12px" aria-label="Experiments chosen by the 0G agent"></canvas>
@@ -515,7 +526,7 @@ function renderExplore() {
        <div class="rail" style="margin-top:14px">${railHtml({ decisions0g: 9, decisions: 9, requestId: 'a00eb00f-1205-4518-ad7d-095c6e6a2ffb', provider: PROVIDER, sigsVerified: 47, sigsTotal: 47, agentId: 579 })}</div>`),
   ].join('')
   $('ab-run').addEventListener('click', runArena)
-  loadRuns(); drawHunt(); replayPlayer($<HTMLCanvasElement>('x-replay'), null)
+  loadRuns(); drawHunt(); armClips($('explore'))
 }
 async function loadRuns() {
   try { allRuns = await getJson('/api/runs') } catch { /* offline: keep what we have */ }
@@ -574,16 +585,16 @@ window.addEventListener('resize', resizeAll)
 
 async function boot() {
   const st = restore()
-  if (st) { policy = st.policy ?? policy; attack = st.attack ?? attack; mode = st.mode === 'paid' ? 'paid' : 'free'; guest = !!st.guest }
+  if (st) { policy = st.policy ?? policy; attack = st.attack === 'cut-in-v1-carla' ? st.attack : attack; mode = st.mode === 'paid' ? 'paid' : 'free'; guest = !!st.guest }
   renderWallets(); paintWallet(); renderChoices(); renderStepper()
   if (location.hash === '#run') { show('flow'); step(Math.max(1, Math.min(3, st?.step ?? 1))) } else show('home')
   // Resume a wallet the user already approved (eth_accounts opens no popup)
-  if (st?.wallet !== undefined && location.hash === '#run') setTimeout(async () => {
+  if (st?.wallet != null) setTimeout(async () => {
     const w = found.find((x) => x.info.rdns === st.wallet) ?? found[0] ?? ((window as any).ethereum ? { info: { uuid: 'injected', name: 'Browser wallet', icon: '', rdns: '' }, provider: (window as any).ethereum } : null)
     if (!w || wallet) return
     try { const a: string[] = await w.provider.request({ method: 'eth_accounts' }); if (a?.[0]) { wallet = { address: a[0], provider: w.provider, name: w.info.name }; lastTried = w; guest = false; renderWallets(); paintWallet(); renderChoices() } } catch { /* stays disconnected */ }
   }, 400)
-  startLidar(); exReplay = replayPlayer($<HTMLCanvasElement>('ex-scene'), $('ex-feed'))
+  startLidar()
   requestAnimationFrame(frame)
   await Promise.all([pollHealth(), loadPolicies()])
   renderChoices()
@@ -660,42 +671,3 @@ function startLidar() {
   }).catch(() => { $('lidar-label').textContent = '' })
 }
 
-// ---------- recorded replay drawn from run data (public/replay-paid002.ndjson = paid test 002's stream) ----------
-let exReplay: { restart: () => void } | null = null
-let replayData: Promise<{ ticks: Tick[], ds: Decision[] }> | null = null
-function replayPlayer(cv: HTMLCanvasElement, feed: HTMLElement | null) {
-  replayData ??= fetch('replay-paid002.ndjson').then((r) => r.text()).then((t) => {
-    const ticks: Tick[] = [], ds: Decision[] = []
-    for (const l of t.split('\n')) { if (!l.trim()) continue; const e = JSON.parse(l); if (e.t === 'ticks') ticks.push(...e.rows); if (e.t === 'decision') ds.push(e.d) }
-    return { ticks, ds }
-  })
-  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  let t0 = performance.now(), visible = true, shown = -1
-  const ctl = { restart: () => { t0 = performance.now(); shown = -1; if (feed) feed.innerHTML = '' } }
-  replayData.then(({ ticks, ds }) => {
-    if (!ticks.length) return
-    const T = ticks.at(-1)!.t_s
-    const worst = ticks.reduce((m, x, i) => ((x.ccs ?? 0) > (ticks[m].ccs ?? 0) ? i : m), 0)
-    const paintFeed = (upto: number) => {
-      if (!feed) return
-      const n = ds.filter((d) => d.sim_time_s <= upto).length
-      if (n === shown) return
-      shown = n
-      feed.innerHTML = ds.slice(0, n).reverse().map((d) => `<div class="dec"><div class="what">${num(d.sim_time_s, 1)} s · ${esc(say(d.action))}</div>${why(d) ? `<div class="why-line">“${esc(why(d))}”</div>` : ''}<div class="meta">${d.source === '0g' ? `0G request ${short(d.request_id, 8, 4)}` : 'no valid 0G answer, safe stop'}</div></div>`).join('') || '<div class="meta">The attacker\'s decisions appear here, one per second.</div>'
-    }
-    const frame = (now: number) => {
-      if (!visible || !cv.isConnected) return
-      const t = reduce ? ticks[worst].t_s : ((now - t0) / 1000) % (T + 2)
-      const i = Math.min(ticks.length - 1, Math.max(0, ticks.findIndex((x) => x.t_s >= t)))
-      const k = t > T ? ticks.length - 1 : i
-      const last = ds.filter((d) => d.sim_time_s <= ticks[k].t_s).at(-1)
-      const pulse = last ? Math.max(0.35, 1 - (ticks[k].t_s - last.sim_time_s)) : 0
-      drawScene(cv, ticks[k], ticks.slice(Math.max(0, k - 120), k + 1), last ? say(last.action) : undefined, pulse)
-      paintFeed(reduce ? T : ticks[k].t_s)
-      if (!reduce) requestAnimationFrame(frame)
-    }
-    new IntersectionObserver((e) => { const was = visible; visible = e[0].isIntersecting; if (visible && !was) requestAnimationFrame(frame) }).observe(cv)
-    requestAnimationFrame(frame)
-  }).catch(() => { /* replay file missing: canvas stays blank */ })
-  return ctl
-}

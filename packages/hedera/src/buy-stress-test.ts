@@ -26,18 +26,14 @@ if (manifest.network !== 'hedera:testnet' || manifest.asset !== '0.0.0' ||
     manifest.merchant !== merchant || BigInt(manifest.price) > BigInt(cap) ||
     !manifest.suites.some(x => x.id === 'cut-in-v1')) throw new Error('Service manifest outside buyer policy')
 const policyCommitment = process.argv[2]
-const recoveryTx = process.argv[3]
 if (!/^0x[0-9a-fA-F]{64}$/.test(policyCommitment ?? '')) throw new Error('Pass a 0x-prefixed 32-byte policy commitment')
-if (recoveryTx && !/^0\.0\.[0-9]+@[0-9]+\.[0-9]+$/.test(recoveryTx)) throw new Error('Invalid recovery transaction')
+if (process.argv[3]) throw new Error('To retry a settled payment, use hedera:recover with its saved activation JSON')
 const request = { suite: 'cut-in-v1', maxRuns: 1, policyCommitment,
   idempotencyKey: randomBytes(16).toString('hex') }
 const url = `${base}/v1/stress-tests`
 const init = { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(request) }
 let paymentResponse: string | null = null
 let intent: { intentToken?: string, requestHash?: string } = {}
-if (recoveryTx) {
-  paymentResponse = Buffer.from(JSON.stringify({ success: true, payer, transaction: recoveryTx, network: 'hedera:testnet' })).toString('base64')
-} else {
 const quoteResponse = await fetch(url, init)
 if (quoteResponse.status !== 402) throw new Error(`Expected payment quote, got HTTP ${quoteResponse.status}`)
 const header = quoteResponse.headers.get('payment-required')
@@ -61,7 +57,6 @@ if (!paid.ok) throw new Error(`Paid request failed: HTTP ${paid.status}`)
 intent = await paid.json() as { intentToken: string, requestHash: string }
 paymentResponse = paid.headers.get('payment-response')
 if (!paymentResponse || !intent.intentToken) throw new Error('Missing settlement receipt or paid intent')
-}
 const receipt = JSON.parse(Buffer.from(paymentResponse!, 'base64').toString('utf8')) as { transaction: string }
 const requestHash = (await import('node:crypto')).createHash('sha256').update(JSON.stringify({
   suite: request.suite, maxRuns: 1, policyCommitment: policyCommitment.toLowerCase(), idempotencyKey: request.idempotencyKey,

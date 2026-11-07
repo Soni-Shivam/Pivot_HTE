@@ -5,7 +5,8 @@ import { verifyMessage } from 'viem'
 import { HTTPFacilitatorClient } from '@x402/core/server'
 import { paymentMiddleware, x402ResourceServer } from '@x402/express'
 import { ExactHederaScheme } from '@x402/hedera/exact/server'
-import { acceptJob, authorizedJob, intentToken, updateJob } from './job-store.ts'
+import { acceptJob, authorizedJob, intentToken, updateJob, validIntent } from './job-store.ts'
+import { makeDeliveryReceipt, publishReceipt, receiptDigest, verifyDelivery } from './delivery-receipt.ts'
 
 const merchant = process.env.HEDERA_MERCHANT_ACCOUNT_ID
 const amount = process.env.HEDERA_PAYMENT_AMOUNT
@@ -84,6 +85,9 @@ app.post('/v1/stress-tests/activate', async (req, res) => {
     const requestHash = createHash('sha256').update(JSON.stringify({
       suite, maxRuns: 1, policyCommitment, idempotencyKey: b.idempotencyKey,
     })).digest('hex')
+    if (!validIntent(requestHash, b.intentToken)) {
+      res.status(403).json({ error: 'paid_intent_invalid' }); return
+    }
     const accountResponse = await fetch(`https://testnet.mirrornode.hedera.com/api/v1/accounts/${receipt.payer}`)
     if (!accountResponse.ok) { res.status(503).json({ error: 'payer_lookup_unavailable' }); return }
     const payerAccount = await accountResponse.json() as { evm_address?: string }
@@ -104,7 +108,8 @@ app.post('/v1/stress-tests/activate', async (req, res) => {
 app.get('/v1/stress-tests/:jobId', (req, res) => {
   const job = authorizedJob(req.params.jobId as string, String(req.header('authorization') ?? '').replace(/^Bearer /, ''))
   if (!job) { res.status(403).json({ error: 'invalid_permit' }); return }
-  res.json({ jobId: job.jobId, status: job.status, suite: job.suite, report: job.report ?? null })
+  res.json({ jobId: job.jobId, status: job.status, suite: job.suite, requestHash: job.requestHash,
+    report: job.report ?? null, deliveryReceipt: job.deliveryReceipt ?? null, hcs: job.hcs ?? null })
 })
 app.post('/v1/stress-tests/:jobId/start', (req, res) => {
   const job = authorizedJob(req.params.jobId as string, String(req.header('authorization') ?? '').replace(/^Bearer /, ''))
@@ -117,17 +122,61 @@ app.post('/v1/stress-tests/:jobId/start', (req, res) => {
   updateJob(job)
   res.json({ jobId: job.jobId, status: job.status, maxRuns: job.maxRuns })
 })
-app.post('/v1/stress-tests/:jobId/report', (req, res) => {
+app.post('/v1/stress-tests/:jobId/report', async (req, res) => {
   const job = authorizedJob(req.params.jobId as string, String(req.header('authorization') ?? '').replace(/^Bearer /, ''))
   if (!job) { res.status(403).json({ error: 'invalid_permit' }); return }
   if (job.status !== 'running' || !['completed', 'interrupted', 'failed'].includes(req.body?.status) ||
       typeof req.body?.report !== 'object' || !req.body.report) {
     res.status(409).json({ error: 'invalid_run_report' }); return
   }
+  if (req.body.status === 'completed') {
+    try {
+      const receipt = makeDeliveryReceipt(job, req.body.report)
+      if (!process.env.RPC_URL || !process.env.STORAGE_INDEXER) throw new Error('evidence_verifier_unconfigured')
+      await verifyDelivery(receipt, { rpcUrl: process.env.RPC_URL, indexerUrl: process.env.STORAGE_INDEXER })
+      job.deliveryReceipt = receipt
+      job.hcs = { state: 'pending', digest: receiptDigest(receipt) }
+    } catch (e) { res.status(422).json({ error: (e as Error).message }); return }
+  }
   job.status = req.body.status
   job.report = req.body.report
   updateJob(job)
-  res.json({ jobId: job.jobId, status: job.status })
+  const topicId = process.env.HEDERA_HCS_TOPIC_ID
+  const accountId = process.env.HEDERA_HCS_OPERATOR_ACCOUNT_ID
+  const privateKey = process.env.HEDERA_HCS_OPERATOR_PRIVATE_KEY
+  if (job.deliveryReceipt && topicId && accountId && privateKey) {
+    try {
+      const hcs = await publishReceipt(job.deliveryReceipt, { topicId, accountId, privateKey })
+      job.hcs = { state: 'confirmed', ...hcs }
+      updateJob(job)
+    } catch {
+      // A submit timeout is ambiguous: keep the digest pending for Mirror Node reconciliation.
+      job.hcs = { state: 'uncertain', digest: receiptDigest(job.deliveryReceipt), topicId }
+      updateJob(job)
+    }
+  }
+  res.status(job.hcs?.state === 'confirmed' ? 200 : 202)
+    .json({ jobId: job.jobId, status: job.status, hcs: job.hcs ?? null })
+})
+app.post('/v1/stress-tests/:jobId/receipt/reconcile', async (req, res) => {
+  const job = authorizedJob(req.params.jobId as string, String(req.header('authorization') ?? '').replace(/^Bearer /, ''))
+  if (!job || !job.deliveryReceipt || !job.hcs) { res.status(403).json({ error: 'receipt_unavailable' }); return }
+  if (job.hcs.state === 'confirmed') { res.json(job.hcs); return }
+  const topicId = job.hcs.topicId ?? process.env.HEDERA_HCS_TOPIC_ID
+  if (!topicId) { res.status(409).json({ error: 'hcs_topic_unconfigured' }); return }
+  try {
+    const mirror = await fetch(`https://testnet.mirrornode.hedera.com/api/v1/topics/${topicId}/messages?limit=100&order=desc`)
+    if (!mirror.ok) { res.status(503).json({ error: 'mirror_unavailable' }); return }
+    const body = await mirror.json() as { messages?: Array<{ message: string; sequence_number: number }> }
+    const found = body.messages?.find(m => {
+      try { return receiptDigest(JSON.parse(Buffer.from(m.message, 'base64').toString('utf8'))) === job.hcs?.digest }
+      catch { return false }
+    })
+    if (!found) { res.status(202).json({ state: job.hcs.state, digest: job.hcs.digest }); return }
+    job.hcs = { ...job.hcs, state: 'confirmed', topicId, sequenceNumber: String(found.sequence_number) }
+    updateJob(job)
+    res.json(job.hcs)
+  } catch { res.status(503).json({ error: 'mirror_unavailable' }) }
 })
 
 const port = Number(process.env.HEDERA_DEMO_PORT ?? 8787)

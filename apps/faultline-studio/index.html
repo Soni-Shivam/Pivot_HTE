@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Faultline Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0a; --ink: #111111; --paper: #fbfbf6; --muted: #6b6b66; --line: #111111;
+      --yellow: #f3f56c; --cyan: #7cecf5; --pink: #f5a3ef; --purple: #7c5cf5; --lime: #c9f36f; --hot: #ff4fc3;
+      --ego: #7c5cf5; --adv: #f5a3ef; --zg: #111111;
+      --ease: cubic-bezier(.23, 1, .32, 1);
+      --sans: "Space Grotesk", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    }
+    * { box-sizing: border-box }
+    html, body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.4 var(--sans); -webkit-font-smoothing: antialiased }
+    button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none }
+    a { color: inherit }
+    code, .mono { font-family: var(--mono); font-size: .88em; font-variant-numeric: tabular-nums }
+    .hidden { display: none !important }
+
+    /* pills: the one visual unit */
+    .pill { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); white-space: nowrap; font-weight: 500; font-size: 14px }
+    .pill.y { background: var(--yellow) } .pill.c { background: var(--cyan) } .pill.p { background: var(--pink) } .pill.l { background: var(--lime) } .pill.k { background: var(--ink); color: var(--paper) }
+    .pill.sm { height: 24px; padding: 0 10px; font-size: 12px }
+    .pill.big { height: 52px; padding: 0 24px; font-size: 26px; font-weight: 600 }
+    .disc { width: 52px; height: 52px; border-radius: 50%; border: 1.5px solid var(--line); display: inline-grid; place-items: center; font-size: 22px; font-weight: 600; flex: none }
+
+    header { display: flex; align-items: center; gap: 24px; padding: 14px 24px; position: sticky; top: 0; z-index: 10; background: var(--bg) }
+    .brand { color: var(--paper); font-weight: 700; font-size: 20px; letter-spacing: -.02em; white-space: nowrap }
+    .brand i { font-style: normal; color: var(--yellow) }
+    nav.steps { display: flex; gap: 6px; background: #1a1a1a; padding: 4px; border-radius: 999px }
+    nav.steps button { height: 32px; padding: 0 16px; border-radius: 999px; color: #8a8a85; font-weight: 500; white-space: nowrap; transition: background .2s var(--ease), color .2s var(--ease) }
+    nav.steps button.on { background: var(--paper); color: var(--ink) }
+    nav.steps button:disabled { opacity: .35; cursor: default }
+    .net { margin-left: auto; display: flex; gap: 6px }
+    .net .pill { background: #1a1a1a; color: #cfcfca; border-color: #2a2a2a; font-size: 12px; height: 26px }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #555 } .dot.up { background: var(--lime) } .dot.down { background: var(--hot) }
+
+    main { padding: 8px 24px 40px; max-width: 1440px; margin: 0 auto }
+    .card { background: var(--paper); border-radius: 28px; padding: 24px; position: relative }
+    .card.c { background: var(--cyan) } .card.y { background: var(--yellow) } .card.p { background: var(--pink) } .card.l { background: var(--lime) }
+    .card.k { background: #161616; color: var(--paper) } .card.k .muted { color: #8a8a85 }
+    .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px }
+    .head h2 { margin: 0; font-size: 17px; font-weight: 500 }
+    .muted { color: var(--muted) }
+    .grid { display: grid; gap: 16px }
+    .btn { height: 44px; padding: 0 20px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); font-weight: 600; transition: transform .16s var(--ease), background .2s var(--ease) }
+    .btn:active:not(:disabled) { transform: scale(.97) }
+    .btn.k { background: var(--ink); color: var(--paper) } .btn.y { background: var(--yellow) }
+    .btn:disabled { opacity: .4; cursor: default }
+    .kv { display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; margin: 0 }
+    .kv dt { color: var(--muted) } .kv dd { margin: 0; text-align: right; overflow-wrap: anywhere }
+    .card.c .kv dt, .card.p .kv dt { color: #111111a8 }
+    .err { color: #b4006f; font-family: var(--mono); font-size: 12px; white-space: pre-wrap; margin: 10px 0 0 }
+    table { width: 100%; border-collapse: collapse }
+    th, td { padding: 10px 6px; text-align: left; border-bottom: 1px solid #1111111a } th { font-weight: 500; color: var(--muted); font-size: 13px }
+    tbody tr:last-child td { border-bottom: 0 }
+
+    /* order */
+    .order { grid-template-columns: 1.35fr 1fr; align-items: start }
+    .suites { grid-template-columns: 1fr 1fr }
+    .suite { text-align: left; border-radius: 28px; padding: 22px; border: 2px solid transparent; transition: transform .2s var(--ease), border-color .2s var(--ease) }
+    .suite:active { transform: scale(.98) } .suite.on { border-color: var(--paper) }
+    .suite.c { background: var(--cyan) } .suite.y { background: var(--yellow) }
+    .suite h3 { margin: 18px 0 0; font-size: 30px; font-weight: 600; letter-spacing: -.02em; line-height: 1 }
+    .suite canvas { width: 100%; height: 96px; display: block; margin-top: 18px }
+    .price { display: flex; align-items: baseline; gap: 10px; margin: 6px 0 18px } .price b { font-size: 64px; font-weight: 600; letter-spacing: -.04em; line-height: 1 }
+    .hold { position: relative; width: 100%; height: 60px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--yellow); font-size: 17px; font-weight: 600; overflow: hidden; user-select: none; touch-action: none; transition: transform .16s var(--ease) }
+    .hold:active:not(:disabled) { transform: scale(.98) }
+    .hold .fill { position: absolute; inset: 0; width: 0; background: var(--lime) } .hold span { position: relative }
+    .hold:disabled { opacity: .4; cursor: default }
+
+    /* pay */
+    .pay { grid-template-columns: 1.45fr 1fr }
+    .stage { height: 400px; padding: 0; overflow: hidden; background: linear-gradient(180deg, var(--cyan), var(--lime)) }
+    .stage svg { position: absolute; inset: 0; width: 100%; height: 100% }
+    .acct { position: absolute; top: 24px; width: 220px; padding: 16px; border-radius: 22px; background: var(--paper); border: 1.5px solid var(--line) }
+    .acct.left { left: 24px } .acct.right { right: 24px }
+    .acct .bal { font-size: 26px; font-weight: 600; letter-spacing: -.02em; margin-top: 2px }
+    .acct .delta { font-family: var(--mono); font-size: 12px; height: 16px }
+    .policy { position: absolute; left: 24px; top: 164px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start }
+    .policy .pill { opacity: 0; transform: translateY(4px); transition: opacity .25s var(--ease), transform .25s var(--ease) } .policy .pill.on { opacity: 1; transform: none }
+    .ledger { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); white-space: nowrap }
+    .ledger.flash .pill { animation: pop .5s var(--ease) } @keyframes pop { 40% { transform: scale(1.06) } }
+    .steps-list { margin: 0; padding: 0; list-style: none }
+    .steps-list li { display: grid; grid-template-columns: 26px 1fr auto; gap: 12px; padding: 10px 0; border-bottom: 1px solid #1111111a; align-items: start }
+    .steps-list li:last-child { border-bottom: 0 }
+    .steps-list .t { font-weight: 500 } .steps-list .d { color: var(--muted); font-size: 12px; font-family: var(--mono); overflow-wrap: anywhere } .steps-list .ms { color: var(--muted); font-family: var(--mono); font-size: 12px }
+    .ic { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #11111140; margin-top: 1px }
+    .ic.run { border-color: var(--ink); border-top-color: transparent; animation: spin .7s linear infinite }
+    .ic.ok { background: var(--lime); border-color: var(--ink); position: relative } .ic.ok::after { content: ''; position: absolute; left: 6px; top: 3px; width: 4px; height: 8px; border: solid var(--ink); border-width: 0 2px 2px 0; transform: rotate(45deg) }
+    .ic.fail { background: var(--hot); border-color: var(--ink) }
+    @keyframes spin { to { transform: rotate(360deg) } }
+    .ticket { background: var(--pink); opacity: 0; transform: translateY(12px); transition: opacity .4s var(--ease), transform .4s var(--ease) }
+    .ticket.show { opacity: 1; transform: none }
+    .ticket .big { font-family: var(--mono); font-size: 20px; font-weight: 600; margin: 10px 0 14px; overflow-wrap: anywhere }
+    .ticket .pattern { position: absolute; right: 24px; top: 24px; width: 56px; height: 56px; image-rendering: pixelated; border-radius: 10px; border: 1.5px solid var(--line) }
+
+    /* run */
+    .pit { grid-template-columns: 250px 1fr 320px }
+    .statusbar { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 14px 16px }
+    .stat { display: flex; flex-direction: column; padding: 0 12px } .stat small { color: var(--muted); font-size: 12px } .stat b { font-family: var(--mono); font-size: 20px; font-weight: 600 }
+    .live { animation: blink 1.2s steps(2) infinite } @keyframes blink { 50% { opacity: .5 } }
+    .timeline { margin: 0; padding: 0; list-style: none }
+    .timeline li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; padding: 7px 0; position: relative }
+    .timeline li:not(:last-child)::after { content: ''; position: absolute; left: 9.5px; top: 30px; bottom: -6px; width: 1.5px; background: #1111112a }
+    .timeline .t { font-weight: 500; font-size: 14px } .timeline .d { font-size: 11px; color: var(--muted); font-family: var(--mono); overflow-wrap: anywhere }
+    .scene { padding: 0; overflow: hidden; display: flex } .scene canvas { width: 100%; height: 100%; min-height: 380px; display: block }
+    .tower { font-family: var(--mono); font-size: 12px; max-height: 470px; overflow: auto; display: flex; flex-direction: column; gap: 6px }
+    .tower .row { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 16px; background: #ffffff; border: 1.5px solid transparent }
+    .tower .row.new { animation: rowin .35s var(--ease); border-color: var(--line) }
+    @keyframes rowin { from { opacity: 0; transform: translateY(-6px) } }
+    .tower .row.wait { background: transparent; border: 1.5px dashed #11111155; color: #111111a8 }
+    .tower .sub { grid-column: 2 / 4; color: var(--muted); font-size: 10px }
+    .act { font-family: var(--sans); font-weight: 600; font-size: 12px; padding: 2px 9px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper) }
+    .act.CUT_IN_AGGRESSIVE, .act.BRAKE_HARD, .act.SAFE_HALT { background: var(--pink) }
+    .act.CUT_IN, .act.BRAKE_SOFT, .act.SLOW_DOWN, .act.ACCELERATE { background: var(--yellow) }
+    .act.MAINTAIN, .act.COAST, .act.KEEP_LANE { background: var(--cyan) }
+    .telemetry { grid-column: 1 / 3; display: grid; grid-template-columns: 1fr 190px; gap: 20px; align-items: center }
+    .telemetry canvas { width: 100%; height: 160px; display: block }
+    .gauge canvas { width: 190px; height: 130px; display: block }
+    .log { font-family: var(--mono); font-size: 11px; max-height: 190px; overflow: auto; white-space: pre-wrap }
+
+    /* results */
+    .verdict { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 20px }
+    .results { grid-template-columns: 1.55fr 1fr }
+    .scrub { display: flex; gap: 12px; align-items: center; margin-top: 14px }
+    .scrub input { flex: 1; accent-color: var(--ink) }
+    @media (max-width: 1100px) { .order, .pay, .pit, .results, .suites, .telemetry { grid-template-columns: 1fr } .telemetry { grid-column: auto } .net { display: none } }
+  </style>
+</head>
+<body>
+<header>
+  <div class="brand">faultline<i>.</i></div>
+  <nav class="steps">
+    <button data-view="order" class="on">Order</button>
+    <button data-view="pay" disabled>Pay</button>
+    <button data-view="live" disabled>Run</button>
+    <button data-view="results" disabled>Results</button>
+  </nav>
+  <div class="net">
+    <span class="pill sm"><i class="dot" id="n-hedera"></i>Hedera</span>
+    <span class="pill sm"><i class="dot up"></i>0G Router</span>
+    <span class="pill sm"><i class="dot up"></i>0G Galileo</span>
+    <span class="pill sm"><i class="dot" id="n-carla"></i>CARLA</span>
+  </div>
+</header>
+<main>
+  <section id="v-order">
+    <div class="grid order">
+      <div class="grid">
+        <div class="grid suites" id="suites"></div>
+        <div class="card">
+          <div class="head"><h2>Runs</h2><span class="pill sm">replay is free</span></div>
+          <table><thead><tr><th>Run</th><th>World</th><th>0G</th><th>Peak CCS</th><th>Min TTC</th><th></th><th></th></tr></thead><tbody id="runs"></tbody></table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="head"><h2>Order</h2><span class="pill sm c">x402 · Hedera</span></div>
+        <div class="price"><b id="price">0.001</b><span class="pill y">ℏ per run</span></div>
+        <dl class="kv" id="order-kv"></dl>
+        <div style="height:22px"></div>
+        <button class="hold" id="hold" disabled><div class="fill"></div><span>Hold to pay</span></button>
+        <button class="btn" id="quote" style="width:100%;margin-top:8px" disabled>Quote only</button>
+        <p class="err" id="order-err"></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="v-pay" class="hidden">
+    <div class="grid pay">
+      <div class="grid">
+        <div class="card stage">
+          <svg id="flow" viewBox="0 0 1000 400" preserveAspectRatio="none"></svg>
+          <div class="acct left"><small class="muted">Payer</small><div class="mono" id="payer-id">—</div><div class="bal" id="payer-bal">—</div><div class="delta" id="payer-delta"></div></div>
+          <div class="acct right"><small class="muted">Merchant</small><div class="mono" id="merchant-id">—</div><div class="bal" id="merchant-bal">—</div><div class="delta" id="merchant-delta"></div></div>
+          <div class="policy" id="checks"></div>
+          <div class="ledger" id="ledger"><span class="pill" id="ledger-v">—</span></div>
+        </div>
+        <div class="card ticket" id="ticket">
+          <canvas class="pattern" id="pattern" width="8" height="8"></canvas>
+          <span class="pill sm">Run permit · single use</span>
+          <div class="big" id="t-job">—</div>
+          <dl class="kv" id="t-kv"></dl>
+          <div style="margin-top:18px;display:flex;gap:8px"><button class="btn k" id="launch">Launch run</button><a class="btn" id="t-hashscan" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center">HashScan ↗</a></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="head"><h2>Payment</h2><span class="pill sm" id="pay-mode">x402</span></div>
+        <ul class="steps-list" id="paysteps"></ul>
+        <p class="err" id="pay-err"></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="v-live" class="hidden">
+    <div class="grid pit">
+      <div class="card statusbar">
+        <span class="pill k live" id="live-tag">Live</span>
+        <span class="pill" id="s-job">—</span>
+        <span class="pill c" id="s-world">—</span>
+        <div class="stat"><small>Time</small><b id="s-t">0.00 s</b></div>
+        <div class="stat"><small>0G decisions</small><b id="s-dec">0</b></div>
+        <div class="stat"><small>Gap</small><b id="s-gap">—</b></div>
+        <div class="stat"><small>TTC</small><b id="s-ttc">—</b></div>
+        <button class="btn k hidden" id="to-results" style="margin-left:auto">Results →</button>
+      </div>
+      <div class="card"><div class="head"><h2>Job</h2></div><ul class="timeline" id="timeline"></ul></div>
+      <div class="card scene"><canvas id="scene"></canvas></div>
+      <div class="card c"><div class="head"><h2>0G decisions</h2><span class="pill sm">private tier</span></div><div class="tower" id="tower"></div></div>
+      <div class="card telemetry"><canvas id="tele"></canvas><div class="gauge"><canvas id="gauge"></canvas></div></div>
+      <div class="card k"><div class="head"><h2>Log</h2></div><div class="log" id="log"></div></div>
+    </div>
+  </section>
+
+  <section id="v-results" class="hidden">
+    <div class="grid">
+      <div class="card verdict" id="verdict"></div>
+      <div class="grid results">
+        <div class="card">
+          <canvas id="rscene" style="width:100%;height:330px;display:block;border-radius:20px"></canvas>
+          <div class="scrub"><button class="btn y" id="worst">Worst moment</button><input type="range" id="scrub" min="0" max="0" value="0"><span class="pill sm mono" id="scrub-t">0.00 s</span></div>
+          <canvas id="rtele" style="width:100%;height:150px;display:block;margin-top:14px"></canvas>
+        </div>
+        <div class="grid">
+          <div class="card p"><div class="head"><h2>Payment</h2><span class="pill sm">Hedera</span></div><dl class="kv" id="ev-h"></dl></div>
+          <div class="card c"><div class="head"><h2>Evidence</h2><span class="pill sm">0G</span></div><dl class="kv" id="ev-z"></dl></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>

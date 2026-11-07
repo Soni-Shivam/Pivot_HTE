@@ -14,3 +14,4 @@ runs/
 .faultline-hedera-state/
 apps/faultline-web/dist/
 apps/memory-web/dist/
+apps/faultline-studio/dist/

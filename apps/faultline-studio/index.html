@@ -17,7 +17,7 @@
       --ease: cubic-bezier(.23, 1, .32, 1);
       --sans: "Space Grotesk", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
     }
-    * { box-sizing: border-box }
+    * { box-sizing: border-box } img { max-width: 100%; height: auto } .split > * { min-width: 0 }
     html, body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased }
     button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none }
     a { color: inherit }
@@ -42,8 +42,8 @@
     .brand { color: var(--paper); font-weight: 700; font-size: 22px; letter-spacing: -.02em; white-space: nowrap; text-decoration: none }
     .brand i { font-style: normal; color: var(--yellow) }
     nav.top { display: flex; gap: 4px; background: #1a1a1a; padding: 4px; border-radius: 999px }
-    nav.top button { min-height: 36px; padding: 0 16px; border-radius: 999px; color: #b8b8b2; font-weight: 500; white-space: nowrap; transition: background .2s var(--ease), color .2s var(--ease) }
-    nav.top button.on { background: var(--paper); color: var(--ink) }
+    nav.top a, nav.top button { min-height: 36px; padding: 0 16px; border-radius: 999px; color: #b8b8b2; font-weight: 500; white-space: nowrap; transition: background .2s var(--ease), color .2s var(--ease) }
+    nav.top a.on, nav.top button.on { background: var(--paper); color: var(--ink) }
     .hdr-right { margin-left: auto; display: flex; gap: 8px; align-items: center }
     #console-pill { background: #1a1a1a; color: #e4e4de; border-color: #333 }
     #wallet-btn { background: var(--yellow) }
@@ -130,6 +130,48 @@
     .codebox { position: relative; min-width: 0 } .codebox .copy { position: absolute; top: 18px; right: 10px }
     .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px } .tabs .on { background: var(--ink); color: var(--paper) }
     .split2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.2fr); gap: 14px; align-items: start }
+    .hero2 { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center; padding: 40px }
+    .hero2 h1 { font-size: clamp(28px, 3.2vw, 44px); line-height: 1.12; font-weight: 600; color: var(--paper) }
+    .hero-clip { margin: 0; position: relative } .hero-clip video { border-color: #333 }
+    .hero-clip figcaption { position: absolute; left: 12px; top: 12px; font: 12px var(--mono); background: #000000b0; color: #fff; padding: 4px 8px; border-radius: 8px }
+    .pitch { color: var(--paper); font-size: clamp(18px, 2vw, 24px); font-weight: 500; text-align: center; margin: 12px auto; max-width: 900px }
+    .groups3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px }
+    .groups3 div { background: #1f1f1f; border: 1px solid #333; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 6px }
+    .groups3 b { color: var(--yellow); font-size: 17px } .groups3 span { color: #d0d0ca; font-size: 14px }
+    a.btn { color: inherit } .card.k a.btn:not(.k) { color: var(--ink) }
+    nav.top a { min-height: 36px; padding: 0 14px; border-radius: 999px; color: #b8b8b2; font-weight: 500; white-space: nowrap; display: inline-flex; align-items: center; text-decoration: none }
+    .mc-head { display: flex; justify-content: space-between; gap: 16px; align-items: center; flex-wrap: wrap }
+    .states { list-style: none; display: flex; gap: 6px; flex-wrap: wrap; padding: 0; margin: 0 }
+    .states li { font: 12px var(--mono); padding: 5px 10px; border-radius: 999px; border: 1px solid #444; color: #9a9a94 }
+    .states li.done { color: var(--paper); border-color: #666 } .states li.cur { background: var(--paper); color: var(--ink); border-color: var(--paper) }
+    .states li.bad { background: var(--hot); color: var(--ink); border-color: var(--hot) }
+    .mc-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start }
+    .mc-main { padding: 16px } .mc-stage { position: relative } .mc-stage video, .mc-stage img { width: 100%; aspect-ratio: 16 / 9; display: block; border-radius: 14px; background: #000; object-fit: contain; border: 0 }
+    .mc-overlay { position: absolute; left: 12px; top: 12px; display: flex; gap: 6px; flex-wrap: wrap; pointer-events: none }
+    .mc-overlay span { font: 600 13px var(--mono); background: #000000c0; color: #fff; padding: 5px 9px; border-radius: 8px }
+    .mc-overlay .act-on { background: var(--yellow); color: var(--ink) }
+    .mc-progress { aspect-ratio: 16 / 9; background: #0d0d0d; border-radius: 14px; padding: 20px; overflow: auto; color: var(--paper) }
+    .mc-progress h3 { margin: 0 0 6px } .mc-progress .eta { font: 13px var(--mono); color: #9a9a94; margin: 0 0 12px }
+    .mc-progress ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px }
+    .mc-progress li { border-left: 3px solid #444; padding: 4px 10px; font-size: 14px } .mc-progress li.ok { border-color: var(--lime) } .mc-progress li.run { border-color: var(--yellow) } .mc-progress li.bad { border-color: var(--hot) }
+    .mc-progress small { display: block; font: 12px var(--mono); color: #9a9a94 }
+    #mc-live.peek { position: absolute; right: 12px; bottom: 12px; width: 32%; aspect-ratio: 16 / 9; border: 1px solid #444 }
+    .mc-note { color: #9a9a94; font-size: 13px; margin: 8px 0 0 } .mc-note:empty { display: none }
+    .mc-timeline { display: flex; gap: 6px; overflow-x: auto; padding: 12px 0 2px }
+    .mc-timeline button { flex: none; font: 12px var(--mono); color: var(--paper); border: 1px solid #444; border-radius: 10px; padding: 6px 9px; text-align: left; min-height: 44px }
+    .mc-timeline button.on { background: var(--paper); color: var(--ink) } .mc-timeline button.halt { border-color: var(--hot) } .mc-timeline button.plan { border-color: var(--yellow) }
+    .mc-insp { max-height: 640px; overflow: auto } .mc-insp dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; font-size: 14px }
+    .mc-insp dt { color: var(--muted) } .mc-insp dd { margin: 0; font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere }
+    .mc-insp .why-q { background: #f1f1ea; border-radius: 12px; padding: 10px 12px; margin: 12px 0 }
+    .srcs { font: 12px var(--mono); color: var(--muted) }
+    .vf-in { flex: 1; min-width: 220px; min-height: 48px; border-radius: 999px; border: 1px solid #444; background: #111; color: var(--paper); padding: 0 16px; font: 14px var(--mono) }
+    .vtl { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px }
+    .vtl li { border-top: 3px solid #ccc; padding-top: 8px } .vtl li.ok { border-color: #2f9e44 } .vtl li.na { border-color: #ccc } .vtl b { display: block } .vtl span { font: 12px var(--mono); color: var(--muted); overflow-wrap: anywhere }
+    .proof { border: 1px solid #ddd; border-radius: 14px; margin-top: 10px; background: #fff } .proof summary { cursor: pointer; padding: 12px 14px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap }
+    .proof .body { padding: 0 14px 14px; font-size: 14px } .proof code { font-size: 12px }
+    .st { font: 600 12px var(--mono); padding: 3px 8px; border-radius: 6px; border: 1px solid currentColor; white-space: nowrap }
+    .st.verified { color: #2b8a3e } .st.failed { color: #c92a2a } .st.unavailable { color: #a06200 } .st.notchecked, .st.na { color: #666 }
+    .note-a2 { font-size: 14px }
     .why-line { font-size: 14px; margin-top: 2px } 
     .plan b { display: block; margin-bottom: 8px } .plan ul { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px }
     .plan li { display: flex; gap: 8px; align-items: center; font-size: 14px } .plan li i { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--ink); flex: none }
@@ -212,7 +254,8 @@
     #offline { margin-bottom: 16px }
 
     @media (max-width: 1000px) {
-      .pit, .split { grid-template-columns: 1fr } .how { grid-template-columns: 1fr 1fr } .choices.three { grid-template-columns: 1fr }
+      .hero2, .mc-grid, .groups3 { grid-template-columns: 1fr } .vtl { grid-template-columns: 1fr 1fr }
+      .pit, .split { grid-template-columns: minmax(0, 1fr) } .how { grid-template-columns: 1fr 1fr } .choices.three { grid-template-columns: 1fr }
       .board { grid-template-columns: 1fr 1fr } .hdr-right #console-pill { display: none }
     }
     @media (max-width: 640px) {
@@ -221,7 +264,7 @@
       .ar { flex-direction: row-reverse; justify-content: center; height: 34px; gap: 8px; padding: 0 } .ar i { width: 1.5px; height: 100%; flex: none }
       .ar i::before { left: -3.25px; top: -1px; border: 4px solid transparent; border-bottom: 6px solid var(--ink); border-top: 0 } .ar i::after { right: auto; left: -3.25px; top: auto; bottom: -1px; border: 4px solid transparent; border-top: 6px solid var(--ink); border-bottom: 0 }
       .two-col, .cards3, .stills, .roles { grid-template-columns: 1fr } .moments, .stats, .numbers { grid-template-columns: 1fr 1fr } .hero { padding: 24px; min-height: 420px } .hero::after { background: #161616c0 }
-      header { flex-wrap: wrap; gap: 10px; padding: 12px 16px } nav.top { order: 3; width: 100%; overflow-x: auto } nav.top button { flex: 1; padding: 0 8px; font-size: 14px }
+      header { flex-wrap: wrap; gap: 10px; padding: 12px 16px } nav.top { order: 3; width: 100%; overflow-x: auto } nav.top a { flex: none; padding: 0 10px; font-size: 13px }
       main { padding: 8px 16px 40px } .card { padding: 20px; border-radius: 22px } .hero { padding: 22px }
       .how, .choices, .facts { grid-template-columns: 1fr } .step h2 { font-size: 24px } .scene canvas { height: 260px }
       .stepper button span { display: none } .stepper button { padding: 0 6px }
@@ -233,10 +276,11 @@
 <header>
   <a class="brand" href="#" id="home-link">faultline<i>.</i></a>
   <nav class="top" aria-label="Main">
-    <button data-view="home" class="on">Home</button>
-    <button data-view="flow">Run a test</button>
-    <button data-view="explore">Test library</button>
-    <button data-view="stack">Your stack</button>
+    <a href="/" data-nav="home">01 Discover</a>
+    <a href="/lab" data-nav="flow">02 Safety Lab</a>
+    <a href="/mission/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051" data-nav="mission">03 Mission Control</a>
+    <a href="/research" data-nav="research">04 Results &amp; Research</a>
+    <a href="/verify/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051" data-nav="verify">05 Proof Explorer</a>
   </nav>
   <div class="hdr-right">
     <span class="pill sm" id="console-pill" tabindex="0" data-tip="Checking the test console…"><i class="dot" id="console-dot"></i><span id="console-txt">Connecting…</span></span>
@@ -249,128 +293,147 @@
   <!-- HOME -->
   <section id="v-home">
     <div class="grid">
-      <div class="card k hero">
-        <canvas id="lidar" aria-hidden="true"></canvas>
-        <div class="hero-text">
-          <h1>Adversarial testing for self-driving software</h1>
-          <p class="sub1">Independent attacker on 0G, payment on Hedera, public claims on Arkiv.</p>
-          <p class="lede">An attacker model running on 0G drives the other cars in CARLA and tries to make your driving policy crash. Every attacker decision comes from 0G with a request ID. Paid runs are anchored on 0G Galileo and stored on 0G Storage.</p>
-          <p class="fact">One paid test: 0.001 HBAR, paid by our agent on Hedera.</p>
+      <div class="card k hero2">
+        <div>
+          <p class="kicker">Autonomous vehicle red-teaming</p>
+          <h1>Your autonomous car passed the test. Who tested the tester?</h1>
+          <p class="lede">Faultline uses AI-controlled traffic adversaries to challenge autonomous vehicles in CARLA, then publishes independently checkable evidence of every decision and outcome.</p>
           <div class="row" style="margin-top:22px">
-            <button class="btn y big" id="cta-run">Start a test</button>
-            <button class="btn big" id="cta-watch">See an example run</button>
+            <a class="btn y big" href="/mission/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051" data-link>Explore real attack</a>
+            <a class="btn big" href="/verify/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051" data-link>Verify evidence</a>
+            <button class="btn" id="judge-btn">Judge mode (3 min)</button>
           </div>
         </div>
-        <span class="lidar-label" id="lidar-label">Live LiDAR map · CARLA Town10</span>
+        <figure class="hero-clip"><video src="/hero-loop.mp4" poster="/stills/paid.jpg" autoplay muted loop playsinline aria-label="Recorded CARLA chase camera of paid test 002"></video><figcaption>Recorded · paid test 002 · CARLA Town10</figcaption></figure>
       </div>
+      <p class="pitch">Faultline doesn’t ask you to trust the AI testing your car. It gives you the experiment, the evidence, and the means to challenge both.</p>
 
       <div class="card" id="problem">
         <div class="two-col">
-          <h2 class="sec">The problem with AV safety results</h2>
+          <h2 class="sec">The trust problem</h2>
           <p class="big-copy">Every safety benchmark today is run by someone with a stake in the answer: the car maker, or the vendor it pays. Scenarios can be picked after the fact, and nobody outside can check the record. Faultline makes the attacker independent and the record public.</p>
         </div>
       </div>
 
-      <div class="card y" id="example">
-        <p class="kicker">Example run · swarm-carla-010 · CARLA Town10</p>
-        <h2 class="sec">Coordinated multi-vehicle attack: “Staggered Cut-in”</h2>
-        <p class="lede">The 0G planner’s own plan: “B and C sequentially cut into the ego lane ahead, while A progressively brakes. This compresses the ego’s forward space, forcing emergency deceleration.”</p>
+      <div class="card" id="example">
+        <p class="kicker">swarm-carla-010 · CARLA Town10 · prototype run, not anchored</p>
+        <h2 class="sec">One attack, four AI-controlled cars</h2>
+        <p class="lede">Before the first tick, the 0G strategist wrote a plan named “Staggered Cut-in”: “B and C sequentially cut into the ego lane ahead, while A progressively brakes. This compresses the ego’s forward space, forcing emergency deceleration.”</p>
         <ul class="roles" data-roles></ul>
         <ol class="moments">
-          <li><img src="stills/cutin.jpg" alt="Chase camera: the yellow taxi cuts in ahead of the car under test" loading="lazy" width="960" height="540"><b>3 s</b><span>B cuts in ahead while A holds speed.</span></li>
-          <li><img src="stills/compress.jpg" alt="Chase camera: the blue car alongside, the gap ahead closing" loading="lazy" width="960" height="540"><b>5 s</b><span>A brakes to compress the gap; C waits alongside.</span></li>
-          <li><img src="stills/squeeze.jpg" alt="Chase camera: blue car left, taxi right, red car braking ahead" loading="lazy" width="960" height="540"><b>7 s</b><span>A and B brake together; the car under test is boxed in.</span></li>
-          <li><img src="stills/box.jpg" alt="Drone view: four attacker cars around the car under test" loading="lazy" width="960" height="540"><b>11 s</b><span>C cuts in; the car under test stops behind B.</span></li>
+          <li><img src="/stills/cutin.jpg" alt="Chase camera: the yellow taxi cuts in ahead of the car under test" loading="lazy" width="960" height="540"><b>3 s</b><span>B cuts in ahead while A holds speed.</span></li>
+          <li><img src="/stills/compress.jpg" alt="Chase camera: the blue car alongside, the gap ahead closing" loading="lazy" width="960" height="540"><b>5 s</b><span>A brakes to compress the gap; C waits alongside.</span></li>
+          <li><img src="/stills/squeeze.jpg" alt="Chase camera: blue car left, taxi right, red car braking ahead" loading="lazy" width="960" height="540"><b>7 s</b><span>A and B brake together; the car under test is boxed in.</span></li>
+          <li><img src="/stills/box.jpg" alt="Drone view: four attacker cars around the car under test" loading="lazy" width="960" height="540"><b>11 s</b><span>C cuts in; the car under test stops behind B.</span></li>
         </ol>
-        <div class="stats">
-          <div><b>No crash</b><span>outcome</span></div><div><b>3.49 m</b><span>closest gap</span></div><div><b>1.13 s</b><span>tightest time to collision</span></div><div><b>7.03 m/s²</b><span>hardest braking</span></div>
-        </div>
-        <p class="receipts">Proof: 10 of 10 moves from 0G, 10 provider signatures re-checked, plan request <code>e1a9a298…5894</code>, attacker agent ERC-8004 #579. Prototype run: not anchored on-chain. <button class="linkbtn" data-goto-explore="swarm">See the full record</button></p>
+        <div class="row" style="margin-top:16px"><a class="btn k" href="/mission/swarm-carla-010" data-link>Open in Mission Control</a></div>
       </div>
 
-      <div class="card" id="replay">
-        <div class="head"><h2>Paid test 002 in CARLA</h2></div>
-        <p class="lede" style="margin-top:-6px">A real paid run: our agent paid on Hedera, the attacker decided on 0G, and the result was finalized on 0G Galileo.</p>
-        <video class="clip" controls muted playsinline preload="none" poster="stills/paid.jpg" data-src="videos/paid-job-002-replay-view__chase.mp4" aria-label="Chase camera of paid test 002 in CARLA"></video>
-      </div>
-
-      <div class="card c" id="for-av">
-        <p class="kicker">For AV testing teams</p>
-        <h2 class="sec">Find the scenarios your stack fails</h2>
-        <div class="cards3">
-          <div><b>Attacks chosen every second</b><span>The attacker sees the live situation at each 1 s checkpoint and picks its next move.</span></div>
-          <div><b>Plug in your stack</b><span>Python, CARLA Leaderboard and ROS 2 adapters, with a compatibility check before any run.</span></div>
-          <div><b>A/B two policies</b><span>Both face the identical attack script, so the difference is the policy, not luck.</span></div>
-          <div><b>Mission and driving score</b><span>Route completion and the Leaderboard driving score, next to the safety numbers.</span></div>
-          <div><b>Criticality metrics</b><span>Time to collision, closest gap and a 0 to 1 danger score from ground truth.</span></div>
-          <div><b>Full replay</b><span>Every run replays tick by tick with each decision and the attacker’s reason.</span></div>
+      <div class="card" id="consequence">
+        <h2 class="sec">The consequences</h2>
+        <div class="split">
+          <div><img src="/stills/squeeze.jpg" alt="The car under test boxed in by the attackers" loading="lazy" width="960" height="540"></div>
+          <div>
+            <div class="stats">
+              <div><b>No crash</b><span>outcome</span></div><div><b>3.49 m</b><span>closest gap (ground truth)</span></div>
+              <div><b>1.13 s</b><span>minimum time to collision</span></div><div><b>7.03 m/s²</b><span>hardest braking by the car under test</span></div>
+            </div>
+            <p style="margin:14px 0 0">PDM-Lite drove on its own LiDAR and braked to a stop behind B. Every number comes from the run’s recorded metrics.</p>
+          </div>
         </div>
       </div>
 
-      <div class="card k" id="why">
-        <p class="kicker">For Web3</p>
-        <h2 class="sec">The trust layer: why 0G and Web3</h2>
-        <div class="why">
-          <div><b>A referee nobody controls</b><span>The attacker runs in a TEE on the 0G Private Computer. The private tier refuses to downgrade: no private provider returns 503.</span></div>
-          <div><b>Proof for every decision</b><span>300+ decisions with 0G request IDs; provider signatures archived and re-checked (paid test 002: 7 of 7).</span></div>
-          <div><b>No cherry-picking</b><span>For paid runs, the scenario is committed on 0G Galileo before the first model call and the result is finalized after the last.</span></div>
-          <div><b>A record no party hosts</b><span>Paid runs are stored on 0G Storage behind a Merkle root. The sealed half opens only with the owner’s key.</span></div>
-          <div><b>Agents pay per test</b><span>Hedera x402: quote, pay 0.001 HBAR under a spending cap, get a one-run permit (paid test 002 on HashScan).</span></div>
-          <div><b>Claims anyone can query</b><span>Arkiv entities owned by the car maker’s wallet, queryable by model and test category.</span></div>
-          <div><b>A portable agent identity</b><span>The attacker is ERC-8004 agent #579 on 0G Galileo.</span></div>
+      <div class="card k" id="trail">
+        <h2 class="sec">The evidence trail</h2>
+        <div class="groups3">
+          <div><b>Who made the decisions?</b><span>Each attacker move is a 0G Router private-inference response with a request ID; provider signatures are archived (paid test 002: 7 of 7). The attacker is ERC-8004 agent #579.</span></div>
+          <div><b>Can the evidence be altered?</b><span>Paid runs commit the scenario on 0G Galileo before the first decision, store the logs on 0G Storage, and finalize the result after the last decision.</span></div>
+          <div><b>Who requested and paid?</b><span>The tester’s wallet signs the request; our agent pays 0.001 HBAR on Hedera through x402 and receives a one-run permit.</span></div>
         </div>
-        <p class="enables">What this enables: AV safety results that car makers, insurers and regulators can compare and audit without trusting each other.</p>
-      </div>
-
-      <div class="card" id="produces">
-        <h2 class="sec">What a run produces</h2>
-        <div class="stills">
-          <figure class="still"><img src="stills/result.jpg" alt="Result card of a run: no collision, closest gap 3.49 m" loading="lazy" width="960" height="540"><figcaption><b>A verdict</b><span>Crash or no crash, closest gap, time to collision, braking.</span></figcaption></figure>
-          <figure class="still"><img src="stills/decision.jpg" alt="0G decision at checkpoint 2 with actions and reason" loading="lazy" width="960" height="540"><figcaption><b>The attacker’s reasoning</b><span>The model’s verbatim answer at every checkpoint.</span></figcaption></figure>
-          <figure class="still"><img src="stills/lidar.jpg" alt="LiDAR bird’s-eye view with tracked cars" loading="lazy" width="960" height="540"><figcaption><b>What your stack saw</b><span>Its own LiDAR tracks next to the ground truth.</span></figcaption></figure>
-          <figure class="still"><img src="stills/ab.jpg" alt="Side-by-side view of two policies under the same attack" loading="lazy" width="960" height="540"><figcaption><b>A fair A/B comparison</b><span>Two policies, the same attack, side by side.</span></figcaption></figure>
-          <figure class="still"><img class="contain" src="stills/proof.jpg" alt="Proof cards: 0G Private Computer, Storage, Galileo, Hedera" loading="lazy" width="960" height="540"><figcaption><b>Proof receipts</b><span>Links to 0G, Galileo, Hedera and Arkiv for every claim.</span></figcaption></figure>
-          <figure class="still"><img src="stills/fog.jpg" alt="Chase camera replay of a test run" loading="lazy" width="960" height="540"><figcaption><b>Replays of every run</b><span>Rerun or replay the closest call from the recorded data.</span></figcaption></figure>
-        </div>
-      </div>
-
-      <div class="numbers" aria-label="Evidence in numbers">
-        <div><b>300+</b><span>0G decisions with request IDs</span></div>
-        <div><b>2</b><span>paid tests settled on Hedera</span></div>
-        <div><b>7 of 7</b><span>signatures re-checked on paid test 002</span></div>
-        <div><b>#579</b><span>ERC-8004 attacker identity</span></div>
+        <div class="row" style="margin-top:16px"><a class="btn y" href="/verify/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051" data-link>Open the Proof Explorer</a></div>
       </div>
 
       <div class="card" id="how">
         <h2 class="sec">How Faultline works</h2>
         <div class="arch">
           <div class="arow">
-            <div class="ab "><b>Your AV stack</b><span>Plugged in through an adapter; sees only its own sensors.</span></div>
+            <div class="ab"><b>Your AV stack</b><span>Plugged in through an adapter; sees only its own sensors.</span></div>
             <div class="ar" aria-hidden="true"><span>observations · actions</span><i></i></div>
-            <div class="ab l"><b>CARLA + Faultline controller</b><span>Our GPU box: physics, LiDAR, safety limits, safe stop.</span></div>
+            <div class="ab l"><b>CARLA + Faultline controller</b><span>Physics, LiDAR, safety limits, safe stop.</span></div>
             <div class="ar" aria-hidden="true"><span>signed decision</span><i></i></div>
-            <div class="ab p"><b>0G Private Computer</b><span>Attacker model in a TEE; request ID and signature per answer.</span></div>
+            <div class="ab p"><b>0G Router (inference)</b><span>Attacker model, private tier; request ID and signature per answer.</span></div>
           </div>
           <div class="adown" aria-hidden="true"><i></i><span>roots + receipts</span></div>
           <div class="arow four">
-            <div class="ab c"><b>0G Storage</b><span>Public and sealed log of each run.</span></div>
-            <div class="ab c"><b>0G Galileo</b><span>Commit before, finalize after.</span></div>
-            <div class="ab c"><b>Hedera</b><span>x402 payment and HCS receipt.</span></div>
+            <div class="ab c"><b>0G Storage</b><span>Public and sealed log of each paid run.</span></div>
+            <div class="ab c"><b>0G Galileo (chain)</b><span>Commit before, finalize after.</span></div>
+            <div class="ab c"><b>Hedera</b><span>x402 payment and permit.</span></div>
             <div class="ab c"><b>Arkiv</b><span>Shareable safety claims.</span></div>
-          </div>
-          <div class="adown" aria-hidden="true"><i></i><span>read by</span></div>
-          <div class="arow two">
-            <div class="ab y"><b>This site</b><span>Every run with links to its proof.</span></div>
-            <div class="ab y"><b>Verifier</b><span>Re-checks hashes, signatures and timing from the root.</span></div>
           </div>
         </div>
       </div>
 
-      <div class="card y cta">
-        <h2 class="sec">Test your driving policy</h2>
-        <p class="lede">Free demo runs use real 0G decisions. Paid runs are anchored on-chain.</p>
-        <div class="row" style="margin-top:16px"><button class="btn k big" id="cta-run2">Start a test</button><button class="btn big" data-goto-explore="runs">Watch a recorded test</button></div>
+      <div class="card" id="findings">
+        <h2 class="sec">Research findings, including where the model lost</h2>
+        <div class="cards3">
+          <div><b>Bisection found the boundary better</b><span>Safety boundary error: per-delay bisection 0.57 m, 0G with tools 0.73 m (6 calls instead of 25).</span></div>
+          <div><b>Random search found more failure types</b><span>On the open benchmark, random search found 7 distinct failure fingerprints; 0G with tools found 4.</span></div>
+          <div><b>Claims are audited</b><span>The agent blamed friction-limited braking; the run shows the car peaked at 5.76 m/s² against a 6.28 m/s² limit. Claim contradicted.</span></div>
+        </div>
+        <p style="margin:14px 0 0">We don’t force a language model to do what deterministic algorithms do better. 0G handles experiment strategy and hypotheses; classical tools handle search and physical validity; every claim is audited against the results.</p>
+        <div class="row" style="margin-top:14px"><a class="btn" href="/research" data-link>See the research</a></div>
       </div>
+
+      <div class="card y cta">
+        <h2 class="sec">Test your own stack</h2>
+        <p class="lede">Python, CARLA Leaderboard and ROS 2 adapters, a compatibility check, then a free dry run or a paid anchored test.</p>
+        <div class="row" style="margin-top:16px"><a class="btn k big" href="/stack" data-link>Connect your stack</a><a class="btn big" href="/lab" data-link>Open the Safety Lab</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MISSION CONTROL -->
+  <section id="v-mission" class="hidden">
+    <div class="grid">
+      <div class="card k mc-head">
+        <div><p class="kicker" id="mc-kind">Mission Control</p><h2 class="sec" id="mc-title" style="color:var(--paper);margin:0">Loading…</h2></div>
+        <ol class="states" id="mc-states" aria-label="Run state"></ol>
+      </div>
+      <div class="card hidden" id="mc-plan"></div>
+      <div class="mc-grid">
+        <div class="card k mc-main">
+          <div class="mc-stage">
+            <video id="mc-video" controls muted playsinline preload="metadata" aria-label="Recorded CARLA camera"></video>
+            <img id="mc-live" class="hidden" alt="Live CARLA chase camera (low frame rate preview)">
+            <div id="mc-progress" class="mc-progress hidden" aria-live="polite"></div>
+            <div class="mc-overlay" id="mc-overlay" aria-live="polite"></div>
+          </div>
+          <div class="row" style="margin-top:10px"><button class="btn y" id="mc-worst">Jump to worst moment</button><button class="btn hidden" id="mc-peek">Peek live (low frame rate)</button></div>
+          <p class="mc-note" id="mc-note"></p>
+          <div class="mc-timeline" id="mc-timeline" role="list" aria-label="Decision timeline"></div>
+        </div>
+        <aside class="card mc-insp" id="mc-insp" aria-label="Decision inspector"></aside>
+      </div>
+      <div class="card">
+        <div class="head"><h2>Telemetry</h2><span class="srcs">gap, TTC, speeds: simulator ground truth · CCS: recomputed from ground truth · LiDAR gap: measured</span></div>
+        <canvas id="mc-tele" style="width:100%;height:220px;display:block" aria-label="Telemetry over simulation time"></canvas>
+      </div>
+      <div class="card" id="mc-verdict"></div>
+    </div>
+  </section>
+
+  <!-- PROOF EXPLORER -->
+  <section id="v-verify" class="hidden">
+    <div class="grid">
+      <div class="card k">
+        <p class="kicker">Proof Explorer</p>
+        <h2 class="sec" style="color:var(--paper)">Check the evidence yourself</h2>
+        <p class="lede">Pick a run or paste a 0G Storage public root. Each proof says what it guarantees, shows the exact artifact, and has an honest status.</p>
+        <div class="row" style="margin-top:14px"><label class="sr" for="vf-in">Run name or public root</label><input id="vf-in" class="vf-in" placeholder="run name or 0x public root" autocomplete="off"><button class="btn y" id="vf-go">Check</button></div>
+      </div>
+      <div class="card" id="vf-timeline"></div>
+      <div id="vf-groups" class="grid"></div>
+      <div class="card note-a2"><b>Limitation.</b> Provider signatures prove which 0G provider returned each response. They do not prove the physics, and under end-to-end encryption they do not bind the plaintext prompt. The physics is checked separately from the recorded trajectory.</div>
     </div>
   </section>
 
@@ -555,6 +618,6 @@ your stack answers on
     <div class="grid" id="explore"></div>
   </section>
 </main>
-<script type="module" src="app.js"></script>
+<script type="module" src="/app.js"></script>
 </body>
 </html>

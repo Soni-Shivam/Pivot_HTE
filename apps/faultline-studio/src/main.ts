@@ -48,25 +48,21 @@ async function post(path: string, body: unknown, onEvent: (e: any) => void) {
 }
 
 // ---------- navigation ----------
-type View = 'home' | 'flow' | 'explore' | 'stack'
+type View = 'home' | 'flow' | 'explore' | 'stack' | 'mission' | 'verify'
 function show(view: View) {
-  for (const v of ['home', 'flow', 'explore', 'stack']) $(`v-${v}`).classList.toggle('hidden', v !== view)
-  document.querySelectorAll<HTMLButtonElement>('nav.top button').forEach((b) => { b.classList.toggle('on', b.dataset.view === view); b.setAttribute('aria-current', b.dataset.view === view ? 'page' : 'false') })
+  for (const v of ['home', 'flow', 'explore', 'stack', 'mission', 'verify']) $(`v-${v}`).classList.toggle('hidden', v !== view)
   if (view === 'explore') renderExplore()
-  history.replaceState(null, '', view === 'flow' ? '#run' : location.pathname)
   window.scrollTo({ top: 0 })
   requestAnimationFrame(resizeAll)
 }
-document.querySelectorAll<HTMLButtonElement>('nav.top button').forEach((b) => b.addEventListener('click', () => show(b.dataset.view as View)))
-$('home-link').addEventListener('click', (e) => { e.preventDefault(); show('home') })
-const gotoExplore = (id: string) => { show('explore'); requestAnimationFrame(() => document.getElementById(`x-${id}`)?.scrollIntoView()) }
+$('home-link').setAttribute('href', '/')
+const gotoExplore = (id: string) => { if (location.pathname !== '/library') history.pushState(null, '', '/library'); show('explore'); requestAnimationFrame(() => document.getElementById(`x-${id}`)?.scrollIntoView()) }
 document.addEventListener('click', (e) => {
   const t = (e.target as HTMLElement).closest<HTMLElement>('[data-goto-explore]'); if (t) gotoExplore(t.dataset.gotoExplore!)
   if ((e.target as HTMLElement).closest('[data-back]')) step(cur - 1)
 })
 
-for (const id of ['cta-run', 'cta-run2']) $(id).addEventListener('click', () => { show('flow'); step(wallet || guest ? 2 : 1) })
-$('cta-watch').addEventListener('click', () => { $('example').scrollIntoView({ block: 'start' }) })
+$('judge-btn').addEventListener('click', () => go('/mission/' + FEATURED))
 // ---------- recorded CARLA clips: served by the console at /media/<path>, falling back to the public repo ----------
 const RAW = 'https://raw.githubusercontent.com/Soni-Shivam/Pivot_HTE/main/'
 const clip = (path: string, poster: string, label: string) => `<video class="clip" controls muted playsinline preload="none" poster="stills/${poster}.jpg" data-src="${esc(path)}" aria-label="${esc(label)}"></video>`
@@ -145,7 +141,7 @@ function paintWallet() {
   renderStepper(); renderSummary()
 }
 $('wallet-btn').addEventListener('click', () => {
-  show('flow'); step(1)
+  go('/lab'); step(1)
   const c = candidates()
   if (!wallet && c.length === 1) connect(c[0]) // still inside the click: the wallet popup needs a user gesture
 })
@@ -163,9 +159,9 @@ function renderStepper() {
   $('stepper').querySelectorAll<HTMLButtonElement>('[data-s]').forEach((b) => b.addEventListener('click', () => step(Number(b.dataset.s))))
 }
 function step(n: number) {
-  if (n < 1) { history.replaceState(null, '', location.pathname); show('home'); return }
+  if (n < 1) { go('/'); return }
   cur = n; maxStep = Math.max(maxStep, n); save()
-  if (location.hash !== '#run') history.replaceState(null, '', '#run')
+  if (location.pathname !== '/lab') history.replaceState(null, '', '/lab')
   for (let i = 1; i <= 5; i++) $(`s${i}`).classList.toggle('hidden', i !== n)
   renderStepper(); if (n === 3) renderSummary()
   window.scrollTo({ top: 0 }); requestAnimationFrame(resizeAll)
@@ -250,7 +246,7 @@ function renderSummary() {
 $('start').addEventListener('click', async () => {
   if (guest && !wallet) {
     const btn = $<HTMLButtonElement>('start'); btn.disabled = true
-    try { const r = await postJson('/api/demo-run', { policy, suite: attack, mode: 'free', guest: true }); startStream(r.jobId, 'live', 'job', true) }
+    try { const r = await postJson('/api/demo-run', { policy, suite: attack, mode: 'free', guest: true }); go('/mission/' + r.jobId) }
     catch (e) { $('start-err').textContent = `Not started: ${(e as Error).message}` } finally { btn.disabled = false }
     return
   }
@@ -263,7 +259,7 @@ $('start').addEventListener('click', async () => {
     $('start-err').textContent = 'Signed. Queuing your test…'
     const r = await postJson('/api/demo-run', { policy, suite: attack, mode, address: wallet.address, message: msg, signature })
     $('start-err').textContent = ''
-    startStream(r.jobId, 'live', 'job', mode === 'free')
+    go('/mission/' + r.jobId)
   } catch (e) { const m = (e as any)?.code != null ? walletErr(e, 'signature') : `Not started: ${(e as any)?.message ?? e}`; $('start-err').textContent = m } finally { btn.disabled = false }
 })
 
@@ -413,7 +409,7 @@ function drawTele(cv: HTMLCanvasElement, rows: Tick[], ds: Decision[], cursor?: 
   for (const d of ds) { g.fillStyle = d.source === 'none' ? C.hot : C.ink; g.beginPath(); g.arc(X(d.sim_time_s), h - 8, 3.5, 0, Math.PI * 2); g.fill() }
   if (cursor != null) { g.strokeStyle = C.ink; g.lineWidth = 1.5; g.beginPath(); g.moveTo(X(cursor), top - 6); g.lineTo(X(cursor), h - 14); g.stroke() }
   let lx = pad; g.font = '500 12px "Space Grotesk", sans-serif'
-  for (const [c, t] of [[C.pink, 'Danger 0–1'], [C.purple, 'Gap 0–30 m'], [C.ink, 'Time to collision 0–6 s'], [C.ink, '0G decision']] as const) {
+  for (const [c, t] of [[C.pink, 'CCS 0–1 (recomputed)'], [C.purple, 'Gap 0–30 m (ground truth)'], [C.ink, 'TTC 0–6 s, capped (ground truth)'], [C.ink, '0G decision']] as const) {
     const tw = g.measureText(t).width; g.fillStyle = c === C.ink ? C.ink : c; g.beginPath(); g.roundRect(lx, 4, 10, 10, 5); g.fill(); g.fillStyle = C.ink; g.fillText(t, lx + 14, 13); lx += tw + 30
   }
 }
@@ -574,7 +570,7 @@ async function loadRuns() {
     <td><span class="pill sm ${risk(r.ccs).cls}">${num(r.ccs, 2)}</span></td><td>${num(r.minTtc, 1)} s</td>
     <td style="text-align:right"><button class="pill sm k" data-replay="${esc(r.name)}">Replay</button></td></tr>`).join('') ||
     `<tr><td colspan="6">${online ? 'No recorded tests yet' : 'The console is offline. Recorded tests load when it reconnects.'}</td></tr>`
-  el.querySelectorAll<HTMLButtonElement>('[data-replay]').forEach((b) => b.addEventListener('click', () => startStream(b.dataset.replay!, 'replay')))
+  el.querySelectorAll<HTMLButtonElement>('[data-replay]').forEach((b) => b.addEventListener('click', () => go('/mission/' + encodeURIComponent(b.dataset.replay!))))
 }
 async function pollJob(id: string, onUpdate: (j: any) => void) {
   for (;;) {
@@ -626,24 +622,24 @@ async function boot() {
   const st = restore()
   if (st) { policy = st.policy ?? policy; attack = st.attack === 'cut-in-v1-carla' ? st.attack : attack; mode = st.mode === 'paid' ? 'paid' : 'free'; guest = !!st.guest }
   renderWallets(); paintWallet(); renderChoices(); renderStepper()
-  if (location.hash === '#run') { show('flow'); step(Math.max(1, Math.min(3, st?.step ?? 1))) } else show('home')
+  if (location.hash === '#run') history.replaceState(null, '', '/lab')
+  cur = Math.max(1, Math.min(3, st?.step ?? 1))
+  route()
   // Resume a wallet the user already approved (eth_accounts opens no popup)
   if (st?.wallet != null) setTimeout(async () => {
     const w = found.find((x) => x.info.rdns === st.wallet) ?? found[0] ?? ((window as any).ethereum ? { info: { uuid: 'injected', name: 'Browser wallet', icon: '', rdns: '' }, provider: (window as any).ethereum } : null)
     if (!w || wallet) return
     try { const a: string[] = await w.provider.request({ method: 'eth_accounts' }); if (a?.[0]) { wallet = { address: a[0], provider: w.provider, name: w.info.name }; lastTried = w; guest = false; renderWallets(); paintWallet(); renderChoices() } } catch { /* stays disconnected */ }
   }, 400)
-  startLidar()
   requestAnimationFrame(frame)
   await Promise.all([pollHealth(), loadPolicies()])
   renderChoices()
   setInterval(pollHealth, 10000)
 }
-boot()
 let hunt: any = null
 async function drawHunt() {
   const cv = document.getElementById('hunt') as HTMLCanvasElement | null; if (!cv) return
-  if (!hunt) try { hunt = await fetch('hunt.json').then((r) => r.json()) } catch { return }
+  if (!hunt) try { hunt = await fetch('/hunt.json').then((r) => r.json()) } catch { return }
   const ex: any[] = hunt.experiments, truth: [number, number][] = hunt.truth
   let n = 0
   const paint = () => {
@@ -664,49 +660,213 @@ async function drawHunt() {
   step()
 }
 
-// ---------- hero background: real LiDAR point cloud captured from our CARLA Town10 run (scripts/capture_lidar_map.py) ----------
-function startLidar() {
-  const cv = $<HTMLCanvasElement>('lidar')
-  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  fetch('town10-lidar.bin').then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('no map')))).then((buf) => {
-    const n = new DataView(buf).getUint32(0, true), xyz = new Float32Array(buf, 4, n * 3), hc = new Uint8Array(buf, 4 + n * 12, n)
-    // height colour ramp blue → green → yellow → red, as packed ABGR for ImageData
-    const ramp = new Uint32Array(256)
-    for (let i = 0; i < 256; i++) {
-      const t = i / 255, stops = [[40, 90, 255], [40, 220, 120], [250, 230, 60], [255, 60, 60]], k = Math.min(2, Math.floor(t * 3)), f = t * 3 - k
-      const c = stops[k].map((a, j) => Math.round(a + (stops[k + 1][j] - a) * f))
-      ramp[i] = (255 << 24) | (c[2] << 16) | (c[1] << 8) | c[0]
-    }
-    let rx = 0; for (let i = 0; i < n; i++) rx = Math.max(rx, Math.abs(xyz[i * 3]), Math.abs(xyz[i * 3 + 1]))
-    const az = new Float32Array(n); for (let i = 0; i < n; i++) az[i] = Math.atan2(xyz[i * 3 + 1], xyz[i * 3])
-    let visible = true, last = 0
-    new IntersectionObserver((e) => { visible = e[0].isIntersecting; if (visible && !reduce) requestAnimationFrame(draw) }).observe(cv)
-    const draw = (now: number) => {
-      if (!visible) return
-      if (!reduce && now - last < 33) { requestAnimationFrame(draw); return }
-      last = now
-      const dpr = Math.min(window.devicePixelRatio || 1, 2), W = Math.max(1, Math.round(cv.clientWidth * dpr)), H = Math.max(1, Math.round(cv.clientHeight * dpr))
-      if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H }
-      const g = cv.getContext('2d')!, img = g.createImageData(W, H), px = new Uint32Array(img.data.buffer)
-      const a = reduce ? 0.6 : now / 1000 * 0.06, ca = Math.cos(a), sa = Math.sin(a), tilt = 0.95, ct = Math.cos(tilt), st = Math.sin(tilt)
-      const sweep = ((now / 1000) * 0.9) % (Math.PI * 2), scale = Math.min(W, H) * 0.95 / rx, cam = rx * 1.6, cx = W * 0.62, cy = H * 0.52
-      const sz = dpr > 1.5 ? 2 : 1
-      for (let i = 0; i < n; i++) {
-        const x = xyz[i * 3], y = xyz[i * 3 + 1], z = xyz[i * 3 + 2]
-        const xr = x * ca - y * sa, yr = x * sa + y * ca
-        const yv = -(z * ct - yr * st), zv = yr * ct - z * st + cam
-        if (zv < 1) continue
-        const p = cam / zv, X = (cx + xr * scale * p) | 0, Y = (cy + yv * scale * p) | 0
-        if (X < 0 || Y < 0 || X >= W - sz || Y >= H - sz) continue
-        let d = sweep - az[i] - a; d -= Math.floor(d / (Math.PI * 2)) * Math.PI * 2
-        const col = !reduce && d < 0.25 ? 0xffffffff : ramp[hc[i]]
-        const o = Y * W + X
-        px[o] = col; if (sz > 1) { px[o + 1] = col; px[o + W] = col; px[o + W + 1] = col }
-      }
-      g.putImageData(img, 0, 0)
-      if (!reduce) requestAnimationFrame(draw)
-    }
-    requestAnimationFrame(draw)
-  }).catch(() => { $('lidar-label').textContent = '' })
-}
 
+// ---------- routes: / /lab /mission/:id /research /verify[/:id] /stack /library (Vercel and the console fall back to index.html) ----------
+const FEATURED = 'paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051'
+// Recorded camera for runs whose own folder has none (paid test 002 was replayed in CARLA from its decisions; same trajectory)
+const RUN_VIDEO: Record<string, { path: string, aligned: boolean, note?: string }> = {
+  [FEATURED]: { path: 'runs/paid-job-002-replay-view/screen.mp4', aligned: true, note: 'Camera from an exact CARLA replay of this paid run (same decisions, same trajectory hash).' },
+  'swarm-carla-010': { path: 'runs/swarm-carla-010/director.mp4', aligned: false, note: 'Director cut with the 0G decision cards inserted, so it is not time-aligned with the timeline.' },
+}
+function go(path: string) { history.pushState(null, '', path); route() }
+function route() {
+  const [, a = '', ...rest] = location.pathname.split('/'), b = rest.join('/') // run names can contain '/' (CARLA demo runs)
+  const navKey = a === '' ? 'home' : a === 'lab' ? 'flow' : a
+  document.querySelectorAll<HTMLAnchorElement>('nav.top a').forEach((x) => x.classList.toggle('on', x.dataset.nav === navKey || (navKey === 'library' && x.dataset.nav === 'research')))
+  if (a === 'lab') { show('flow'); step(Math.max(1, Math.min(3, cur))) }
+  else if (a === 'mission') { show('mission'); openMission(decodeURIComponent(b || FEATURED)) }
+  else if (a === 'verify') { show('verify'); openVerify(decodeURIComponent(b || FEATURED)) }
+  else if (a === 'stack') show('stack')
+  else if (a === 'library' || a === 'research' || a === 'results') show('explore')
+  else show('home')
+}
+window.addEventListener('popstate', route)
+document.addEventListener('click', (e) => {
+  const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href^="/"]')
+  if (!a || a.target || e.metaKey || e.ctrlKey || a.getAttribute('href')!.startsWith('/media/')) return
+  e.preventDefault(); go(a.getAttribute('href')!)
+})
+
+// ---------- Mission Control: recorded CARLA video or the live MJPEG stream, decision timeline, inspector, telemetry ----------
+let mc: { id: string, run: Run | null, ticks: Tick[], ds: Decision[], sel: number, aligned: boolean, live: boolean, state: string } | null = null
+const MC_STATES = ['Ready', 'Waiting for 0G', 'Executing', 'Completed']
+function mcStates(state: string) {
+  const bad = state === 'Safe halt' || state === 'Interrupted'
+  const order = bad ? ['Ready', 'Waiting for 0G', 'Executing', state] : MC_STATES
+  const at = order.indexOf(state)
+  $('mc-states').innerHTML = order.map((x, i) => `<li class="${i < at ? 'done' : ''} ${i === at ? (bad ? 'bad' : 'cur') : ''}">${esc(x)}</li>`).join('')
+}
+async function openMission(id: string) {
+  const live = /^[0-9a-f]{16}$/.test(id)
+  mc = { id, run: null, ticks: [], ds: [], sel: -1, aligned: false, live, state: 'Ready' }
+  const me = mc
+  $('mc-title').textContent = live ? `Live test ${id}` : id === FEATURED ? 'Paid test 002' : id
+  $('mc-kind').textContent = live ? 'Mission Control · live run' : 'Mission Control · recorded run'
+  $('mc-timeline').innerHTML = ''; $('mc-insp').innerHTML = '<p class="muted">Select a decision on the timeline to inspect it.</p>'; $('mc-verdict').innerHTML = ''; $('mc-overlay').innerHTML = ''; $('mc-note').textContent = ''
+  $('mc-plan').classList.add('hidden'); mcStates('Ready')
+  // run, then reveal: a live job shows progress and real 0G decisions; the 20 fps recording plays once the run ends
+  const vid = $<HTMLVideoElement>('mc-video'), img = $<HTMLImageElement>('mc-live'), prog = $('mc-progress')
+  vid.classList.toggle('hidden', live); prog.classList.toggle('hidden', !live); img.classList.add('hidden'); img.classList.remove('peek'); img.removeAttribute('src')
+  $('mc-peek').classList.toggle('hidden', !live); $('mc-worst').classList.toggle('hidden', live)
+  if (!live) vid.removeAttribute('src')
+  const t0 = performance.now()
+  const paintProg = () => {
+    if (mc !== me || !me.live) return
+    const zgN = me.ds.filter((d) => d.source === '0g').length, el = Math.round((performance.now() - t0) / 1000)
+    const rows = [
+      `<li class="${me.state === 'Ready' ? 'run' : 'ok'}">${esc($('mc-note').textContent || 'Queued')}</li>`,
+      `<li class="${me.ds.length ? 'ok' : me.state === 'Waiting for 0G' ? 'run' : ''}">${me.ds.length ? 'Connected to 0G (private tier)' : 'Connecting to 0G'}</li>`,
+      ...me.ds.map((d) => `<li class="${d.source === '0g' ? 'ok' : 'bad'}">Checkpoint ${d.cp + 1}/10: ${esc(say(d.action))}${why(d) ? ` · “${esc(why(d))}”` : ''}<small>${d.source === '0g' ? `${d.latency_ms} ms · ${esc(d.request_id)}` : 'no valid 0G answer: safe stop'}</small></li>`)]
+    prog.innerHTML = `<h3>${me.state === 'Completed' || me.state === 'Safe halt' ? 'Run finished, loading the recording' : 'Test running in CARLA'}</h3><p class="eta">${el} s elapsed · typical run about 60 s · ${zgN} decisions from 0G</p><ol>${rows.join('')}</ol>`
+  }
+  const progT = live ? window.setInterval(paintProg, 1000) : 0
+  if (id === 'swarm-carla-010') renderPlan()
+  try {
+    await post('/api/stream', live ? { job: id, mode: 'live' } : { run: id, mode: 'replay', speed: 8 }, (e) => {
+      if (mc !== me) return
+      if (e.t === 'meta') me.run = e.run ?? e.job?.result ?? null
+      if (e.t === 'queue') { $('mc-note').textContent = e.pos > 0 ? `Queued: position ${e.pos}${e.etaS != null ? `, about ${Math.round(e.etaS)} s` : ''}` : 'Starting'; mcStates('Ready') }
+      if (e.t === 'await0g') mcStates(me.state = 'Waiting for 0G')
+      if (e.t === 'ticks') { me.ticks.push(...e.rows); if (me.live) { mcStates(me.state = me.state === 'Ready' ? 'Executing' : me.state); mcOverlay(me.ticks.at(-1)!.t_s) } }
+      if (e.t === 'decision') { me.ds.push(e.d); if (e.d.source !== '0g') me.state = 'Safe halt'; else if (me.state !== 'Safe halt') me.state = 'Executing'; if (me.live) { mcStates(me.state); mcTimeline(); paintProg() } }
+      if (e.t === 'done' || e.t === 'error') {
+        me.run = e.run ?? e.job?.result ?? me.run
+        me.state = e.t === 'error' || me.run?.status === 'interrupted' && !me.ds.length ? 'Interrupted' : me.state === 'Safe halt' ? 'Safe halt' : 'Completed'
+        if (e.t === 'error') $('mc-note').textContent = `Stopped: ${e.message ?? 'error'}`
+      }
+    })
+  } catch (err) { $('mc-note').textContent = `Could not load this run: ${(err as Error).message}` }
+  clearInterval(progT)
+  if (mc !== me) return
+  if (me.state === 'Ready' || me.state === 'Executing' || me.state === 'Waiting for 0G') me.state = me.ds.some((d) => d.source !== '0g') ? 'Safe halt' : 'Completed'
+  mcStates(me.state)
+  // after a live run, switch to the recorded camera of the finished run
+  const rv = RUN_VIDEO[me.run?.name ?? id] ?? ((me.run as any)?.video ? { path: (me.run as any).video, aligned: true } : null)
+  if (rv) {
+    vid.src = api('/media/' + rv.path); vid.preload = 'auto'; vid.classList.remove('hidden'); img.classList.add('hidden'); prog.classList.add('hidden'); me.aligned = rv.aligned
+    $('mc-peek').classList.add('hidden'); $('mc-worst').classList.remove('hidden'); $('mc-note').textContent = rv.note ?? ''
+    if (me.live) { vid.currentTime = 0; vid.play().catch(() => { /* autoplay blocked: controls stay */ }) }
+  } else if (me.live) { prog.classList.add('hidden'); vid.classList.remove('hidden'); $('mc-note').textContent = 'The run finished but its recording is not available.' }
+  else if (!me.live) $('mc-note').textContent = 'No camera recording exists for this run; the timeline and telemetry come from its recorded data.'
+  mcTimeline(); mcTele(); mcVerdict()
+  const worst = me.ticks.reduce((m, t, i) => (t.gt_gap < (me.ticks[m]?.gt_gap ?? Infinity) ? i : m), 0)
+  mcOverlay(me.ticks[worst]?.t_s ?? 0)
+}
+function renderPlan() {
+  $('mc-plan').classList.remove('hidden')
+  $('mc-plan').innerHTML = `<p class="kicker">0G strategist · plan written before the first tick</p><h2 class="sec" style="margin-bottom:8px">“Staggered Cut-in”</h2>
+    <p style="margin:0 0 10px">B and C sequentially cut into the ego lane ahead, while A progressively brakes. This compresses the ego’s forward space, forcing emergency deceleration.</p><ul class="roles" data-roles>${rolesHtml()}</ul>`
+}
+const decAt = (t: number) => mc ? mc.ds.filter((d) => d.sim_time_s <= t).at(-1) : undefined
+const tickAt = (t: number) => mc ? (mc.ticks.find((x) => x.t_s >= t) ?? mc.ticks.at(-1)) : undefined
+function mcOverlay(t: number) {
+  if (!mc) return
+  if (!$('mc-progress').classList.contains('hidden')) { $('mc-overlay').innerHTML = ''; return } // progress panel owns the stage while running
+  const d = decAt(t), k = tickAt(t), acts = d && (d as any).actions ? Object.entries((d as any).actions as Record<string, string>).map(([car, a]) => `${car} ${a}`).join(' · ') : null
+  $('mc-overlay').innerHTML = (d ? `<span class="act-on">${esc(acts ?? `Attacker: ${d.action ?? 'SAFE_HALT'}`)}</span>` : '<span>Run-up: no decision yet</span>') +
+    (k ? `<span>t ${num(k.t_s, 1)} s</span><span>CCS ${num(k.ccs, 2)}</span><span>gap ${num(k.gt_gap, 1)} m</span>` : '')
+}
+function mcTimeline() {
+  if (!mc) return
+  const items = mc.ds.map((d, i) => `<button role="listitem" data-di="${i}" class="${i === mc!.sel ? 'on' : ''} ${d.source !== '0g' ? 'halt' : ''}">cp ${d.cp} · ${num(d.sim_time_s, 1)} s<br>${esc((d as any).actions ? Object.values((d as any).actions).join('/') : d.action ?? 'SAFE_HALT')}</button>`)
+  $('mc-timeline').innerHTML = (mc.id === 'swarm-carla-010' ? '<button class="plan" data-plan>PLAN<br>0G strategist</button>' : '') + items.join('')
+  $('mc-timeline').querySelectorAll<HTMLButtonElement>('[data-di]').forEach((b) => b.addEventListener('click', () => mcSelect(Number(b.dataset.di))))
+  $('mc-timeline').querySelector('[data-plan]')?.addEventListener('click', () => $('mc-plan').scrollIntoView({ block: 'center' }))
+}
+function mcSelect(i: number) {
+  if (!mc) return
+  mc.sel = i; const d = mc.ds[i], k = tickAt(d.sim_time_s), r = mc.run
+  mcTimeline()
+  const vid = $<HTMLVideoElement>('mc-video')
+  if (mc.aligned && vid.getAttribute('src')) { try { vid.currentTime = d.sim_time_s } catch { /* not loaded yet */ } }
+  mcOverlay(d.sim_time_s); mcTele(d.sim_time_s)
+  const st = r?.storage, sig = st?.signaturesVerified != null && st.signatures0g ? `${st.signaturesVerified} of ${st.signatures0g} verified for this run` : st?.signaturesArchived != null ? `archived (${st.signaturesArchived}), not re-checked here` : 'not archived for this run'
+  $('mc-insp').innerHTML = `<p class="kicker">Decision inspector</p><h3 style="margin:0 0 8px">Checkpoint ${d.cp}: ${esc(say(d.action))}</h3>
+    ${why(d) ? `<div class="why-q">“${esc(why(d))}”<br><small class="muted">the model’s stated reason</small></div>` : ''}
+    <dl>
+      <dt>Sim time</dt><dd>${num(d.sim_time_s, 2)} s</dd><dt>Action</dt><dd>${esc((d as any).actions ? JSON.stringify((d as any).actions) : d.action ?? 'SAFE_HALT')}</dd>
+      <dt>Source</dt><dd>${d.source === '0g' ? '0G Router, private tier' : esc(d.source) + ' (safe stop)'}</dd><dt>Latency</dt><dd>${esc(d.latency_ms)} ms</dd>
+      <dt>Request ID</dt><dd>${esc(d.request_id)}</dd><dt>Provider</dt><dd>${esc(d.provider)}</dd><dt>Signature</dt><dd>${esc(sig)}</dd>
+      <dt>LiDAR gap</dt><dd>${k?.lidar_gap != null ? num(k.lidar_gap, 2) + ' m (measured)' : '-'}</dd><dt>Gap</dt><dd>${num(k?.gt_gap, 2)} m (ground truth)</dd>
+      <dt>TTC</dt><dd>${k?.gt_ttc_s == null ? 'no closing' : num(k.gt_ttc_s, 2) + ' s'} (ground truth)</dd><dt>Speeds</dt><dd>car ${num(k?.ego_v, 1)} m/s · attacker ${num(k?.lead_v, 1)} m/s</dd>
+      <dt>CCS</dt><dd>${num(k?.ccs, 3)} (recomputed)</dd>
+    </dl><details style="margin-top:10px"><summary>Raw response</summary><pre class="msg">${esc(d.content ?? JSON.stringify(d, null, 1))}</pre></details>`
+}
+function mcTele(cursor?: number) {
+  if (!mc) return
+  const cv = $<HTMLCanvasElement>('mc-tele'); drawTele(cv, mc.ticks, mc.ds, cursor)
+}
+function mcVerdict() {
+  if (!mc) return
+  const r = mc.run, crashed = r?.collision ?? mc.ticks.some((t) => t.collision)
+  const words = crashed ? 'The vehicle collided with the attacker.' : `The vehicle avoided collision.${r?.minTtc != null ? ` The minimum TTC was ${num(r.minTtc, 2)} s.` : ''}`
+  const name = r?.name ?? mc.id
+  $('mc-verdict').innerHTML = `<h2 class="sec">${esc(words)}</h2>
+    <div class="stats"><div><b>${num(r?.minGap, 2)} m</b><span>closest gap</span></div><div><b>${num(r?.minTtc, 2)} s</b><span>minimum time to collision</span></div>
+    <div><b>${num(r?.ccs, 2)}</b><span>peak criticality (CCS, 0 to 1)</span></div><div><b>${esc(r?.decisions0g ?? mc.ds.filter((d) => d.source === '0g').length)} of ${esc(r?.decisions ?? mc.ds.length)}</b><span>decisions from 0G</span></div></div>
+    <div class="row" style="margin-top:14px"><a class="btn k" href="/verify/${name.split('/').map(encodeURIComponent).join('/')}">Check the evidence for this run</a><a class="btn" href="/lab">Run your own test</a></div>`
+}
+$<HTMLVideoElement>('mc-video').addEventListener('timeupdate', () => {
+  if (!mc?.aligned) return
+  const t = $<HTMLVideoElement>('mc-video').currentTime; mcOverlay(t); mcTele(t)
+  const d = decAt(t), i = d ? mc.ds.indexOf(d) : -1  // highlight the decision in force at this moment
+  $('mc-timeline').querySelectorAll<HTMLButtonElement>('[data-di]').forEach((b) => b.classList.toggle('on', Number(b.dataset.di) === i))
+})
+$('mc-worst').addEventListener('click', () => {
+  if (!mc) return
+  const w = mc.ticks.reduce((m, t, i) => (t.gt_gap < (mc!.ticks[m]?.gt_gap ?? Infinity) ? i : m), 0), t = mc.ticks[w]?.t_s ?? 0
+  const vid = $<HTMLVideoElement>('mc-video'); if (mc.aligned && vid.getAttribute('src')) { vid.currentTime = Math.max(0, t - 1); vid.pause() }
+  mcOverlay(t); mcTele(t)
+})
+$('mc-peek').addEventListener('click', () => {
+  if (!mc?.live) return
+  const img = $<HTMLImageElement>('mc-live'), on = img.classList.contains('hidden')
+  img.classList.toggle('hidden', !on); img.classList.add('peek')
+  if (on) img.src = api(`/api/live/${encodeURIComponent(mc.id)}`); else img.removeAttribute('src')
+  $('mc-peek').textContent = on ? 'Hide live preview' : 'Peek live (low frame rate)'
+})
+
+// ---------- Proof Explorer: three questions, five honest statuses ----------
+type PS = 'verified' | 'failed' | 'unavailable' | 'notchecked' | 'na'
+const PS_WORD: Record<PS, string> = { verified: 'Verified', failed: 'Failed', unavailable: 'Unavailable', notchecked: 'Not checked', na: 'Not applicable' }
+const proof = (st: PS, title: string, guarantee: string, artifact: string, how: string) =>
+  `<details class="proof"><summary><b>${esc(title)}</b><span class="st ${st}">${PS_WORD[st]}</span></summary><div class="body"><p>${guarantee}</p><p><b>Artifact:</b> ${artifact}</p><p class="muted">${how}</p><button class="btn" data-recheck>Check again</button></div></details>`
+async function openVerify(id: string) {
+  $<HTMLInputElement>('vf-in').value = id
+  $('vf-groups').innerHTML = '<div class="card">Loading…</div>'; $('vf-timeline').innerHTML = ''
+  let runs: Run[] = []
+  try { runs = await getJson('/api/runs') } catch { /* offline */ }
+  const r = runs.find((x) => x.name === id || x.storage?.publicRoot === id) ?? (mc?.run?.name === id ? mc.run : null)
+  if (!r) { $('vf-groups').innerHTML = `<div class="card">No run matches <code>${esc(id)}</code>${online ? '' : ' (the console is offline)'}. Try <a href="/verify/${FEATURED}">paid test 002</a>.</div>`; return }
+  let ds: Decision[] = []
+  try { await post('/api/stream', { run: r.name, mode: 'replay', speed: 8 }, (e) => { if (e.t === 'decision') ds.push(e.d) }) } catch { /* summary only */ }
+  const zg = ds.filter((d) => d.source === '0g'), first = zg[0], last = zg.at(-1), ch = r.chain, st = r.storage, p = r.payment
+  const cbf = ch?.committedBeforeFirstCall ?? (ch?.commitBlockTimestamp && first?.wall_clock_utc ? ch.commitBlockTimestamp * 1000 < Date.parse(first.wall_clock_utc) : null)
+  const ts = (n?: number | null) => (n ? new Date(n * 1000).toISOString().replace('.000', '') : '-')
+  $('vf-timeline').innerHTML = `<h2 class="sec">Timeline: ${esc(r.name === FEATURED ? 'paid test 002' : r.name)}</h2><ol class="vtl">
+    <li class="${ch ? 'ok' : 'na'}"><b>Scenario committed</b><span>${ch ? `0G Galileo block time ${ts(ch.commitBlockTimestamp)}` : 'not anchored (free run)'}</span></li>
+    <li class="${first ? 'ok' : 'na'}"><b>First 0G decision</b><span>${first ? esc(first.wall_clock_utc) : '-'}</span></li>
+    <li class="${last ? 'ok' : 'na'}"><b>Last 0G decision</b><span>${last ? esc(last.wall_clock_utc) : '-'}</span></li>
+    <li class="${ch?.finalizeTx ? 'ok' : 'na'}"><b>Result finalized</b><span>${ch?.finalizeTx ? link(galileoTx(ch.finalizeTx), short(ch.finalizeTx, 10, 6)) : 'not finalized'}</span></li></ol>`
+  const sigSt: PS = st?.signaturesVerified != null && st.signatures0g ? (st.signaturesVerified === st.signatures0g ? 'verified' : 'failed') : st?.signaturesArchived ? 'notchecked' : zg.length ? 'unavailable' : 'na'
+  const g1 = [
+    proof(zg.length ? 'verified' : 'unavailable', '0G Router private inference', 'Every attacker move came from the 0G Router on the private tier, which refuses to fall back to another tier.',
+      `${zg.length} of ${ds.length} decisions with request IDs${first ? `, first <code>${esc(first.request_id)}</code>` : ''}`, 'Checked here: each decision record names its source and carries a request ID.'),
+    proof(sigSt, 'Archived provider signatures', 'The provider’s signature on each response proves which 0G provider answered.', st ? `${esc(st.signaturesArchived ?? 0)} archived, ${esc(st.signaturesVerified ?? 'not')} verified of ${esc(st.signatures0g ?? '-')}` : 'no archive for this run', 'Signatures are archived at publish time because providers drop them after about 20 minutes.'),
+    proof('notchecked', 'Attacker identity (ERC-8004 #579)', 'The attacker is registered as agent #579 in the ERC-8004 registry on 0G Galileo.', link(galileoAddr(ERC8004), 'ERC-8004 registry'), 'Not read from the chain by this page; open the registry to check.'),
+  ]
+  const g2 = [
+    proof(st?.publicRoot ? 'notchecked' : 'na', '0G Storage roots', 'The public log and the sealed bundle are stored on 0G Storage; downloading by root and re-hashing proves they are unchanged.', st ? `public <code>${esc(st.publicRoot)}</code><br>sealed <code>${esc(st.sealedRoot)}</code>` : 'free runs are not stored', 'Download and re-hash with the verifier CLI (scripts in packages/episode).'),
+    proof(cbf === true ? 'verified' : cbf === false ? 'failed' : ch ? 'unavailable' : 'na', 'Committed before the first decision', 'The scenario was locked on-chain before the attacker’s first call, so it could not be picked after seeing results.', ch ? `${link(galileoTx(ch.commitTx), short(ch.commitTx, 10, 6))} at ${ts(ch.commitBlockTimestamp)} vs first decision ${esc(first?.wall_clock_utc ?? '-')}` : 'not anchored', 'Checked here: commit block time compared with the first 0G call.'),
+    proof(ch?.onchainMatches === true ? 'verified' : ch?.onchainMatches === false ? 'failed' : ch ? 'unavailable' : 'na', 'Result finalized after the last decision', 'The roots and result hash were written on-chain after the run and match the stored record.', ch?.finalizeTx ? link(galileoTx(ch.finalizeTx), short(ch.finalizeTx, 10, 6)) : 'not finalized', 'Checked by the runner when it finalized: the on-chain record matches the published roots.'),
+  ]
+  const g3 = [
+    proof(p ? 'verified' : 'na', 'Hedera x402 payment', 'Our agent paid for this test on Hedera (quote, spending-policy approval, settlement, one-run permit). The tester only signed the request.', p ? `${link(p.hashscan, esc(p.transaction))} · suite <code>${esc(p.suite)}</code> · payer <code>${esc(p.payer)}</code>` : 'free run: no payment', p ? 'Checked at purchase: the settlement was confirmed on the Hedera mirror node.' : 'Free demo runs are not paid.'),
+    proof((r as any).requestedBy ? 'verified' : 'na', 'Signed test request', 'A wallet signed a readable test request (EIP-191); the console verified it before queuing.', (r as any).requestedBy ? `<code>${esc((r as any).requestedBy)}</code>` : 'not recorded for this run', 'Checked by the console when the run was requested.'),
+  ]
+  const grp = (t: string, sub: string, items: string[]) => `<div class="card"><h2 class="sec" style="margin-bottom:4px">${t}</h2><p class="muted" style="margin:0 0 6px">${sub}</p>${items.join('')}</div>`
+  $('vf-groups').innerHTML = grp('Who made the decisions?', '0G Router (inference)', g1) + grp('Can the evidence be altered?', '0G Storage and 0G Galileo (storage and chain)', g2) + grp('Who requested and paid?', 'Hedera', g3)
+  $('vf-groups').querySelectorAll('[data-recheck]').forEach((b) => b.addEventListener('click', () => openVerify(r.name)))
+}
+$('vf-go').addEventListener('click', () => go(`/verify/${encodeURIComponent($<HTMLInputElement>('vf-in').value.trim() || FEATURED)}`))
+boot()

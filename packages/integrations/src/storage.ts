@@ -5,13 +5,45 @@ import { ethers } from 'ethers'
 
 export type StorageConfig = { rpcUrl: string; indexerUrl: string; privateKey?: string }
 
+/** A wallet that remembers the hash of the last transaction it sent, so the upload can check its receipt. */
+class SubmitWatcher extends ethers.Wallet {
+  lastTx: string | null = null
+  override async sendTransaction(tx: ethers.TransactionRequest) {
+    const r = await super.sendTransaction(tx)
+    this.lastTx = r.hash
+    return r
+  }
+}
+
 export function storage(cfg: StorageConfig) {
   const indexer = new Indexer(cfg.indexerUrl)
   return {
     async uploadBlob(blob: Uint8Array): Promise<{ root: string; txHash: string; txSeq: number }> {
       if (!cfg.privateKey) throw new Error('uploading needs a signer key')
-      const signer = new ethers.Wallet(cfg.privateKey, new ethers.JsonRpcProvider(cfg.rpcUrl))
-      const [res, err] = await indexer.upload(new MemData(blob), cfg.rpcUrl, signer)
+      const provider = new ethers.JsonRpcProvider(cfg.rpcUrl)
+      const signer = new SubmitWatcher(cfg.privateKey, provider)
+      // SDK 1.2.13 under-estimates Flow.submit gas (seen live: 320,353 limit, out of gas, status 0; 500,000 succeeds), and
+      // after a reverted submit it waits for the log entry in a `while (true)` loop (Uploader.js). So: fixed gas limit,
+      // our own receipt check, and a hard timeout.
+      const gasLimit = BigInt(process.env.ZG_STORAGE_GAS_LIMIT ?? '1000000')
+      let stop = false
+      const watch = (async () => {
+        const deadline = Date.now() + Number(process.env.ZG_STORAGE_TIMEOUT_MS ?? 360_000)
+        while (!stop) {
+          await new Promise((r) => setTimeout(r, 3000))
+          if (stop) break
+          if (signer.lastTx) {
+            const rc = await provider.getTransactionReceipt(signer.lastTx).catch(() => null)
+            if (rc && rc.status === 0) throw new Error(`0G Storage submit reverted: ${signer.lastTx}`)
+          }
+          if (Date.now() > deadline) throw new Error(`0G Storage upload timed out${signer.lastTx ? ` after submit ${signer.lastTx}` : ''}`)
+        }
+        return null as never
+      })()
+      let res: any, err: Error | null
+      try {
+        [res, err] = await Promise.race([indexer.upload(new MemData(blob), cfg.rpcUrl, signer, undefined, undefined, { gasLimit }), watch])
+      } finally { stop = true }
       if (err) throw err
       if ('txHash' in res) return { root: res.rootHash, txHash: res.txHash, txSeq: res.txSeq }
       return { root: res.rootHashes[0], txHash: res.txHashes[0], txSeq: res.txSeqs[0] } // fragmented upload: first fragment (not used for envelopes <4 GB)

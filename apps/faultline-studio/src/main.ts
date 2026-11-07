@@ -48,9 +48,9 @@ async function post(path: string, body: unknown, onEvent: (e: any) => void) {
 }
 
 // ---------- navigation ----------
-type View = 'home' | 'flow' | 'explore'
+type View = 'home' | 'flow' | 'explore' | 'stack'
 function show(view: View) {
-  for (const v of ['home', 'flow', 'explore']) $(`v-${v}`).classList.toggle('hidden', v !== view)
+  for (const v of ['home', 'flow', 'explore', 'stack']) $(`v-${v}`).classList.toggle('hidden', v !== view)
   document.querySelectorAll<HTMLButtonElement>('nav.top button').forEach((b) => { b.classList.toggle('on', b.dataset.view === view); b.setAttribute('aria-current', b.dataset.view === view ? 'page' : 'false') })
   if (view === 'explore') renderExplore()
   history.replaceState(null, '', view === 'flow' ? '#run' : location.pathname)
@@ -174,6 +174,13 @@ $('s1-next').addEventListener('click', () => step(2))
 $('s2-next').addEventListener('click', () => step(3))
 $('again').addEventListener('click', () => step(2))
 
+// Swarm roles: one source, the run's plan.json via /api/showcase (fallback = the same plan text)
+let ROLES: Record<string, string> = { A: 'Lead vehicle, progressive braking', B: 'Front cut-in, block right lane', C: 'Rear cut-in, compress gap', D: 'Rear guard, maintain safe distance' }
+const ROLE_CAR: Record<string, [string, string]> = { A: ['#e5484d', 'red car'], B: ['#f3c623', 'yellow taxi'], C: ['#3b82f6', 'blue car'], D: ['#d63384', 'magenta car'] }
+const rolesHtml = () => Object.entries(ROLES).map(([k, v]) => `<li><i style="background:${ROLE_CAR[k]?.[0] ?? '#999'}"></i><b>${esc(k)}</b> ${esc(ROLE_CAR[k]?.[1] ?? '')}: ${esc(v)}</li>`).join('')
+const paintRoles = () => document.querySelectorAll('[data-roles]').forEach((el) => { el.innerHTML = rolesHtml() })
+getJson('/api/showcase').then((sc) => { const sw = (Array.isArray(sc) ? sc : []).find((x: any) => x.id === 'swarm'); if (sw?.plan?.roles) { ROLES = sw.plan.roles; paintRoles() } }).catch(() => { /* fallback stays */ })
+paintRoles()
 type Policy = { id: string, name: string, description: string, digest: string | null, compatible: boolean | null, paid?: boolean }
 const PLAIN: Record<string, string> = {
   'pdm-lite': 'The rule-based planner from the CARLA Leaderboard. It drives on what its own LiDAR sees.',
@@ -189,8 +196,20 @@ const FKEY = 'faultline.flow'
 function save() { try { localStorage.setItem(FKEY, JSON.stringify({ step: Math.min(cur, 3), policy, attack, mode, guest, wallet: lastTried?.info.rdns ?? null })) } catch { /* private mode */ } }
 function restore(): any { try { return JSON.parse(localStorage.getItem(FKEY) ?? 'null') } catch { return null } }
 $('guest').addEventListener('click', () => { guest = true; wallet = null; mode = 'free'; save(); renderWallets(); paintWallet(); renderChoices(); step(2) })
-const BYO = 'https://github.com/Soni-Shivam/Pivot_HTE/blob/main/docs/INTEGRATE_YOUR_STACK.md'
-$<HTMLAnchorElement>('byo').href = BYO
+$('byo').addEventListener('click', () => show('stack'))
+// ---------- your stack: tabs, copy buttons, onboarding request (copied to the clipboard; nothing is sent or stored) ----------
+document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((x) => { x.classList.toggle('on', x === b); $(x.dataset.tab!).classList.toggle('hidden', x !== b) })
+}))
+const copyText = async (t: string, b: HTMLElement, done = 'Copied') => { try { await navigator.clipboard.writeText(t); b.textContent = done } catch { b.textContent = 'Select and copy manually' } }
+document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((b) => b.addEventListener('click', () => copyText($(b.dataset.copy!).textContent ?? '', b)))
+$('onboard').addEventListener('click', () => copyText(`Faultline onboarding request
+Stack name:
+Adapter (python | leaderboard | ros2):
+Sensors (type, count, mount):
+Control interface (Control / Ackermann / Twist):
+Checker result (python -m faultline.stack check stack.yaml):
+Contact:`, $('onboard-msg'), 'Copied. Paste it into a message to the Faultline team.'))
 async function loadPolicies() {
   try { const p = await getJson('/api/policies'); if (Array.isArray(p) && p.length) policies = p } catch { /* built-in list stays */ }
   renderChoices()
@@ -285,19 +304,25 @@ async function startStream(run: string, smode: 'live' | 'replay', by: 'run' | 'j
         progress(e.id, e.status, e.title, det)
         if (e.id === 'sim' && e.status === 'run') $('s-job').textContent = 'Running'
       }
+      if (e.t === 'await0g' && !decisions.length) progress('zg', 'run', 'Connecting to 0G')
       if (e.t === 'await0g' && (!waiting || waiting.cp !== e.cp)) { waiting = { cp: e.cp, t0: performance.now() }; renderFeed() }
       if (e.t === 'idle' && waiting) { waiting = null; renderFeed() }
       if (e.t === 'decision') {
+        progress('zg', 'ok', 'Connected to 0G (private tier)')
+        progress('cp', 'run', `Checkpoint ${decisions.length + 1}: ${say(e.d.action)}`, e.d.source === '0g' ? `answered in ${e.d.latency_ms} ms` : '')
+        if (e.d.source !== '0g') progress('halt', 'fail', 'Safe stop: no valid 0G answer, the car stopped safely')
         logLine(`0G cp${e.d.cp} ${e.d.action ?? 'SAFE_HALT'} ${e.d.latency_ms}ms ${e.d.request_id}`)
         decisions.push(e.d); waiting = null; flashUntil = performance.now() + 1200; flashAction = e.d.action ?? 'SAFE_HALT'
         $('s-dec').textContent = String(decisions.length); renderFeed(true)
       }
       if (e.t === 'ticks') { ticks.push(...e.rows); const r = ticks.at(-1)!; $('s-t').textContent = `${num(r.t_s, 1)} s`; $('s-gap').textContent = `${num(r.gt_gap, 1)} m`; $('s-ttc').textContent = r.gt_ttc_s == null ? 'safe' : `${num(r.gt_ttc_s, 1)} s` }
       if (e.t === 'log') logLine(e.line)
+      if (e.t === 'queue') progress('queue', e.pos > 0 ? 'run' : 'ok', e.pos > 0 ? `Queued: position ${e.pos}${e.etaS != null ? `, about ${Math.round(e.etaS)} s` : ''}` : 'Started')
       if (e.t === 'queue') $('s-job').textContent = e.pos > 0 ? `#${e.pos} in line${e.etaS != null ? ` · about ${Math.round(e.etaS)} s` : ''}` : 'Starting'
       if (e.t === 'done' || e.t === 'error') {
         waiting = null; renderFeed()
         runMeta = e.run ?? e.job?.result ?? runMeta
+        if (document.getElementById('pg-cp')) progress('cp', 'ok', `${decisions.length} checkpoints answered`)
         progress('report', e.t === 'done' ? 'ok' : 'fail', e.t === 'done' ? 'Report ready' : 'Stopped', e.t === 'done' ? '' : esc(e.message))
         $('live-tag').textContent = e.t === 'done' ? 'Done' : 'Stopped'; $('live-tag').classList.remove('live'); $('s-job').textContent = e.t === 'done' ? 'Finished' : 'Did not finish'
         $('to-results').classList.remove('hidden')
@@ -396,7 +421,8 @@ const TIP = {
 function openResults() {
   step(5)
   const r = runMeta
-  worstIdx = ticks.reduce((m, t, i) => ((t.ccs ?? 0) > (ticks[m]?.ccs ?? 0) ? i : m), 0)
+  // one definition everywhere: the closest approach (minimum ground-truth gap); headline numbers come from the run's metrics
+  worstIdx = ticks.reduce((m, t, i) => (t.gt_gap < (ticks[m]?.gt_gap ?? Infinity) ? i : m), 0)
   const at = ticks[worstIdx], cause = decisions.filter((d) => d.sim_time_s < (at?.t_s ?? 0)).at(-1)
   const crashed = r?.collision ?? ticks.some((t) => t.collision)
   const gap = r?.minGap ?? (ticks.length ? Math.min(...ticks.map((t) => t.gt_gap)) : null)
@@ -407,8 +433,11 @@ function openResults() {
     <div class="row" style="margin-top:14px">
       <span class="pill"><span class="tip" tabindex="0" data-tip="${esc(TIP.ttc)}">Tightest time to collision</span>&nbsp;<b>${num(r?.minTtc, 1)} s</b></span>
       <span class="pill"><span class="tip" tabindex="0" data-tip="${esc(TIP.ccs)}">Danger score</span>&nbsp;<b>${num(r?.ccs, 2)} / 1</b></span>
-      ${at ? `<span class="pill y">Closest call at ${num(at.t_s, 1)} s${cause ? `, after the attacker chose to “${esc(say(cause.action).toLowerCase())}”` : ''}</span>` : ''}
+      ${at ? `<span class="pill y">Closest approach at ${num(at.t_s, 1)} s${cause ? `, after the attacker chose to “${esc(say(cause.action).toLowerCase())}”` : ''}</span>` : ''}
     </div>`
+  const vid = $<HTMLVideoElement>('rvideo'), rv = (r as any)?.video as string | undefined
+  vid.classList.toggle('hidden', !rv); $('rscene').classList.toggle('hidden', !!rv)
+  if (rv) { vid.src = api('/media/' + rv); vid.onloadedmetadata = () => { vid.currentTime = Math.max(0, (at?.t_s ?? 0) - 1) } } else vid.removeAttribute('src')
   const s = $<HTMLInputElement>('scrub'); s.max = String(Math.max(0, ticks.length - 1)); s.value = String(worstIdx)
   drawResults()
   const t = trustFromRun(r, decisions, runFree)
@@ -427,6 +456,7 @@ function openResults() {
 }
 function drawResults() {
   const i = Number($<HTMLInputElement>('scrub').value), r = ticks[i]
+  const vid = $<HTMLVideoElement>('rvideo'); if (vid.getAttribute('src') && r && Number.isFinite(vid.duration)) vid.currentTime = Math.min(vid.duration, r.t_s)
   drawScene($<HTMLCanvasElement>('rscene'), r, ticks.slice(Math.max(0, i - 120), i + 1), (() => { const d = decisions.filter((d) => d.sim_time_s <= (r?.t_s ?? 0)).at(-1); return d ? say(d.action) : undefined })(), 0.8)
   drawTele($<HTMLCanvasElement>('rtele'), ticks, decisions, r?.t_s)
   $('scrub-t').textContent = `${num(r?.t_s)} s`
@@ -456,8 +486,8 @@ function trustFromRun(r: Run | null, ds: Decision[], free = false): Trust {
     arkiv: r?.arkivEntity ?? null, free: free || !!r?.free }
 }
 function railHtml(t: Trust) {
-  type S = 'up' | 'part' | 'down' | ''
-  const WORD: Record<S, string> = { up: 'proven', part: 'partly proven', down: 'check failed', '': 'not proven' }
+  type S = 'up' | 'part' | 'down' | 'id' | ''
+  const WORD: Record<S, string> = { up: 'proven', part: 'partly proven', down: 'check failed', id: 'identity information', '': 'not proven' }
   const card = (s: S, net: string, body: string, proves: string, href?: string | null) => {
     const inner = `<span class="n"><i class="dot ${s}" aria-hidden="true"></i>${net}<span class="sr">: ${WORD[s]}</span>${href ? ' ↗' : ''}</span><span class="s">${body}</span>`
     return href ? `<a class="tp" href="${esc(href)}" target="_blank" rel="noopener" data-tip="${esc(proves)}">${inner}</a>` : `<span class="tp" tabindex="0" data-tip="${esc(proves)}">${inner}</span>`
@@ -473,8 +503,8 @@ function railHtml(t: Trust) {
     card(t.onchainMatches === false || t.commitBeforeFirst === false ? 'down' : t.onchainMatches && t.commitBeforeFirst ? 'up' : t.commitTx ? 'part' : '', '0G Galileo chain',
       t.commitTx ? `Committed before the first move ${t.commitBeforeFirst === true ? '✓' : t.commitBeforeFirst === false ? '✗' : '-'} · result matches ${t.onchainMatches === true ? '✓' : t.onchainMatches === false ? '✗' : '-'}` : t.free ? freeNote : 'Not anchored',
       'Proves the test setup was locked on-chain before the attacker’s first move, and the final result hash matches what was stored.', t.commitTx ? galileoTx(t.commitTx) : null),
-    card(t.agentId != null ? 'up' : '', 'ERC-8004 identity', t.agentId != null ? `Attacker agent #${t.agentId}` : 'Not linked to this run',
-      'Proves which registered AI agent ran the attack, via the ERC-8004 agent registry on 0G Galileo.', galileoAddr(ERC8004)),
+    card('id', 'ERC-8004 identity', `Attacker agent #${t.agentId ?? 579} (identity on 0G Galileo)`,
+      'The attacker’s registered identity in the ERC-8004 agent registry on 0G Galileo. Identity information, not a per-run proof.', galileoAddr(ERC8004)),
     card(t.hedera ? 'up' : '', 'Hedera payment', t.hedera ? `Paid · ${short(t.hedera.transaction, 10, 6)}` : t.free ? 'Free demo run, no payment' : 'No payment',
       'Proves our agent paid for this test with an x402 micropayment on Hedera, with no human approval step.', t.hedera?.hashscan),
     card(t.arkiv ? 'up' : '', 'Arkiv', t.arkiv ? `Public claim ${short(t.arkiv, 6, 4)}` : 'No public claim for this run',
@@ -510,7 +540,7 @@ function renderExplore() {
   $('explore').innerHTML = [
     section('runs', '', 'Recorded tests', 'Replay any finished test decision by decision. Free, no wallet needed.', `<div class="tscroll" style="margin-top:12px"><table><thead><tr>${th('Test')}${th('Simulator')}${th('AI moves from 0G')}${th('Danger', TIP.ccs)}${th('Tightest TTC', TIP.ttc)}${th('')}</tr></thead><tbody id="runs"><tr><td colspan="6">Loading…</td></tr></tbody></table></div>`),
     section('swarm', 'c', 'Coordinated multi-vehicle attack', 'One planning call to 0G assigns roles to four cars; then a 0G call every second steers all four at once to box the self-driving car in.',
-      `${clip('videos/video-swarm-fog-001__stitched.mp4', 'squeeze', 'Coordinated multi-vehicle attack in fog, CARLA')}<div class="split"><div class="plan"><b>Plan from 0G: “Staggered cut-in”</b><ul><li><i style="background:#e5484d"></i>A · red car, your lane, 22 m ahead: slows to compress the gap</li><li><i style="background:#f3c623"></i>B · taxi, left lane, 4 m ahead: holds, then cuts in</li><li><i style="background:#3b82f6"></i>C · blue car, left lane, alongside: blocks the escape lane</li><li><i style="background:#d63384"></i>D · patrol car, your lane, 9 m behind: closes from the rear</li></ul><pre class="msg">{"actions": {"A": "SLOW_DOWN", "B": "KEEP_LANE", "C": "KEEP_LANE", "D": "KEEP_LANE"},\n "phase": "Gap Compression",\n "why": "A slows to compress gap; B holds; C waits for gap to open for cut-in."}</pre></div><div><dl class="kv">${kv([['Moves from 0G', '10 of 10 (0 safe stops)'], ['Closest gap', '3.5 m'], ['Tightest TTC', '1.1 s'], ['Crash', 'none'], ['Plan request', RID('e1a9a298-520d-42bf-ad30-ad67d0cc5894')], ['Anchored on-chain', 'no (prototype run)']])}</dl></div></div>
+      `${clip('videos/video-swarm-fog-001__stitched.mp4', 'squeeze', 'Coordinated multi-vehicle attack in fog, CARLA')}<div class="split"><div class="plan"><b>Plan from 0G: “Staggered cut-in”</b><ul data-roles>${rolesHtml()}</ul><pre class="msg">{"actions": {"A": "SLOW_DOWN", "B": "KEEP_LANE", "C": "KEEP_LANE", "D": "KEEP_LANE"},\n "phase": "Gap Compression",\n "why": "A slows to compress gap; B holds; C waits for gap to open for cut-in."}</pre></div><div><dl class="kv">${kv([['Moves from 0G', '10 of 10 (0 safe stops)'], ['Closest gap', '3.5 m'], ['Tightest TTC', '1.1 s'], ['Crash', 'none'], ['Plan request', RID('e1a9a298-520d-42bf-ad30-ad67d0cc5894')], ['Anchored on-chain', 'no (prototype run)']])}</dl></div></div>
        <div class="rail" style="margin-top:14px">${railHtml({ decisions0g: 10, decisions: 10, requestId: 'e1a9a298-520d-42bf-ad30-ad67d0cc5894', provider: PROVIDER, sigsVerified: 10, sigsTotal: 10, agentId: 579 })}</div>`),
     section('ab', 'y', 'A/B policy comparison', 'Both policies face the exact same scripted attack (replayed, no 0G calls), so the comparison is fair. Recorded at 4 sites; the result was the same at all of them.',
       `${clip('videos/arena-live0g-video-001__r7l-2s3__side_by_side.mp4', 'ab', 'PDM-Lite and cautious IDM side by side against a live 0G attacker')}<div><div><div class="tscroll" id="ab-table">${arenaTable(ARENA_RECORDED)}</div>
@@ -531,7 +561,10 @@ function renderExplore() {
 async function loadRuns() {
   try { allRuns = await getJson('/api/runs') } catch { /* offline: keep what we have */ }
   const el = document.getElementById('runs'); if (!el) return
-  el.innerHTML = allRuns.slice(0, 25).map((r) => `<tr><td><code>${short(r.name, 14, 4)}</code>${r.payment ? ' <span class="pill sm p">paid</span>' : ''}</td><td>${esc(r.world)}</td><td>${esc(r.decisions0g)} of ${esc(r.decisions)}</td>
+  // presentable runs only: paid, demo and featured runs that finished; no debug, stale or empty rows
+  const ok = (r: Run & { mtime?: number }) => /^(paid-|demo-free-|demo-00[1-3]$|cutin-00[12]$|swarm-carla-0(08|10)$)/.test(r.name) && r.decisions != null && r.ccs != null && !r.name.includes('replay')
+    && !(r.status === 'running' && Date.now() - (r.mtime ?? 0) > 10 * 60_000)
+  el.innerHTML = allRuns.filter(ok).slice(0, 25).map((r) => `<tr><td><code>${short(r.name, 14, 4)}</code>${r.payment ? ' <span class="pill sm p">paid</span>' : ''}</td><td>${esc(r.world)}</td><td>${esc(r.decisions0g)} of ${esc(r.decisions)}</td>
     <td><span class="pill sm ${risk(r.ccs).cls}">${num(r.ccs, 2)}</span></td><td>${num(r.minTtc, 1)} s</td>
     <td style="text-align:right"><button class="pill sm k" data-replay="${esc(r.name)}">Replay</button></td></tr>`).join('') ||
     `<tr><td colspan="6">${online ? 'No recorded tests yet' : 'The console is offline. Recorded tests load when it reconnects.'}</td></tr>`

@@ -40,6 +40,9 @@ const PAUSED = 'Live runs are paused for today. Replay a recorded run'
 const nonces = new Map<string, number>()
 const walletCaps = new WalletCaps(Number(process.env.FAULTLINE_WALLET_MAX_RUNS ?? 3))
 // Guest path (no wallet): free demo runs only, 1 per IP per hour, 6 per day in total. Paid runs always need a signature.
+const guestKey = (req: Request) => req.header('x-vercel-forwarded-for')?.split(',')[0].trim() || clientIp(req.socket.remoteAddress, req.header('x-forwarded-for'))
+// A double click must not start two runs: the same visitor (wallet or network) within 30 s gets the job it already has.
+const recentStart = new Map<string, { jobId: string, at: number }>()
 const guestPerIp = new RateLimit(Number(process.env.FAULTLINE_GUEST_PER_IP_HOUR ?? 3), 3600_000), guestDaily = new WalletCaps(Number(process.env.FAULTLINE_GUEST_MAX_RUNS ?? 30))
 const postLimit = new RateLimit(Number(process.env.FAULTLINE_RATE_POST ?? 12), 60_000)
 const allLimit = new RateLimit(Number(process.env.FAULTLINE_RATE_ALL ?? 600), 60_000)
@@ -197,6 +200,7 @@ function runSummary(name: string) {
     chain: a ? { registry: a.registry, commitTx: a.commitTx, commitBlockTimestamp: a.commitBlockTimestamp, finalizeTx: a.finalizeTx ?? null, onchainMatches: a.onchainMatches ?? null } : null,
     storage: p ? { publicRoot: p.publicRoot, sealedRoot: p.sealedRoot, publicTx: p.publicTx, sealedTx: p.sealedTx, signaturesArchived: p.signatures_archived ?? null, signatures0g: p.signatures_0g ?? null, signaturesVerified: sig?.verified ?? null } : null,
     // ERC-8004 adversary identity (docs/submission/CHECKLIST.md) shown only for anchored runs; no per-run Arkiv entity exists
+    video: mediaUrl(`runs/${name}/screen.mp4`) ?? mediaUrl(`runs/${name}/chase_raw.mp4`),
     agentId: a ? 579 : null, arkivEntity: null, free: name.startsWith('demo-free-'), requestedBy: readJson(join(dir, 'requested_by.json'))?.requested_by ?? null,
     payment: job ? { transaction: job.transaction, payer: job.payer, suite: job.suite, hashscan: hashscanTx(job.transaction) } : null,
   }
@@ -439,10 +443,14 @@ app.post('/api/demo-run', async (req, res) => {
   const lane = suite === 'cut-in-v1-carla' ? 'carla' : 'kin'
   if (lanes[lane].length > MAX_WAITING) return deny(res, 429, 'The queue is full. Try again in a few minutes or replay a recorded run')
   if (caps.left().runs_left < 1 || (mode === 'paid' && caps.left().buys_left < 1)) return deny(res, 429, PAUSED)
+  const visitor = typeof req.body?.address === 'string' ? req.body.address.toLowerCase() : `ip:${guestKey(req)}`
+  const prev = recentStart.get(visitor), pj = prev && Date.now() - prev.at < 30_000 ? jobs.get(prev.jobId) : undefined
+  if (pj) { res.json({ jobId: pj.id, queuePos: queuePos(pj), label: pj.label, duplicate: true }); return }
   let v: { address: string } | { error: string }
   if (req.body?.guest === true && !req.body?.signature) {
     if (mode !== 'free') return deny(res, 401, 'Paid runs need a signed wallet request. Connect a wallet, or use a free guest run')
-    if (!guestPerIp.allow(req.header('x-vercel-forwarded-for')?.split(',')[0].trim() || clientIp(req.socket.remoteAddress, req.header('x-forwarded-for'))))  // behind the Vercel proxy, key on the visitor, not Vercel return deny(res, 429, 'Guest run limit reached for your network this hour. Connect a wallet for more, or replay a recorded test')
+    // behind the Vercel proxy, key on the visitor, not Vercel
+    if (!guestPerIp.allow(guestKey(req))) return deny(res, 429, 'Guest run limit reached for your network this hour. Connect a wallet for more, or replay a recorded test')
     if (!guestDaily.take('guest')) return deny(res, 429, 'Guest runs are used up for today. Connect a wallet, or replay a recorded test')
     v = { address: 'guest run' }
   } else {
@@ -455,7 +463,7 @@ app.post('/api/demo-run', async (req, res) => {
   const j: Job = { id: randomBytes(8).toString('hex'), kind: 'demo', lane, policy, suite, site: DEFAULT_SITE, seed, mode, status: 'queued', requestedBy: v.address,
     label: mode === 'free' ? 'demo, unpaid, not anchored' : 'paid: Hedera x402, anchored on 0G Galileo',
     createdAt: Date.now(), dirs: [], events: [], log: [] }
-  enqueue(j)
+  enqueue(j); recentStart.set(visitor, { jobId: j.id, at: Date.now() })
   res.json({ jobId: j.id, queuePos: queuePos(j), label: j.label, kinematicNote: lane === 'kin' ? POLICIES[policy].kinematic : null })
 })
 
@@ -594,7 +602,7 @@ function showcase() {
   const sw = body.swarm.find((x: any) => x.run === 'swarm-carla-010') as any, p2 = body.episodes.paidJob002
   const ARKIV = 'https://rabdi.explorer.arkiv.network' // entity URL format not confirmed (SPA answers every path), so base only
   const items = [
-    sw && { id: 'swarm', video: sw.video ?? mediaUrl('videos/swarm-carla-010__stitched.mp4'), trust: { decisions0g: sw.decisions0g, requestId: sw.planRequestId, provider: sw.provider,
+    sw && { id: 'swarm', plan: sw.plan ? { name: sw.plan.name, summary: sw.plan.summary, roles: sw.plan.roles, phases: sw.plan.phases } : null, video: sw.video ?? mediaUrl('videos/swarm-carla-010__stitched.mp4'), trust: { decisions0g: sw.decisions0g, requestId: sw.planRequestId, provider: sw.provider,
       sigsVerified: sw.signatures?.verified ?? null, sigsTotal: sw.signatures?.total ?? null }, links: { decisionsHtml: sw.decisionsHtml, director: sw.director } },
     body.arena && { id: 'arena', video: body.arena.sites.find((x: any) => x.site === 'r4l2s24')?.sideBySide ?? null, trust: { note: 'replayed adversary script (cutin-002) · no 0G calls' } },
     { id: 'research', video: mediaUrl('videos/research-mission-001__carla-failure.mp4'), trust: {} },

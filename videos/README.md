@@ -4,6 +4,7 @@ Recorded Faultline runs (CARLA 0.10 + 0G), re-encoded for GitHub. Newest first. 
 
 | video | length | recorded | what |
 |---|---|---|---|
+| [demo-free-swarm-20261107T044007__director.mp4](demo-free-swarm-20261107T044007__director.mp4) | 20 s | 11-07 10:11 | swarm · completed · 5 0G decisions (0G) · collision True · CCS 0.93 (ground truth) · not anchored |
 | [arena-live-20261107T023417__r7l-2s3__side_by_side.mp4](arena-live-20261107T023417__r7l-2s3__side_by_side.mp4) | 12 s | 11-07 08:05 | A/B arena: same scenario, two AV stacks side by side (scripted adversary replay) |
 | [arena-live-20261107T023417__r7l-2s3__idm_lidar.mp4](arena-live-20261107T023417__r7l-2s3__idm_lidar.mp4) | 12 s | 11-07 08:05 | A/B arena single-stack run |
 | [arena-live-20261107T023417__r7l-2s3__pdm_lite.mp4](arena-live-20261107T023417__r7l-2s3__pdm_lite.mp4) | 10 s | 11-07 08:04 | A/B arena single-stack run |

@@ -80,6 +80,8 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Headers', 'content-type, x-faultline-console, range')
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST')
     res.setHeader('Access-Control-Expose-Headers', 'content-range, accept-ranges, content-length')
+    // Chrome Private Network Access: tailnet devices resolve the Funnel host to a 100.x address and preflight with this
+    if (req.header('access-control-request-private-network') === 'true') res.setHeader('Access-Control-Allow-Private-Network', 'true')
     if (req.method === 'OPTIONS') { res.status(204).end(); return }
   } else if (origin && !sameOrigin && req.method !== 'GET' && req.method !== 'HEAD') { res.status(403).json({ error: 'origin not allowed' }); return }
   if (req.method === 'POST' && (req.header('x-faultline-console') !== '1' || !req.is('application/json'))) { res.status(403).end(); return }

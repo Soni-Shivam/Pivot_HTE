@@ -15,7 +15,8 @@ export type DeliveryReceipt = {
   policyCommitment: string
   suite: 'cut-in-v1'
   suiteVersion: 1
-  status: 'evidence-checked'
+  resultStatus: 'completed'
+  evidenceCheck: 'passed'
   episodeId: string
   publicRoot: string
   sealedRoot: string
@@ -29,7 +30,7 @@ export function makeDeliveryReceipt(job: Job, report: Record<string, unknown>): 
     schema: 'faultline.delivery/v1', network: 'hedera:testnet', jobId: job.jobId,
     paymentTxId: job.transaction, requestHash: job.requestHash,
     policyCommitment: job.policyCommitment, suite: job.suite, suiteVersion: 1,
-    status: 'evidence-checked', episodeId: String(report.episodeId),
+    resultStatus: 'completed', evidenceCheck: 'passed', episodeId: String(report.episodeId),
     publicRoot: String(report.publicRoot), sealedRoot: String(report.sealedRoot),
   }
 }

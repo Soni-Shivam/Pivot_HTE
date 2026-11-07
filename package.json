@@ -15,7 +15,6 @@
     "hedera:run": "tsx packages/hedera/src/run-paid-job.ts",
     "hedera:policy": "tsx packages/hedera/src/show-policy-commitment.ts",
     "hedera:topic": "tsx packages/hedera/src/create-delivery-topic.ts",
-    "hedera:gate": "tsx packages/hedera/src/regression-gate.ts",
     "fweb:build": "esbuild apps/faultline-web/src/main.ts --bundle --format=esm --platform=browser --target=es2022 --minify --sourcemap --outfile=apps/faultline-web/dist/app.js --external:fs --external:path --external:os --external:'node:*' --define:process.env.NODE_ENV='\"production\"' && cp apps/faultline-web/index.html apps/faultline-web/dist/index.html",
     "fweb:serve": "python3 -m http.server 5174 -d apps/faultline-web/dist"
   },

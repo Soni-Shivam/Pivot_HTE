@@ -116,17 +116,22 @@ def save(rows: dict) -> None:
 
 def record(run: Path, backfilled: bool = False) -> dict | None:
     """Add or replace the run's row, regenerate the markdown. Only for runs under runs/ (tests write elsewhere)."""
-    run = Path(run).resolve()
-    if run.parent != (ROOT / "runs").resolve():
+    import fcntl
+    run, base = Path(run).resolve(), (ROOT / "runs").resolve()
+    if base not in run.parents:
         return None
     r = row_for(run, backfilled)
     if r is None:
         return None
-    rows = load()
-    if backfilled and run.name in rows and rows[run.name].get("backfilled") == "0":
-        return rows[run.name]  # never downgrade a live row to backfilled
-    rows[run.name] = r
-    save(rows)
+    r["run"] = str(run.relative_to(base))  # campaign episodes: campaign-001/archive/ep-00
+    CSV.parent.mkdir(parents=True, exist_ok=True)
+    with open(CSV.with_suffix(".lock"), "w") as lk:  # parallel campaign arms
+        fcntl.flock(lk, fcntl.LOCK_EX)
+        rows = load()
+        if backfilled and r["run"] in rows and rows[r["run"]].get("backfilled") == "0":
+            return rows[r["run"]]  # never downgrade a live row to backfilled
+        rows[r["run"]] = r
+        save(rows)
     return r
 
 

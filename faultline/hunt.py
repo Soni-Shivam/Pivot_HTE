@@ -557,7 +557,7 @@ def cmd_carla(a) -> int:
         out = run_dir / tag
         out.mkdir(exist_ok=True)
         p = _point(G1, round(float(gap), 3), a.delay)
-        w = CarlaWorld(idm=idm_for(p), view=ChaseView(out), recorder_path=None)
+        w = CarlaWorld(idm=idm_for(p), view=ChaseView(out, scripted=True), recorder_path=None)
         o = run_experiment(p, world=w, seed=a.seed)
         kin = run_experiment(p)
         summary[tag] = {"params": p, "carla": o, "kinematic": kin}

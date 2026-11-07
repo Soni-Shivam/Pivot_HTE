@@ -28,8 +28,8 @@ class SwarmCarlaWorld(CutInCarlaWorld):
         super().__init__(*a, **kw)
         self.director, self.car_actors, self.advs, self.guarded = director, {}, {}, []
 
-    def reset(self, s) -> None:
-        super().reset(s)  # flock, sync mode, ego, LiDAR, car B (self.lead / self.adv)
+    def _reset(self, s) -> None:  # inside CutInCarlaWorld.reset's cleanup-on-failure, so extra spawns are covered too
+        super()._reset(s)  # flock, sync mode, ego, LiDAR, car B (self.lead / self.adv)
         bl = self.world.get_blueprint_library()
         ego_arc, _ = self._ego_sl()
         self.dim, self.off = {"B": (self.adv_len, self.adv_wid)}, {"B": self.adv_off}
@@ -43,7 +43,7 @@ class SwarmCarlaWorld(CutInCarlaWorld):
             if BLUEPRINTS[c][1] and bp.has_attribute("color"):
                 bp.set_attribute("color", BLUEPRINTS[c][1])
             t = self._lateral(self._pose(ego_arc + dx), lat)
-            t.location.z += 0.5
+            t.location.z += 30.0  # spawn clear of the base taxi's initial pose; _place_all() puts it on the road
             a = self.world.spawn_actor(bp, t)
             self.actors.append(a)  # destroyed by close() with the rest
             a.set_simulate_physics(False)
@@ -145,6 +145,9 @@ def main(argv=None) -> int:
     p.add_argument("--avoid", default="", help="comma-separated plan names the planner must not reuse")
     p.add_argument("--ros", action="store_true", help="publish to ROS 2 (source viz/env.sh first)")
     p.add_argument("--display", default=":2", help="desktop to record for the stitched video ('' = none)")
+    p.add_argument("--elite", help="campaign episode dir: re-run its start and its recorded 0G plan (no new plan "
+                                   "call); the executor still decides live")
+    p.add_argument("--lookahead", type=int, choices=(0, 1), default=1)
     a = p.parse_args(argv)
     load_dotenv()
     out = Path(a.out)
@@ -152,13 +155,21 @@ def main(argv=None) -> int:
         raise SystemExit(f"refusing to overwrite {out}")
     out.mkdir(parents=True, exist_ok=True)
     url, key = os.environ["ZG_ROUTER_URL"], os.environ["ZG_API_KEY"]
-    s = SwarmScenario(seed=a.seed)
+    s, elite = SwarmScenario(seed=a.seed), None
+    if a.elite:
+        elite = Path(a.elite)
+        sd = json.loads((elite / "scenario.json").read_text())
+        s = SwarmScenario(**{**sd, "cars": tuple(tuple(c) for c in sd["cars"])})
     desk = None
     if a.display:
         (out / "windows.json").write_text(json.dumps(find_windows(a.display)) + "\n")
         desk = DeskRecorder(out / "desk.mkv", a.display).start()
     try:
-        pe = run_planner(PlannerRouter(url, key), s, out, [x for x in a.avoid.split(",") if x])
+        if elite:  # the elite's own 0G plan entry (request id, content hash), marked as reused, not re-asked
+            pe = {**json.loads((elite / "plan.json").read_text()), "reused_from": str(elite)}
+            (out / "plan.json").write_text(json.dumps(pe, indent=2, sort_keys=True) + "\n")
+        else:
+            pe = run_planner(PlannerRouter(url, key), s, out, [x for x in a.avoid.split(",") if x])
         log_live(f"{out.name} plan: {(pe.get('plan') or {}).get('name')} ({pe['source']}, req {pe.get('request_id')}, "
                  f"{pe.get('latency_ms')} ms)")
         world = SwarmCarlaWorld(recorder_path=out / "recorder.log", director=Director(out))
@@ -167,7 +178,7 @@ def main(argv=None) -> int:
             bridge, reset = swarm_bridge(), world.reset
             world.reset = lambda sc: (reset(sc), bridge.attach(world))
         try:
-            run_swarm_episode(world, JointRouter(url, key), s, out, lookahead=True, plan_entry=pe)
+            run_swarm_episode(world, JointRouter(url, key), s, out, lookahead=bool(a.lookahead), plan_entry=pe)
         finally:
             if bridge:
                 bridge.close()
@@ -175,6 +186,9 @@ def main(argv=None) -> int:
         if desk:
             time.sleep(1.0)
             desk.stop()
+    if elite:
+        mp = out / "manifest.json"
+        mp.write_text(json.dumps({**json.loads(mp.read_text()), "elite_of": str(elite)}, sort_keys=True, indent=2) + "\n")
     decisions_html(out)
     summary(out)
     if desk and (out / "desk.mkv").exists():

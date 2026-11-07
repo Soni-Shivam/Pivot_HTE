@@ -16,9 +16,12 @@ NAMES = {v: k for k, v in ACTION_DECEL.items() if v}
 
 
 class ChaseView:
-    def __init__(self, out_dir: Path, record: bool = True):
-        self.out_dir, self.record = Path(out_dir), record
-        self.cam, self.ff, self.root, self.n_lines, self.last = None, None, None, 0, "waiting for first checkpoint"
+    def __init__(self, out_dir: Path, record: bool = True, scripted: bool = False):
+        """scripted: a replayed/scripted execution with no live 0G decisions; the HUD says so instead of guessing."""
+        self.out_dir, self.record, self.scripted = Path(out_dir), record, scripted
+        self.cam, self.ff, self.root, self.n_lines = None, None, None, 0
+        self.last = ("SCRIPTED execution: no live 0G decision in this run" if scripted
+                     else "waiting for first checkpoint")
 
     def attach(self, world) -> None:
         """Call after world.reset(); hooks world.on_tick."""
@@ -70,10 +73,14 @@ class ChaseView:
         ctl = getattr(world, "control_label", None)  # cut-in world: the adversary's current action
         if ctl is None:
             dec = world.kin.lead.decel
-            ctl = "MAINTAIN" if not dec else ("SAFE_HALT" if dec == SAFE_HALT_DECEL else NAMES.get(dec, "BRAKE_HARD"))
+            if self.scripted:
+                ctl = "SCRIPTED " + (f"brake {dec:.1f} m/s²" if dec else "hold")
+            else:
+                ctl = "MAINTAIN" if not dec else ("SAFE_HALT" if dec == SAFE_HALT_DECEL else NAMES.get(dec, f"BRAKE {dec:.1f} m/s²"))
         gap = "  --  " if st.lidar_gap is None else f"{st.lidar_gap:6.2f}"
         ttc = f"{st.lidar_gap / st.lidar_closing:5.2f}" if st.lidar_gap and st.lidar_closing and st.lidar_closing > 0.05 else "  -- "
-        self._decision_line()
+        if not self.scripted:
+            self._decision_line()
         self.cv.itemconfig(self.hud1, text=f"t {st.t_s:5.2f} s   LiDAR gap {gap} m   TTC {ttc} s   ego {st.ego_v:5.2f} m/s"
                                             f"   adversary {st.lead_v:5.2f} m/s   control {ctl}"
                                             + ("   COLLISION" if st.collision else ""))

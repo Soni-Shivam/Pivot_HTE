@@ -1162,7 +1162,7 @@ def cmd_carla(a) -> int:
             continue
         out = Path(a.run_dir) / tag
         out.mkdir(exist_ok=True)
-        w = CarlaWorld(idm=idm_for(p, ctrl), view=ChaseView(out), recorder_path=None)
+        w = CarlaWorld(idm=idm_for(p, ctrl), view=ChaseView(out, scripted=True), recorder_path=None)
         o = run_experiment(p, world=w, seed=a.seed, ctrl=ctrl)
         kin = run_experiment(p, ctrl=ctrl)
         summary[tag] = {"ctrl": ctrl, "config_hash": config_hash(p, ctrl), "carla": o, "kinematic": kin}

@@ -178,6 +178,9 @@ def draw_zg(p: Painter, st: dict):
     if plan:
         p.text(x0 + 12, y, "PLAN", 14, (170, 150, 255), bold=True)
         p.text(x0 + 70, y - 3, plan.get("name", ""), 20, (255, 255, 255), bold=True)
+        tc = plan.get("target_cell")
+        if isinstance(tc, dict):  # campaign: the archive cell the strategist aimed at
+            p.text(x0 + 520, y, f"target cell {tc.get('pressure')} × {tc.get('first_threat')}", 15, (170, 150, 255))
         y += 28
     d = st.get("decision")
     if d is None:

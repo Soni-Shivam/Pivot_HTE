@@ -17,7 +17,9 @@ import { appendFileSync, existsSync, readdirSync, readFileSync, statSync, writeF
 import { createConnection } from 'node:net'
 import { join, relative, resolve } from 'node:path'
 import { buy, buyerConfigFromEnv, hashscanTx, MIRROR, type Activation } from './buyer.ts'
-import { verifyMessage } from 'viem'
+import { createPublicClient, http, parseAbi, verifyMessage } from 'viem'
+import { verify as verifyEpisode } from '../../episode/src/verify.ts'
+import { IDENTITY_REGISTRY } from '../../episode/src/erc8004.ts'
 import { clientIp, DailyCaps, mediaPath, parseOrigins, RateLimit, verifyRunRequest, WalletCaps } from './console-guard.ts'
 import { DEMO_SWARM, SUITES, demoSuite, suiteOf } from './suites.ts'
 
@@ -629,6 +631,31 @@ function showcase() {
   return body
 }
 app.get('/api/showcase', (_req, res) => { res.json(showcase()) })
+
+// Independent check of a published run (packages/episode verify: 0G Storage download refused unless the Merkle root
+// matches, public-file checks, archived TEE signatures, the Galileo anchor), plus who owns ERC-8004 agent #579 now.
+const verifyCache = new Map<string, { at: number, body: Promise<unknown> }>()
+async function verifyRoot(root: string) {
+  const v: any = await verifyEpisode(root, { rpcUrl: process.env.RPC_URL!, indexerUrl: process.env.STORAGE_INDEXER! })
+  const id = { registry: IDENTITY_REGISTRY, agentId: 579 }
+  try {
+    const owner = await createPublicClient({ transport: http(process.env.RPC_URL) }).readContract({ address: IDENTITY_REGISTRY,
+      abi: parseAbi(['function ownerOf(uint256) view returns (address)']), functionName: 'ownerOf', args: [579n] })
+    const ev = v.onchain?.evaluator ? String(v.onchain.evaluator).toLowerCase() : null
+    return { ...v, identity: { ...id, owner, evaluatorIsOwner: ev ? ev === owner.toLowerCase() : null } }
+  } catch (e) { return { ...v, identity: { ...id, error: (e as Error).message } } }
+}
+app.get('/api/verify', async (req, res) => {
+  const root = String(req.query.root ?? '').toLowerCase()
+  if (!/^0x[0-9a-f]{64}$/.test(root)) return deny(res, 400, 'root must be a 0G Storage root (0x + 64 hex)')
+  if (!process.env.RPC_URL || !process.env.STORAGE_INDEXER) return deny(res, 503, 'the verifier is not configured on the backend')
+  let c = verifyCache.get(root)
+  if (!c || Date.now() - c.at > 10 * 60_000) { c = { at: Date.now(), body: verifyRoot(root) }; verifyCache.set(root, c) }
+  try { res.json(await c.body) } catch (e) {
+    verifyCache.delete(root); const message = (e as Error).message
+    res.status(422).json({ error: message, rootMismatch: /refused/.test(message) }) // a Merkle mismatch is a failure; anything else is "could not check"
+  }
+})
 
 app.use('/media', (req, res) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') { res.status(405).end(); return }

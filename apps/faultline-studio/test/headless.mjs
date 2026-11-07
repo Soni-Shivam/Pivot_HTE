@@ -78,12 +78,18 @@ try {
   await page.goto(base)
   await page.waitForSelector('#console-dot.up')
   check(/^Adversarial testing for self-driving software$/.test(await text(page, '#v-home h1')), 'hero: plain H1')
-  check(await page.locator('#v-home video').count() === 1, 'hero: exactly one video on the landing view')
-  check(await page.locator('#how svg.diagram').isVisible() && /What you get/.test(await text(page, '#how')), 'how Faultline works: diagram + what you get')
-  check(!/version|v1\.1/i.test(await page.locator('body').innerText()), 'no version-history content')
+  check(await page.locator('video').count() === 0, 'no static videos: canvas replays and the LiDAR hero instead')
+  check(await page.locator('#how .arch').isVisible() && /signed decision/.test(await text(page, '#how')), 'how Faultline works: labelled architecture + what you get')
+  check(/why 0G and Web3/i.test(await text(page, '#why')) && /ERC-8004 agent #579/.test(await text(page, '#why')), 'why 0G and Web3 section')
+  const fits = await page.evaluate(() => [...document.querySelectorAll('.ab')].every((b) => b.scrollWidth <= b.clientWidth + 1))
+  check(fits, 'architecture boxes: no text overflow')
+  check(!/v1\.1|version memory/i.test(await page.locator('body').innerText()), 'no version-history content')
   await page.waitForTimeout(800)
   check(await page.evaluate(() => { const c = document.getElementById('lidar'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return n > 5000 }), 'hero: LiDAR point cloud rendered')
-  await shot(page, 'home')
+  await page.locator('#ex-scene').scrollIntoViewIfNeeded(); await page.waitForTimeout(2500)
+  check(await page.evaluate(() => { const c = document.getElementById('ex-scene'); return c.width > 10 }) && /s ·/.test(await text(page, '#ex-feed')), 'home: recorded replay drawn from run data with 0G captions')
+  check(!(await page.locator('body').innerText()).includes('—'), 'home: no em dashes')
+  await page.evaluate(() => window.scrollTo(0, 0)); await shot(page, 'home'); await shot(page, 'home-full', true)
   await page.click('#cta-run')
   check(await page.locator('#s1').isVisible() && await page.locator('#s1-next').isDisabled(), 'step 1: connect wallet first')
   check(/never a transaction/.test(await text(page, '#s1')) && /Continue to site/.test(await text(page, '#s1')), 'step 1: signature-only + domain-warning note')
@@ -123,6 +129,28 @@ try {
   check(!(await page.locator('#v-explore').innerText()).includes('source:'), 'explore: no scattered source footnotes')
   await shot(page, 'explore', true)
   check(errors.length === 0, `no page errors ${errors.join(' | ')}`)
+
+  // Coinbase-style legacy injection: window.ethereum.providers[] + isCoinbaseWallet, no EIP-6963; personal_sign params must be [hex, address]
+  const cctx = await browser.newContext({ viewport: { width: 1360, height: 900 } })
+  const cb = await cctx.newPage(); const err4 = []; cb.on('pageerror', (e) => err4.push(e.message))
+  await mock(cb, true)
+  await cb.exposeFunction('__fixtureSign', (hex) => acct.signMessage({ message: { raw: hex } }))
+  await cb.addInitScript((address) => {
+    const cbw = { isCoinbaseWallet: true, request: async ({ method, params }) => {
+      if (method === 'eth_requestAccounts' || method === 'eth_accounts') return [address]
+      if (method === 'personal_sign') { if (!/^0x[0-9a-f]+$/.test(params[0]) || params[1] !== address) throw Object.assign(new Error('bad params'), { code: -32602 }); return window.__fixtureSign(params[0]) }
+      throw Object.assign(new Error(`unsupported ${method}`), { code: 4200 }) } }
+    window.ethereum = { isMetaMask: false, providers: [cbw], request: cbw.request }
+    window.coinbaseWalletExtension = cbw
+  }, acct.address)
+  signedBody = null
+  await cb.goto(base); await cb.waitForSelector('#console-dot.up'); await cb.waitForTimeout(700)
+  await cb.click('#wallet-btn')
+  await cb.waitForSelector('#s1-next:not([disabled])', { timeout: 5000 })
+  check(/Coinbase Wallet/.test(await text(cb, '#wallets')), 'coinbase legacy provider: discovered via providers[] and connected from the header button')
+  await cb.click('#s1-next'); await cb.click('#s2-next'); await cb.click('#start'); await cb.waitForSelector('#s4:not(.hidden)')
+  check(!!signedBody && await verifyMessage({ address: signedBody.address, message: signedBody.message, signature: signedBody.signature }), 'coinbase legacy provider: personal_sign [hex, address] verifies')
+  check(err4.length === 0, `coinbase: no page errors ${err4.join(' | ')}`)
 
   const gctx = await browser.newContext({ viewport: { width: 1360, height: 900 } })
   const g = await gctx.newPage(); const err3 = []; g.on('pageerror', (e) => err3.push(e.message))

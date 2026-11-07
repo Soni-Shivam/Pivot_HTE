@@ -1,4 +1,4 @@
-// Faultline Studio: Home → guided test (wallet → policy → attack → live → results & proof) → Explore.
+// Faultline Studio: Home → guided test (wallet → policy → attack → live → results and proof) → test library.
 // Talks only to the agent console (packages/hedera/src/agent-console.ts); the wallet only signs a readable request (EIP-191).
 type Tick = { t_s: number; ego_x: number; ego_v: number; ego_a: number; ego_lat_m: number | null; lead_x: number; lead_v: number
   adv_lat_m: number | null; gt_gap: number; gt_ttc_s: number | null; ttc_s: number | null; lidar_gap: number | null; ccs: number | null; collision: boolean }
@@ -12,11 +12,11 @@ type Run = { name: string; jobId: string | null; status: string; world: string |
 
 const C = { ink: '#111111', paper: '#fbfbf6', muted: '#6b6b66', yellow: '#f3f56c', cyan: '#7cecf5', pink: '#f5a3ef', purple: '#7c5cf5', lime: '#c9f36f', hot: '#ff4fc3' }
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T
-const esc = (s: unknown) => String(s ?? '—').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
-const num = (x: unknown, d = 2) => (typeof x === 'number' && Number.isFinite(x) ? x.toFixed(d) : '—')
+const esc = (s: unknown) => String(s ?? '-').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
+const num = (x: unknown, d = 2) => (typeof x === 'number' && Number.isFinite(x) ? x.toFixed(d) : '-')
 const short = (s: unknown, a = 8, b = 6) => (typeof s === 'string' && s.length > a + b + 1 ? `${s.slice(0, a)}…${s.slice(-b)}` : esc(s))
-const hbar = (tinybar: number | null | undefined) => (typeof tinybar === 'number' ? (tinybar / 1e8).toFixed(4) : '—')
-const risk = (c: number | null | undefined) => (c == null ? { cls: 'l', word: '—' } : c >= 0.75 ? { cls: 'p', word: 'High risk' } : c >= 0.5 ? { cls: 'y', word: 'Medium risk' } : { cls: 'l', word: 'Low risk' })
+const hbar = (tinybar: number | null | undefined) => (typeof tinybar === 'number' ? (tinybar / 1e8).toFixed(4) : '-')
+const risk = (c: number | null | undefined) => (c == null ? { cls: 'l', word: '-' } : c >= 0.75 ? { cls: 'p', word: 'High risk' } : c >= 0.5 ? { cls: 'y', word: 'Medium risk' } : { cls: 'l', word: 'Low risk' })
 const kv = (rows: [string, string][]) => rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')
 const link = (href: string, text: string) => `<a href="${esc(href)}" target="_blank" rel="noopener">${text} ↗</a>`
 const galileoTx = (tx: string) => `https://chainscan-galileo.0g.ai/tx/${tx}`
@@ -65,18 +65,8 @@ document.addEventListener('click', (e) => {
   if ((e.target as HTMLElement).closest('[data-back]')) step(cur - 1)
 })
 
-// ---------- media: the console serves /media/<path>; recorded clips fall back to the public repo ----------
-const RAW = 'https://raw.githubusercontent.com/Soni-Shivam/Pivot_HTE/main/'
-const media = (path: string) => api('/media/' + path)
-const video = (path: string, label: string) => `<video controls muted playsinline preload="metadata" aria-label="${esc(label)}" src="${esc(media(path))}" data-fallback="${esc(RAW + path)}"></video>`
-document.addEventListener('error', (e) => {
-  const v = e.target as HTMLVideoElement
-  if (v instanceof HTMLVideoElement && v.dataset.fallback && v.src !== v.dataset.fallback) v.src = v.dataset.fallback
-}, true)
-const HERO_VIDEO = 'videos/swarm-carla-010__stitched.mp4'
-const hv = $<HTMLVideoElement>('hero-video'); hv.src = media(HERO_VIDEO); hv.dataset.fallback = RAW + HERO_VIDEO
-$('cta-run').addEventListener('click', () => { show('flow'); step(wallet ? 2 : 1) })
-$('cta-watch').addEventListener('click', () => { $('example').scrollIntoView({ block: 'center' }); hv.play().catch(() => { /* autoplay blocked: controls stay */ }) })
+for (const id of ['cta-run', 'cta-run2']) $(id).addEventListener('click', () => { show('flow'); step(wallet || guest ? 2 : 1) })
+$('cta-watch').addEventListener('click', () => { $('example').scrollIntoView({ block: 'start' }); exReplay?.restart() })
 
 // ---------- wallet: EIP-6963 discovery, window.ethereum fallback; only eth_requestAccounts + personal_sign ----------
 type Eip1193 = { request: (a: { method: string, params?: unknown[] }) => Promise<any>, on?: (ev: string, f: (x: any) => void) => void }
@@ -88,21 +78,39 @@ window.addEventListener('eip6963:announceProvider', (e: any) => {
   found.push(d); renderWallets()
 })
 window.dispatchEvent(new Event('eip6963:requestProvider'))
+setTimeout(() => { window.dispatchEvent(new Event('eip6963:requestProvider')); renderWallets() }, 500) // late-injecting extensions
+window.addEventListener('ethereum#initialized', () => renderWallets())
+const walletName = (p: any) => (p?.isCoinbaseWallet ? 'Coinbase Wallet' : p?.isMetaMask ? 'MetaMask' : p?.isRabby ? 'Rabby' : 'Browser wallet')
+/** EIP-6963 wallets first, then legacy injection: window.ethereum.providers[] (several wallets), coinbaseWalletExtension, window.ethereum. */
+function candidates() {
+  const out = [...found], w = window as any
+  const add = (p: any) => {
+    if (!p || typeof p.request !== 'function' || out.some((x) => x.provider === p || x.info.name === walletName(p))) return
+    out.push({ info: { uuid: `legacy-${out.length}`, name: walletName(p), icon: '', rdns: '' }, provider: p })
+  }
+  for (const p of Array.isArray(w.ethereum?.providers) ? w.ethereum.providers : []) add(p)
+  add(w.coinbaseWalletExtension); if (!Array.isArray(w.ethereum?.providers) || !w.ethereum.providers.length) add(w.ethereum) // a multi-wallet shim only proxies providers[]
+  return out
+}
 function renderWallets() {
-  const list = found.length ? found : (window as any).ethereum ? [{ info: { uuid: 'injected', name: 'Browser wallet', icon: '', rdns: '' }, provider: (window as any).ethereum as Eip1193 }] : []
+  const list = candidates()
   $('wallets').innerHTML = wallet
     ? `<span class="pill big l">✓ ${esc(wallet.name)} · ${short(wallet.address, 6, 4)}</span><button class="btn" id="w-disconnect">Use a different wallet</button>`
     : list.length ? list.map((w, i) => `<button class="btn ${i ? '' : 'y'}" data-w="${i}">${w.info.icon?.startsWith('data:image/') ? `<img src="${esc(w.info.icon)}" alt="">` : ''}Connect ${esc(w.info.name)}</button>`).join('')
-      : `<span class="note" style="margin:0">No wallet found in this browser. Install the <a href="https://www.coinbase.com/wallet/downloads" target="_blank" rel="noopener">Coinbase Wallet extension</a> (or any browser wallet) and reload — or watch a recorded test without one.</span>`
+      : `<span class="note" style="margin:0">No wallet found in this browser. Install the <a href="https://www.coinbase.com/wallet/downloads" target="_blank" rel="noopener">Coinbase Wallet extension</a> (or any browser wallet) and reload, or watch a recorded test without one.</span>`
   $('wallets').querySelectorAll<HTMLButtonElement>('[data-w]').forEach((b) => b.addEventListener('click', () => connect(list[Number(b.dataset.w)])))
   document.getElementById('w-disconnect')?.addEventListener('click', () => { wallet = null; renderWallets(); paintWallet() })
 }
-let lastTried: { info: WalletInfo, provider: Eip1193 } | null = null
+let lastTried: { info: WalletInfo, provider: Eip1193 } | null = null, askedAt = 0
 const walletErr = (e: any, what: string) => {
   const code = e?.code ?? e?.data?.originalError?.code
-  return code === 4001 || /reject|denied|cancel/i.test(String(e?.message)) ? `You declined the ${what} in your wallet. Nothing was sent.`
-    : code === -32002 ? 'Your wallet already has a request open — open the wallet extension to finish it.'
-    : `The wallet did not complete the ${what}: ${e?.message ?? e}`
+  console.warn('[wallet]', what, code, e?.message ?? e)
+  const rejected = code === 4001 || /reject|denied|cancel/i.test(String(e?.message))
+  // a 4001 faster than any human could click means the wallet refused the site itself (Coinbase Wallet flags new domains)
+  if (rejected && performance.now() - askedAt < 1500) return 'Your wallet blocked this site before asking you. Coinbase Wallet flags new domains; open faultline-av-ethmumbai.vercel.app or continue without a wallet.'
+  return rejected ? `You declined the ${what} in your wallet. Nothing was sent.`
+    : code === -32002 ? 'Your wallet already has a request open. Open the wallet extension to finish it.'
+    : `The wallet did not complete the ${what}${code != null ? ` (code ${code})` : ''}: ${e?.message ?? e}`
 }
 function showWalletErr(msg: string) {
   $('wallet-err').innerHTML = `${esc(msg)} <button class="btn" id="w-retry" style="margin-left:8px">Try again</button>`
@@ -111,6 +119,7 @@ function showWalletErr(msg: string) {
 async function connect(w: { info: WalletInfo, provider: Eip1193 }) {
   $('wallet-err').textContent = ''; lastTried = w; save()
   try {
+    askedAt = performance.now()
     const accts: string[] = await w.provider.request({ method: 'eth_requestAccounts' })
     if (!accts?.[0]) throw new Error('The wallet returned no account')
     wallet = { address: accts[0], provider: w.provider, name: w.info.name }
@@ -125,7 +134,11 @@ function paintWallet() {
   $('guest').textContent = guest ? '✓ Continuing without a wallet' : 'Continue without a wallet'
   renderStepper(); renderSummary()
 }
-$('wallet-btn').addEventListener('click', () => { show('flow'); step(1) })
+$('wallet-btn').addEventListener('click', () => {
+  show('flow'); step(1)
+  const c = candidates()
+  if (!wallet && c.length === 1) connect(c[0]) // still inside the click: the wallet popup needs a user gesture
+})
 const hex = (s: string) => '0x' + [...new TextEncoder().encode(s)].map((b) => b.toString(16).padStart(2, '0')).join('')
 const message = (nonce: string, issued: string) => `Faultline test request\npolicy: ${policy}\nsuite: ${attack}\nmode: ${mode}\nnonce: ${nonce}\nissued: ${issued}`
 
@@ -175,7 +188,7 @@ async function loadPolicies() {
 const ATTACKS = [
   { id: 'cut-in-v1-kinematic', name: 'Cut-in (fast simulation)', line: 'The attacker swerves into your lane and brakes. Simple 2D physics, about 40 seconds.', live: true },
   { id: 'cut-in-v1-carla', name: 'Cut-in (CARLA 3D)', line: 'The same attack in the CARLA 3D simulator with real sensors. About 90 seconds.', live: true },
-  { id: 'swarm', name: 'Coordinated multi-vehicle attack', line: 'Four attacker cars coordinate to box the car in. Recorded run — opens in Explore.', live: false },
+  { id: 'swarm', name: 'Coordinated multi-vehicle attack', line: 'Four attacker cars coordinate to box the car in. Recorded run, opens in the test library.', live: false },
 ]
 let health: any = null
 function radio(group: string, items: { id: string, html: string, disabled?: boolean }[], sel: string) {
@@ -204,7 +217,7 @@ function renderSummary() {
   $('msg-preview').textContent = message('<random nonce>', '<time you click>')
   $<HTMLButtonElement>('start').disabled = (!wallet && !guest) || !online
   $('start').textContent = guest ? 'Start free guest run' : 'Sign and start test'
-  $('start-err').textContent = !wallet && !guest ? 'Connect a wallet (or continue without one) in step 1 first.' : !online ? 'The live console is offline — watch a recorded test in Explore instead.' : ''
+  $('start-err').textContent = !wallet && !guest ? 'Connect a wallet (or continue without one) in step 1 first.' : !online ? 'The live console is offline. Watch a recorded test in the test library instead.' : ''
 }
 $('start').addEventListener('click', async () => {
   if (guest && !wallet) {
@@ -218,6 +231,7 @@ $('start').addEventListener('click', async () => {
   try {
     const nonce = [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('')
     const msg = message(nonce, new Date().toISOString())
+    askedAt = performance.now()
     const signature: string = await wallet.provider.request({ method: 'personal_sign', params: [hex(msg), wallet.address] })
     $('start-err').textContent = 'Signed. Queuing your test…'
     const r = await postJson('/api/demo-run', { policy, suite: attack, mode, address: wallet.address, message: msg, signature })
@@ -233,6 +247,7 @@ const SAY: Record<string, string> = {
   CUT_IN_AGGRESSIVE: 'Cut sharply into your lane', CUT_IN: 'Cut into your lane', BRAKE_HARD: 'Brake hard in front of you', BRAKE_SOFT: 'Brake gently',
   SLOW_DOWN: 'Slow down', ACCELERATE: 'Speed up', MAINTAIN: 'Hold speed and lane', KEEP_LANE: 'Stay in its lane', COAST: 'Coast', SAFE_HALT: 'Stop safely (no valid answer from 0G)',
 }
+const why = (d: Decision) => { try { return String(JSON.parse(d.content ?? '').why ?? '') } catch { return '' } }
 const say = (a: string | null) => SAY[a ?? 'SAFE_HALT'] ?? String(a).toLowerCase().replace(/_/g, ' ')
 function progress(id: string, status: string, title: string, detail = '') {
   let li = document.getElementById(`pg-${id}`)
@@ -282,8 +297,8 @@ async function startStream(run: string, smode: 'live' | 'replay', by: 'run' | 'j
 }
 function renderFeed(fresh = false) {
   const rows = decisions.slice().reverse().map((d, i) => `<div class="dec ${fresh && i === 0 ? 'new' : ''}">
-    <div class="what">${num(d.sim_time_s, 1)} s · ${esc(say(d.action))}</div>
-    <div class="meta">${d.source === '0g' ? `answered by 0G in ${d.latency_ms} ms` : `no 0G answer (${esc(d.source)}) — car stopped safely`}</div>
+    <div class="what">${num(d.sim_time_s, 1)} s · ${esc(say(d.action))}</div>${why(d) ? `<div class="why-line">“${esc(why(d))}”</div>` : ''}
+    <div class="meta">${d.source === '0g' ? `answered by 0G in ${d.latency_ms} ms` : `no 0G answer (${esc(d.source)}) so the car stopped safely`}</div>
     <details><summary>Raw 0G answer</summary><pre>${esc(JSON.stringify(d, null, 1))}</pre></details></div>`).join('')
   $('feed').innerHTML = (waiting ? `<div class="dec wait"><div class="what">Asking 0G for the next move…</div><div class="meta" id="wait-ms">…</div></div>` : '') +
     (rows || (waiting ? '' : '<div class="meta">Decisions appear here as the attacker makes them.</div>'))
@@ -332,7 +347,7 @@ function drawScene(cv: HTMLCanvasElement, r: Tick | undefined, trail: Tick[], la
   carShape(g, X(r.ego_x), Y(r.ego_lat_m ?? 0), lw(4.9), cw, C.purple)
   carShape(g, X(r.lead_x), Y(r.adv_lat_m ?? 0), lw(4.7), cw, r.collision ? C.hot : C.pink)
   pillAt(g, X(r.ego_x), bot + 22, `Your car · ${num(r.ego_v * 3.6, 0)} km/h`, C.paper)
-  pillAt(g, X(r.lead_x), top - 22, `AI attacker · ${num(r.lead_v * 3.6, 0)} km/h`, C.pink)
+  pillAt(g, X(r.lead_x), top - 22, `Attacker · ${num(r.lead_v * 3.6, 0)} km/h`, C.pink)
   pillAt(g, w - 110, 28, `${num(r.gt_gap, 1)} m · TTC ${r.gt_ttc_s == null ? '∞' : num(r.gt_ttc_s, 2) + ' s'}`, ttcFill(r.gt_ttc_s), '600 13px "JetBrains Mono", monospace')
   if (pulse > 0 && label) { g.globalAlpha = Math.min(1, pulse * 1.6); pillAt(g, X(r.lead_x), top - 54, label, C.yellow, '700 14px "Space Grotesk", sans-serif'); g.globalAlpha = 1 }
   if (r.collision) pillAt(g, 90, 28, 'Collision', C.hot, '700 14px "Space Grotesk", sans-serif')
@@ -375,7 +390,7 @@ function openResults() {
   const crashed = r?.collision ?? ticks.some((t) => t.collision)
   const gap = r?.minGap ?? (ticks.length ? Math.min(...ticks.map((t) => t.gt_gap)) : null)
   const k = risk(r?.ccs)
-  const headline = crashed ? 'Crashed — the AI attacker forced a collision.' : (r?.ccs ?? 0) >= 0.75 ? `Survived, but only just — closest gap ${num(gap, 1)} m.` : `Survived — closest gap ${num(gap, 1)} m.`
+  const headline = crashed ? 'Crashed: the attacker forced a collision.' : (r?.ccs ?? 0) >= 0.75 ? `Survived, but only just. Closest gap ${num(gap, 1)} m.` : `Survived. Closest gap ${num(gap, 1)} m.`
   $('verdict').className = `card verdict ${crashed ? 'p' : k.cls === 'p' ? 'y' : 'l'}`
   $('verdict').innerHTML = `<h2>${esc(headline)}</h2>
     <div class="row" style="margin-top:14px">
@@ -389,14 +404,14 @@ function openResults() {
   $('rail-results').innerHTML = railHtml(t)
   const st = r?.storage, ch = r?.chain, p = r?.payment
   $('evidence').innerHTML = kv([
-    ['Run', `<code>${esc(r?.name)}</code>`], ['Requested by (signed)', r?.requestedBy ? `<code>${esc(r.requestedBy)}</code>` : '—'],
+    ['Run', `<code>${esc(r?.name)}</code>`], ['Requested by (signed)', r?.requestedBy ? `<code>${esc(r.requestedBy)}</code>` : '-'],
     ['Attacker model', `<code>${esc(r?.model)}</code>`], ['AI decisions from 0G', `${decisions.filter((d) => d.source === '0g').length} of ${decisions.length}`],
-    ['First 0G request ID', t.requestId ? `<code>${esc(t.requestId)}</code>` : '—'],
-    ['Signatures archived', st ? `${esc(st.signaturesArchived)} of ${esc(st.signatures0g)}` : '—'],
-    ['0G Storage public root', st ? `<code>${esc(st.publicRoot)}</code>` : '—'], ['0G Storage sealed root', st ? `<code>${esc(st.sealedRoot)}</code>` : '—'],
-    ['Galileo commit', ch ? link(galileoTx(ch.commitTx), short(ch.commitTx, 10, 6)) : '—'],
-    ['Galileo finalize', ch?.finalizeTx ? link(galileoTx(ch.finalizeTx), short(ch.finalizeTx, 10, 6)) : '—'],
-    ['Hedera payment', p ? link(p.hashscan, esc(p.transaction)) : '—'],
+    ['First 0G request ID', t.requestId ? `<code>${esc(t.requestId)}</code>` : '-'],
+    ['Signatures archived', st ? `${esc(st.signaturesArchived)} of ${esc(st.signatures0g)}` : '-'],
+    ['0G Storage public root', st ? `<code>${esc(st.publicRoot)}</code>` : '-'], ['0G Storage sealed root', st ? `<code>${esc(st.sealedRoot)}</code>` : '-'],
+    ['Galileo commit', ch ? link(galileoTx(ch.commitTx), short(ch.commitTx, 10, 6)) : '-'],
+    ['Galileo finalize', ch?.finalizeTx ? link(galileoTx(ch.finalizeTx), short(ch.finalizeTx, 10, 6)) : '-'],
+    ['Hedera payment', p ? link(p.hashscan, esc(p.transaction)) : '-'],
   ])
 }
 function drawResults() {
@@ -433,23 +448,23 @@ function railHtml(t: Trust) {
   type S = 'up' | 'part' | 'down' | ''
   const WORD: Record<S, string> = { up: 'proven', part: 'partly proven', down: 'check failed', '': 'not proven' }
   const card = (s: S, net: string, body: string, proves: string, href?: string | null) => {
-    const inner = `<span class="n"><i class="dot ${s}" aria-hidden="true"></i>${net}<span class="sr"> — ${WORD[s]}</span>${href ? ' ↗' : ''}</span><span class="s">${body}</span>`
+    const inner = `<span class="n"><i class="dot ${s}" aria-hidden="true"></i>${net}<span class="sr">: ${WORD[s]}</span>${href ? ' ↗' : ''}</span><span class="s">${body}</span>`
     return href ? `<a class="tp" href="${esc(href)}" target="_blank" rel="noopener" data-tip="${esc(proves)}">${inner}</a>` : `<span class="tp" tabindex="0" data-tip="${esc(proves)}">${inner}</span>`
   }
   const sigOk = t.sigsVerified != null && t.sigsTotal != null && t.sigsTotal > 0 && t.sigsVerified === t.sigsTotal
   const has0g = (t.decisions0g ?? 0) > 0 && !!t.requestId
-  const freeNote = 'Free demo runs aren’t paid or anchored — run a paid test to anchor.'
+  const freeNote = 'Free demo runs aren’t paid or anchored. Run a paid test to anchor.'
   const out = [
-    card(has0g ? (sigOk ? 'up' : 'part') : '', '0G Private Computer', has0g ? `${t.decisions0g} of ${t.decisions ?? '—'} moves came from 0G${sigOk ? ` · ${t.sigsVerified} signatures checked` : ' · signatures not checked here'}` : esc(t.note ?? 'No 0G decisions yet'),
+    card(has0g ? (sigOk ? 'up' : 'part') : '', '0G Private Computer', has0g ? `${t.decisions0g} of ${t.decisions ?? '-'} moves came from 0G${sigOk ? ` · ${t.sigsVerified} signatures checked` : ' · signatures not checked here'}` : esc(t.note ?? 'No 0G decisions yet'),
       'Proves each attacker move was answered by a model running in 0G’s private (TEE) computer, with a request ID and a signed reply.'),
     card(t.publicRoot ? 'up' : '', '0G Storage', t.publicRoot ? `Run data stored · root ${short(t.publicRoot, 6, 4)}` : t.free ? freeNote : 'Not stored',
       'Proves the full decision log and results were uploaded; anyone can re-download them by this root and re-check the hash.'),
     card(t.onchainMatches === false || t.commitBeforeFirst === false ? 'down' : t.onchainMatches && t.commitBeforeFirst ? 'up' : t.commitTx ? 'part' : '', '0G Galileo chain',
-      t.commitTx ? `Committed before the first move ${t.commitBeforeFirst === true ? '✓' : t.commitBeforeFirst === false ? '✗' : '—'} · result matches ${t.onchainMatches === true ? '✓' : t.onchainMatches === false ? '✗' : '—'}` : t.free ? freeNote : 'Not anchored',
+      t.commitTx ? `Committed before the first move ${t.commitBeforeFirst === true ? '✓' : t.commitBeforeFirst === false ? '✗' : '-'} · result matches ${t.onchainMatches === true ? '✓' : t.onchainMatches === false ? '✗' : '-'}` : t.free ? freeNote : 'Not anchored',
       'Proves the test setup was locked on-chain before the attacker’s first move, and the final result hash matches what was stored.', t.commitTx ? galileoTx(t.commitTx) : null),
     card(t.agentId != null ? 'up' : '', 'ERC-8004 identity', t.agentId != null ? `Attacker agent #${t.agentId}` : 'Not linked to this run',
       'Proves which registered AI agent ran the attack, via the ERC-8004 agent registry on 0G Galileo.', galileoAddr(ERC8004)),
-    card(t.hedera ? 'up' : '', 'Hedera payment', t.hedera ? `Paid · ${short(t.hedera.transaction, 10, 6)}` : t.free ? 'Free demo run — no payment' : 'No payment',
+    card(t.hedera ? 'up' : '', 'Hedera payment', t.hedera ? `Paid · ${short(t.hedera.transaction, 10, 6)}` : t.free ? 'Free demo run, no payment' : 'No payment',
       'Proves our agent paid for this test with an x402 micropayment on Hedera, with no human approval step.', t.hedera?.hashscan),
     card(t.arkiv ? 'up' : '', 'Arkiv', t.arkiv ? `Public claim ${short(t.arkiv, 6, 4)}` : 'No public claim for this run',
       'Proves a queryable public claim about the result was published on Arkiv.'),
@@ -469,7 +484,7 @@ const th = (label: string, tip?: string) => `<th>${tip ? `<span class="tip" tabi
 function arenaTable(rows: ArenaRow[]) {
   return `<table><thead><tr>${th('Policy')}${th('Driving score', 'CARLA Leaderboard score: route progress minus penalties (higher is better).')}${th('Danger', TIP.ccs)}${th('Tightest TTC', TIP.ttc)}${th('Closest gap')}${th('Crash')}</tr></thead><tbody>${rows.map((r) =>
     `<tr><td>${esc(r.name ?? r.policy)}</td><td class="mono">${num(r.drivingScore, 1)}</td><td><span class="pill sm ${risk(r.ccs).cls}">${num(r.ccs, 2)}</span></td>
-     <td class="mono">${num(r.minTtc, 1)} s</td><td class="mono">${num(r.minGap, 1)} m</td><td>${r.collision ? 'yes' : r.collision === false ? 'no' : '—'}</td></tr>`).join('')}</tbody></table>`
+     <td class="mono">${num(r.minTtc, 1)} s</td><td class="mono">${num(r.minGap, 1)} m</td><td>${r.collision ? 'yes' : r.collision === false ? 'no' : '-'}</td></tr>`).join('')}</tbody></table>`
 }
 const PAID002: Trust = { decisions0g: 7, decisions: 8, requestId: '95718d4a-8007-40eb-b859-b4019ad1c70f', provider: PROVIDER, sigsVerified: 7, sigsTotal: 7,
   publicRoot: '0xc1219e48d517edabbea12db2bddf21294bcd5ddb106b00d963d8837cb75f6748', sealedRoot: '0x47b995a796e09cb39372e901b12da52edb5c4299add069416baccc440d9a71fa',
@@ -482,25 +497,25 @@ function renderExplore() {
   if (explored) { loadRuns(); return }
   explored = true
   $('explore').innerHTML = [
-    section('runs', '', 'Recorded tests', 'Replay any finished test decision by decision — free, no wallet needed.', `<div class="tscroll" style="margin-top:12px"><table><thead><tr>${th('Test')}${th('Simulator')}${th('AI moves from 0G')}${th('Danger', TIP.ccs)}${th('Tightest TTC', TIP.ttc)}${th('')}</tr></thead><tbody id="runs"><tr><td colspan="6">Loading…</td></tr></tbody></table></div>`),
+    section('runs', '', 'Recorded tests', 'Replay any finished test decision by decision. Free, no wallet needed.', `<div class="tscroll" style="margin-top:12px"><table><thead><tr>${th('Test')}${th('Simulator')}${th('AI moves from 0G')}${th('Danger', TIP.ccs)}${th('Tightest TTC', TIP.ttc)}${th('')}</tr></thead><tbody id="runs"><tr><td colspan="6">Loading…</td></tr></tbody></table></div>`),
     section('swarm', 'c', 'Coordinated multi-vehicle attack', 'One planning call to 0G assigns roles to four cars; then a 0G call every second steers all four at once to box the self-driving car in.',
-      `<div class="split"><div>${video('videos/swarm-carla-010__stitched.mp4', 'Four-car swarm attack in CARLA')}</div><div><dl class="kv">${kv([['Moves from 0G', '10 of 10 (0 safe stops)'], ['Closest gap', '3.5 m'], ['Tightest TTC', '1.1 s'], ['Crash', 'none'], ['Plan request', RID('e1a9a298-520d-42bf-ad30-ad67d0cc5894')], ['Anchored on-chain', 'no (prototype run)']])}</dl></div></div>
+      `<div class="split"><div class="plan"><b>Plan from 0G: “Staggered cut-in”</b><ul><li><i style="background:#e5484d"></i>A · red car, your lane, 22 m ahead: slows to compress the gap</li><li><i style="background:#f3c623"></i>B · taxi, left lane, 4 m ahead: holds, then cuts in</li><li><i style="background:#3b82f6"></i>C · blue car, left lane, alongside: blocks the escape lane</li><li><i style="background:#d63384"></i>D · patrol car, your lane, 9 m behind: closes from the rear</li></ul><pre class="msg">{"actions": {"A": "SLOW_DOWN", "B": "KEEP_LANE", "C": "KEEP_LANE", "D": "KEEP_LANE"},\n "phase": "Gap Compression",\n "why": "A slows to compress gap; B holds; C waits for gap to open for cut-in."}</pre></div><div><dl class="kv">${kv([['Moves from 0G', '10 of 10 (0 safe stops)'], ['Closest gap', '3.5 m'], ['Tightest TTC', '1.1 s'], ['Crash', 'none'], ['Plan request', RID('e1a9a298-520d-42bf-ad30-ad67d0cc5894')], ['Anchored on-chain', 'no (prototype run)']])}</dl></div></div>
        <div class="rail" style="margin-top:14px">${railHtml({ decisions0g: 10, decisions: 10, requestId: 'e1a9a298-520d-42bf-ad30-ad67d0cc5894', provider: PROVIDER, sigsVerified: 10, sigsTotal: 10, agentId: 579 })}</div>`),
     section('ab', 'y', 'A/B policy comparison', 'Both policies face the exact same scripted attack (replayed, no 0G calls), so the comparison is fair. Recorded at 4 sites; the result was the same at all of them.',
-      `<div class="split"><div>${video('videos/arena-script-001__r4l2s24__side_by_side.mp4', 'Side-by-side: PDM-Lite vs cautious IDM under the same attack')}</div><div><div class="tscroll" id="ab-table">${arenaTable(ARENA_RECORDED)}</div>
+      `<div><div><div class="tscroll" id="ab-table">${arenaTable(ARENA_RECORDED)}</div>
        <p style="margin:10px 0 0">The cautious model keeps about 3 s to collision; PDM-Lite drops to about 1 s.</p>
        <div class="row" style="margin-top:14px"><button class="btn k" id="ab-run">Run the arena live (free)</button><span class="pill sm" id="ab-status" aria-live="polite">recorded result shown</span></div><p class="err" id="ab-err"></p></div></div>`),
     section('paid002', 'c', 'Paid test run', 'Our agent paid 0.001 ℏ on Hedera, got a single-use permit, locked the test setup on 0G Galileo, ran it in CARLA with 0G decisions, stored the evidence on 0G Storage, and finalized the result on-chain.',
-      `<div class="split"><div>${video('videos/paid-job-002-replay-view__chase.mp4', 'Paid CARLA test 002, replayed from its recorded decisions')}</div><div><dl class="kv">${kv([['Payment', link(PAID002.hedera!.hashscan, 'Hedera receipt')], ['Setup locked (block 64245811)', link(galileoTx(PAID002.commitTx!), short(PAID002.commitTx, 8, 4))], ['Moves from 0G', '7 of 8 (one safe stop)'], ['Evidence stored', `root ${short(PAID002.publicRoot, 8, 4)}`], ['Result finalized', link(galileoTx(PAID002.finalizeTx!), short(PAID002.finalizeTx, 8, 4))], ['Permit reused?', 'refused (409)'], ['Result', 'danger 0.93 · tightest TTC 1.0 s · no crash']])}</dl></div></div>
+      `<div class="split"><div class="replay"><canvas id="x-replay" aria-label="Replay of paid test 002"></canvas></div><div><dl class="kv">${kv([['Payment', link(PAID002.hedera!.hashscan, 'Hedera receipt')], ['Setup locked (block 64245811)', link(galileoTx(PAID002.commitTx!), short(PAID002.commitTx, 8, 4))], ['Moves from 0G', '7 of 8 (one safe stop)'], ['Evidence stored', `root ${short(PAID002.publicRoot, 8, 4)}`], ['Result finalized', link(galileoTx(PAID002.finalizeTx!), short(PAID002.finalizeTx, 8, 4))], ['Permit reused?', 'refused (409)'], ['Result', 'danger 0.93 · tightest TTC 1.0 s · no crash']])}</dl></div></div>
        <div class="rail" style="margin-top:14px">${railHtml(PAID002)}</div>`),
     section('research', 'l', 'Research mission', 'The 0G agent ran experiments to find the edge between safe and unsafe settings, found a crash, and tested a proposed fix. Each dot below is one experiment it chose.',
-      `<div class="split"><div>${video('videos/research-mission-001__carla-failure.mp4', 'The crash the research agent found, reproduced in CARLA')}</div><div><canvas id="hunt" style="width:100%;height:240px;display:block" aria-label="Experiments chosen by the 0G agent"></canvas></div></div>
+      `<canvas id="hunt" style="width:100%;height:260px;display:block;margin-top:12px" aria-label="Experiments chosen by the 0G agent"></canvas>
        <dl class="kv">${kv([['Smallest failing case', 'speed 18.75 m/s · gap 25 m · reaction delay 0.6 s → crash'], ['0G’s suggested fix (min gap 3 m)', 'did not help (0.36 m)'], ['Grid-searched fix', 'safe: unsafe cases 19 → 0'], ['Self-audit of its claims', '5 supported · 2 contradicted']])}</dl>
        <details class="more"><summary>Experiment log</summary><div class="feed" id="hunt-feed" style="max-height:220px"></div></details>
        <div class="rail" style="margin-top:14px">${railHtml({ decisions0g: 9, decisions: 9, requestId: 'a00eb00f-1205-4518-ad7d-095c6e6a2ffb', provider: PROVIDER, sigsVerified: 47, sigsTotal: 47, agentId: 579 })}</div>`),
   ].join('')
   $('ab-run').addEventListener('click', runArena)
-  loadRuns(); drawHunt()
+  loadRuns(); drawHunt(); replayPlayer($<HTMLCanvasElement>('x-replay'), null)
 }
 async function loadRuns() {
   try { allRuns = await getJson('/api/runs') } catch { /* offline: keep what we have */ }
@@ -508,7 +523,7 @@ async function loadRuns() {
   el.innerHTML = allRuns.slice(0, 25).map((r) => `<tr><td><code>${short(r.name, 14, 4)}</code>${r.payment ? ' <span class="pill sm p">paid</span>' : ''}</td><td>${esc(r.world)}</td><td>${esc(r.decisions0g)} of ${esc(r.decisions)}</td>
     <td><span class="pill sm ${risk(r.ccs).cls}">${num(r.ccs, 2)}</span></td><td>${num(r.minTtc, 1)} s</td>
     <td style="text-align:right"><button class="pill sm k" data-replay="${esc(r.name)}">Replay</button></td></tr>`).join('') ||
-    `<tr><td colspan="6">${online ? 'No recorded tests yet' : 'The console is offline — recorded tests load when it reconnects. The videos above still play.'}</td></tr>`
+    `<tr><td colspan="6">${online ? 'No recorded tests yet' : 'The console is offline. Recorded tests load when it reconnects.'}</td></tr>`
   el.querySelectorAll<HTMLButtonElement>('[data-replay]').forEach((b) => b.addEventListener('click', () => startStream(b.dataset.replay!, 'replay')))
 }
 async function pollJob(id: string, onUpdate: (j: any) => void) {
@@ -527,7 +542,7 @@ async function runArena() {
     const rows: ArenaRow[] = j.results ?? []
     if (!rows.length) throw new Error(j.error ?? 'arena returned no results')
     $('ab-table').innerHTML = arenaTable(rows); $('ab-status').textContent = 'live result'
-  } catch (e) { $('ab-err').textContent = `${(e as Error).message}${online ? '' : ' — the console is offline; the recorded result is shown.'}` } finally { btn.disabled = false }
+  } catch (e) { $('ab-err').textContent = `${(e as Error).message}${online ? '' : '. The console is offline, so the recorded result is shown.'}` } finally { btn.disabled = false }
 }
 
 // ---------- health ----------
@@ -535,7 +550,7 @@ let online = false
 async function pollHealth() {
   try {
     health = await getJson('/api/health'); online = !!health.ok
-    const tip = `Test console online · 0G ${health.zg ? 'ready' : 'not configured'} · Hedera payments ${health.hedera ? 'ready' : 'offline'} · CARLA ${health.carla ? 'online' : 'offline'} · ${health.queue?.running ?? 0} running, ${health.queue?.waiting ?? 0} waiting · ${health.caps?.runs_left ?? '—'} live runs left today`
+    const tip = `Test console online · 0G ${health.zg ? 'ready' : 'not configured'} · Hedera payments ${health.hedera ? 'ready' : 'offline'} · CARLA ${health.carla ? 'online' : 'offline'} · ${health.queue?.running ?? 0} running, ${health.queue?.waiting ?? 0} waiting · ${health.caps?.runs_left ?? '-'} live runs left today`
     $('console-pill').dataset.tip = tip
     $('console-txt').textContent = `Console online${health.queue?.waiting ? ` · ${health.queue.waiting} waiting` : ''}`
   } catch { online = false; health = null; $('console-pill').dataset.tip = 'The test console is unreachable. Recorded tests and videos still work.'; $('console-txt').textContent = 'Console offline' }
@@ -568,7 +583,7 @@ async function boot() {
     if (!w || wallet) return
     try { const a: string[] = await w.provider.request({ method: 'eth_accounts' }); if (a?.[0]) { wallet = { address: a[0], provider: w.provider, name: w.info.name }; lastTried = w; guest = false; renderWallets(); paintWallet(); renderChoices() } } catch { /* stays disconnected */ }
   }, 400)
-  startLidar()
+  startLidar(); exReplay = replayPlayer($<HTMLCanvasElement>('ex-scene'), $('ex-feed'))
   requestAnimationFrame(frame)
   await Promise.all([pollHealth(), loadPolicies()])
   renderChoices()
@@ -629,7 +644,7 @@ function startLidar() {
       for (let i = 0; i < n; i++) {
         const x = xyz[i * 3], y = xyz[i * 3 + 1], z = xyz[i * 3 + 2]
         const xr = x * ca - y * sa, yr = x * sa + y * ca
-        const yv = yr * ct - z * st, zv = yr * st + z * ct + cam
+        const yv = -(z * ct - yr * st), zv = yr * ct - z * st + cam
         if (zv < 1) continue
         const p = cam / zv, X = (cx + xr * scale * p) | 0, Y = (cy + yv * scale * p) | 0
         if (X < 0 || Y < 0 || X >= W - sz || Y >= H - sz) continue
@@ -643,4 +658,44 @@ function startLidar() {
     }
     requestAnimationFrame(draw)
   }).catch(() => { $('lidar-label').textContent = '' })
+}
+
+// ---------- recorded replay drawn from run data (public/replay-paid002.ndjson = paid test 002's stream) ----------
+let exReplay: { restart: () => void } | null = null
+let replayData: Promise<{ ticks: Tick[], ds: Decision[] }> | null = null
+function replayPlayer(cv: HTMLCanvasElement, feed: HTMLElement | null) {
+  replayData ??= fetch('replay-paid002.ndjson').then((r) => r.text()).then((t) => {
+    const ticks: Tick[] = [], ds: Decision[] = []
+    for (const l of t.split('\n')) { if (!l.trim()) continue; const e = JSON.parse(l); if (e.t === 'ticks') ticks.push(...e.rows); if (e.t === 'decision') ds.push(e.d) }
+    return { ticks, ds }
+  })
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  let t0 = performance.now(), visible = true, shown = -1
+  const ctl = { restart: () => { t0 = performance.now(); shown = -1; if (feed) feed.innerHTML = '' } }
+  replayData.then(({ ticks, ds }) => {
+    if (!ticks.length) return
+    const T = ticks.at(-1)!.t_s
+    const worst = ticks.reduce((m, x, i) => ((x.ccs ?? 0) > (ticks[m].ccs ?? 0) ? i : m), 0)
+    const paintFeed = (upto: number) => {
+      if (!feed) return
+      const n = ds.filter((d) => d.sim_time_s <= upto).length
+      if (n === shown) return
+      shown = n
+      feed.innerHTML = ds.slice(0, n).reverse().map((d) => `<div class="dec"><div class="what">${num(d.sim_time_s, 1)} s · ${esc(say(d.action))}</div>${why(d) ? `<div class="why-line">“${esc(why(d))}”</div>` : ''}<div class="meta">${d.source === '0g' ? `0G request ${short(d.request_id, 8, 4)}` : 'no valid 0G answer, safe stop'}</div></div>`).join('') || '<div class="meta">The attacker\'s decisions appear here, one per second.</div>'
+    }
+    const frame = (now: number) => {
+      if (!visible || !cv.isConnected) return
+      const t = reduce ? ticks[worst].t_s : ((now - t0) / 1000) % (T + 2)
+      const i = Math.min(ticks.length - 1, Math.max(0, ticks.findIndex((x) => x.t_s >= t)))
+      const k = t > T ? ticks.length - 1 : i
+      const last = ds.filter((d) => d.sim_time_s <= ticks[k].t_s).at(-1)
+      const pulse = last ? Math.max(0.35, 1 - (ticks[k].t_s - last.sim_time_s)) : 0
+      drawScene(cv, ticks[k], ticks.slice(Math.max(0, k - 120), k + 1), last ? say(last.action) : undefined, pulse)
+      paintFeed(reduce ? T : ticks[k].t_s)
+      if (!reduce) requestAnimationFrame(frame)
+    }
+    new IntersectionObserver((e) => { const was = visible; visible = e[0].isIntersecting; if (visible && !was) requestAnimationFrame(frame) }).observe(cv)
+    requestAnimationFrame(frame)
+  }).catch(() => { /* replay file missing: canvas stays blank */ })
+  return ctl
 }

@@ -73,9 +73,9 @@ export async function verifyRunRequest(body: any, want: { policy: string, suite:
   const [, policy, suite, mode, nonce, issued] = m
   if (policy !== want.policy || suite !== want.suite || mode !== want.mode) return { error: 'signed message does not match the request (policy/suite/mode)' }
   const t = Date.parse(issued)
-  if (!Number.isFinite(t) || now - t > REQUEST_MAX_AGE_MS || t - now > 60_000) return { error: 'signed request expired — sign again (valid 5 minutes)' }
+  if (!Number.isFinite(t) || now - t > REQUEST_MAX_AGE_MS || t - now > 60_000) return { error: 'signed request expired. Sign again (valid 5 minutes)' }
   for (const [k, exp] of seen) if (exp < now) seen.delete(k)
-  if (seen.has(nonce)) return { error: 'this signed request was already used — sign a new one' }
+  if (seen.has(nonce)) return { error: 'this signed request was already used. Sign a new one' }
   let ok = false
   try { ok = await verify({ address: address as `0x${string}`, message, signature: signature as `0x${string}` }) } catch { ok = false }
   if (!ok) return { error: 'signature does not match the wallet address' }

@@ -35,7 +35,7 @@ const policyCommitment = () => `0x${createHash('sha256').update(readFileSync(res
 const bought = new Map<string, Activation>() // jobId -> activation (permit stays in this process)
 const procs = new Map<string, { child: ChildProcess, log: string[], exit: number | null, jobId: string }>() // run name -> runner
 const caps = new DailyCaps(join(RUNS, 'backend', 'caps.json'), MAX_BUYS, MAX_RUNS)
-const PAUSED = 'Live runs are paused for today — replay a recorded run'
+const PAUSED = 'Live runs are paused for today. Replay a recorded run'
 // Live runs need a wallet-signed request (EIP-191); nonces are single-use (in memory: a restart within 5 min forgets them).
 const nonces = new Map<string, number>()
 const walletCaps = new WalletCaps(Number(process.env.FAULTLINE_WALLET_MAX_RUNS ?? 3))
@@ -78,7 +78,7 @@ app.use((req, res, next) => {
   const host = req.headers.host ?? ''
   if (!HOSTS.has(host)) { res.status(421).end(); return }
   const ip = clientIp(req.socket.remoteAddress, req.header('x-forwarded-for'))
-  if (!allLimit.allow(ip) || (req.method === 'POST' && !postLimit.allow(ip))) { res.status(429).json({ error: 'Too many requests — wait a minute' }); return }
+  if (!allLimit.allow(ip) || (req.method === 'POST' && !postLimit.allow(ip))) { res.status(429).json({ error: 'Too many requests. Wait a minute' }); return }
   const origin = req.header('origin')
   const sameOrigin = origin === `https://${PUBLIC_HOST}` || origin === `http://127.0.0.1:${PORT}` || origin === `http://localhost:${PORT}`
   if (origin && ORIGINS.has(origin)) {
@@ -135,7 +135,7 @@ app.post('/api/buy', async (req: Request, res: Response) => {
     if (mode === 'pay') {
       const v = await verifyRunRequest(req.body, { policy: 'pdm-lite', suite, mode: 'paid' }, nonces, verifyMessage)
       if ('error' in v) throw new Error(v.error)
-      if (!walletCaps.take(v.address)) throw new Error('This wallet has used its live runs for today — replay a recorded run')
+      if (!walletCaps.take(v.address)) throw new Error('This wallet has used its live runs for today. Replay a recorded run')
       appendLive(`buy requested_by ${v.address} ${suite}`)
     }
     const notReady = mode === 'pay' ? runnerError() : null
@@ -371,7 +371,7 @@ function spawnPy(j: Job, args: string[]) {
 const summaryOf = (dir: string) => existsSync(join(dir, 'decisions.jsonl')) ? runSummary(relative(RUNS, dir)) : null
 
 async function runJob(j: Job) {
-  if (j.lane === 'carla' && !(await tcpOpen(2000))) throw new Error('CARLA is offline right now — try the kinematic suite or replay a recorded run')
+  if (j.lane === 'carla' && !(await tcpOpen(2000))) throw new Error('CARLA is offline right now. Try the kinematic suite or replay a recorded run')
   const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)
   let code: number
   if (j.kind === 'arena') {
@@ -437,18 +437,18 @@ app.post('/api/demo-run', async (req, res) => {
     try { buyerConfigFromEnv() } catch (e) { return deny(res, 503, (e as Error).message) }
   }
   const lane = suite === 'cut-in-v1-carla' ? 'carla' : 'kin'
-  if (lanes[lane].length > MAX_WAITING) return deny(res, 429, 'The queue is full — try again in a few minutes or replay a recorded run')
+  if (lanes[lane].length > MAX_WAITING) return deny(res, 429, 'The queue is full. Try again in a few minutes or replay a recorded run')
   if (caps.left().runs_left < 1 || (mode === 'paid' && caps.left().buys_left < 1)) return deny(res, 429, PAUSED)
   let v: { address: string } | { error: string }
   if (req.body?.guest === true && !req.body?.signature) {
-    if (mode !== 'free') return deny(res, 401, 'Paid runs need a signed wallet request — connect a wallet, or use a free guest run')
-    if (!guestPerIp.allow(clientIp(req.socket.remoteAddress, req.header('x-forwarded-for')))) return deny(res, 429, 'One guest run per hour from your network — connect a wallet for more, or replay a recorded test')
-    if (!guestDaily.take('guest')) return deny(res, 429, 'Guest runs are used up for today — connect a wallet, or replay a recorded test')
+    if (mode !== 'free') return deny(res, 401, 'Paid runs need a signed wallet request. Connect a wallet, or use a free guest run')
+    if (!guestPerIp.allow(clientIp(req.socket.remoteAddress, req.header('x-forwarded-for')))) return deny(res, 429, 'One guest run per hour from your network. Connect a wallet for more, or replay a recorded test')
+    if (!guestDaily.take('guest')) return deny(res, 429, 'Guest runs are used up for today. Connect a wallet, or replay a recorded test')
     v = { address: 'guest run' }
   } else {
     v = await verifyRunRequest(req.body, { policy, suite, mode }, nonces, verifyMessage)
     if ('error' in v) return deny(res, 401, v.error)
-    if (!walletCaps.take(v.address)) return deny(res, 429, 'This wallet has used its live runs for today — replay a recorded run')
+    if (!walletCaps.take(v.address)) return deny(res, 429, 'This wallet has used its live runs for today. Replay a recorded run')
   }
   if (mode === 'paid' && !caps.take('buys')) return deny(res, 429, PAUSED)
   caps.take('runs')
@@ -465,7 +465,7 @@ app.post('/api/arena', (req, res) => {
   const site = req.body?.site ?? DEFAULT_SITE
   if (!SITES.includes(site)) return deny(res, 400, 'site must be one of: ' + SITES.join(', '))
   if ((req.body?.mode ?? 'script') !== 'script') return deny(res, 400, 'only mode script (replayed adversary, no 0G cost) is public')
-  if (lanes.carla.length > MAX_WAITING) return deny(res, 429, 'The queue is full — try again in a few minutes or replay a recorded run')
+  if (lanes.carla.length > MAX_WAITING) return deny(res, 429, 'The queue is full. Try again in a few minutes or replay a recorded run')
   const j: Job = { id: randomBytes(8).toString('hex'), kind: 'arena', lane: 'carla', policies: pol, site, seed: 0, mode: 'script', status: 'queued',
     label: 'A/B arena: identical adversary script replayed from runs/cutin-002 (no 0G calls)', createdAt: Date.now(), dirs: [], events: [], log: [] }
   enqueue(j)

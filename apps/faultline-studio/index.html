@@ -3,294 +3,717 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' __API_ORIGIN__; media-src 'self' __API_ORIGIN__ https://raw.githubusercontent.com; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <title>Faultline Studio</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' __API_ORIGIN__ https: wss:; frame-src https://*.coinbase.com https://*.walletconnect.com https://*.walletconnect.org; child-src https://*.coinbase.com; media-src 'self' __API_ORIGIN__ https://raw.githubusercontent.com; img-src 'self' data: https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Faultline</title>
+  <meta property="og:title" content="Faultline">
+  <meta name="description" content="Adversarial testing for autonomous vehicles, verified on 0G.">
+  <meta property="og:description" content="Adversarial testing for autonomous vehicles, verified on 0G.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0a0a0a; --ink: #111111; --paper: #fbfbf6; --muted: #6b6b66; --line: #111111;
+      --bg: #0a0a0a; --ink: #111111; --paper: #fbfbf6; --muted: #55554f; --line: #111111;
       --yellow: #f3f56c; --cyan: #7cecf5; --pink: #f5a3ef; --purple: #7c5cf5; --lime: #c9f36f; --hot: #ff4fc3;
-      --ego: #7c5cf5; --adv: #f5a3ef; --zg: #111111;
       --ease: cubic-bezier(.23, 1, .32, 1);
       --sans: "Space Grotesk", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
     }
-    * { box-sizing: border-box }
-    html, body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.4 var(--sans); -webkit-font-smoothing: antialiased }
+    * { box-sizing: border-box } img { max-width: 100%; height: auto } .split > * { min-width: 0 }
+    html, body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased }
     button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none }
     a { color: inherit }
-    code, .mono { font-family: var(--mono); font-size: .88em; font-variant-numeric: tabular-nums }
+    :focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; border-radius: 12px }
+    .card :focus-visible { outline-color: var(--purple) }
+    code, .mono { font-family: var(--mono); font-size: .86em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere }
     .hidden { display: none !important }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0) }
 
-    /* pills: the one visual unit */
-    .pill { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); white-space: nowrap; font-weight: 500; font-size: 14px }
+    .pill { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); white-space: nowrap; font-weight: 500; font-size: 14px; text-decoration: none }
     .pill.y { background: var(--yellow) } .pill.c { background: var(--cyan) } .pill.p { background: var(--pink) } .pill.l { background: var(--lime) } .pill.k { background: var(--ink); color: var(--paper) }
-    .pill.sm { height: 24px; padding: 0 10px; font-size: 12px }
-    .pill.big { height: 52px; padding: 0 24px; font-size: 26px; font-weight: 600 }
-    .disc { width: 52px; height: 52px; border-radius: 50%; border: 1.5px solid var(--line); display: inline-grid; place-items: center; font-size: 22px; font-weight: 600; flex: none }
-
-    header { display: flex; align-items: center; gap: 24px; padding: 14px 24px; position: sticky; top: 0; z-index: 10; background: var(--bg) }
-    .brand { color: var(--paper); font-weight: 700; font-size: 20px; letter-spacing: -.02em; white-space: nowrap }
-    .brand i { font-style: normal; color: var(--yellow) }
-    nav.steps { display: flex; gap: 6px; background: #1a1a1a; padding: 4px; border-radius: 999px }
-    nav.steps button { height: 32px; padding: 0 16px; border-radius: 999px; color: #8a8a85; font-weight: 500; white-space: nowrap; transition: background .2s var(--ease), color .2s var(--ease) }
-    nav.steps button.on { background: var(--paper); color: var(--ink) }
-    nav.steps button:disabled { opacity: .35; cursor: default }
-    .net { margin-left: auto; display: flex; gap: 6px }
-    .net .pill { background: #1a1a1a; color: #cfcfca; border-color: #2a2a2a; font-size: 12px; height: 26px }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #555 } .dot.up { background: var(--lime) } .dot.down { background: var(--hot) }
-
-    main { padding: 8px 24px 40px; max-width: 1440px; margin: 0 auto }
-    .card { background: var(--paper); border-radius: 28px; padding: 24px; position: relative }
-    .card.c { background: var(--cyan) } .card.y { background: var(--yellow) } .card.p { background: var(--pink) } .card.l { background: var(--lime) }
-    .card.k { background: #161616; color: var(--paper) } .card.k .muted { color: #8a8a85 }
-    .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px }
-    .head h2 { margin: 0; font-size: 17px; font-weight: 500 }
-    .muted { color: var(--muted) }
-    .grid { display: grid; gap: 16px }
-    .btn { height: 44px; padding: 0 20px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); font-weight: 600; transition: transform .16s var(--ease), background .2s var(--ease) }
+    .pill.sm { min-height: 26px; padding: 0 10px; font-size: 13px }
+    .pill.big { min-height: 48px; padding: 0 22px; font-size: 22px; font-weight: 600 }
+    .btn { min-height: 48px; padding: 0 22px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); font-weight: 600; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: transform .16s var(--ease), background .2s var(--ease) }
     .btn:active:not(:disabled) { transform: scale(.97) }
-    .btn.k { background: var(--ink); color: var(--paper) } .btn.y { background: var(--yellow) }
-    .btn:disabled { opacity: .4; cursor: default }
-    .kv { display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; margin: 0 }
-    .kv dt { color: var(--muted) } .kv dd { margin: 0; text-align: right; overflow-wrap: anywhere }
-    .card.c .kv dt, .card.p .kv dt { color: #111111a8 }
-    .err { color: #b4006f; font-family: var(--mono); font-size: 12px; white-space: pre-wrap; margin: 10px 0 0 }
+    .btn.k { background: var(--ink); color: var(--paper) } .btn.y { background: var(--yellow) } .btn.l { background: var(--lime) }
+    .btn.big { min-height: 56px; font-size: 18px; padding: 0 28px }
+    .btn:disabled { opacity: .45; cursor: not-allowed }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #777; flex: none } .dot.up { background: var(--lime) } .dot.down { background: var(--hot) } .dot.part { background: var(--yellow) }
+
+    header { display: flex; align-items: center; gap: 18px; padding: 14px 24px; position: sticky; top: 0; z-index: 10; background: var(--bg) }
+    .brand { color: var(--paper); font-weight: 700; font-size: 22px; letter-spacing: -.02em; white-space: nowrap; text-decoration: none }
+    .brand i { font-style: normal; color: var(--yellow) }
+    nav.top { display: flex; gap: 4px; background: #1a1a1a; padding: 4px; border-radius: 999px }
+    nav.top a, nav.top button { min-height: 36px; padding: 0 16px; border-radius: 999px; color: #b8b8b2; font-weight: 500; white-space: nowrap; transition: background .2s var(--ease), color .2s var(--ease) }
+    nav.top a.on, nav.top button.on { background: var(--paper); color: var(--ink) }
+    .hdr-right { margin-left: auto; display: flex; gap: 8px; align-items: center }
+    #console-pill { background: #1a1a1a; color: #e4e4de; border-color: #333 }
+    #wallet-btn { background: var(--yellow) }
+
+    main { padding: 8px 24px 56px; max-width: 1280px; margin: 0 auto }
+    .card { background: var(--paper); border-radius: 28px; padding: 28px; position: relative; border: 1.5px solid var(--line) }
+    .card.c { background: var(--cyan) } .card.y { background: var(--yellow) } .card.p { background: var(--pink) } .card.l { background: var(--lime) }
+    .card.k { background: #161616; color: var(--paper); border-color: #2a2a2a }
+    .grid { display: grid; gap: 16px } .grid > * { min-width: 0 }
+    h1, h2, h3 { letter-spacing: -.02em; margin: 0 }
+    .lede { font-size: 18px; color: var(--muted); margin: 8px 0 0; max-width: 70ch }
+    .card.k .lede { color: #b8b8b2 }
+    .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap }
+    .head h2 { font-size: 22px; font-weight: 600 }
+    .err { color: #9c005d; font-weight: 500; margin: 10px 0 0; white-space: pre-wrap }
+    .err:empty { display: none }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center }
+    video { width: 100%; display: block; border-radius: 20px; background: #000; aspect-ratio: 16 / 9; border: 1.5px solid var(--line) }
     table { width: 100%; border-collapse: collapse }
-    th, td { padding: 10px 6px; text-align: left; border-bottom: 1px solid #1111111a } th { font-weight: 500; color: var(--muted); font-size: 13px }
+    th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #11111120 } th { font-weight: 500; color: var(--muted); font-size: 14px }
     tbody tr:last-child td { border-bottom: 0 }
+    .tscroll { overflow-x: auto }
 
-    /* order */
-    .order { grid-template-columns: 1.35fr 1fr; align-items: start }
-    .suites { grid-template-columns: 1fr 1fr }
-    .suite { text-align: left; border-radius: 28px; padding: 22px; border: 2px solid transparent; transition: transform .2s var(--ease), border-color .2s var(--ease) }
-    .suite:active { transform: scale(.98) } .suite.on { border-color: var(--paper) }
-    .suite.c { background: var(--cyan) } .suite.y { background: var(--yellow) }
-    .suite h3 { margin: 18px 0 0; font-size: 30px; font-weight: 600; letter-spacing: -.02em; line-height: 1 }
-    .suite canvas { width: 100%; height: 96px; display: block; margin-top: 18px }
-    .price { display: flex; align-items: baseline; gap: 10px; margin: 6px 0 18px } .price b { font-size: 64px; font-weight: 600; letter-spacing: -.04em; line-height: 1 }
-    .hold { position: relative; width: 100%; height: 60px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--yellow); font-size: 17px; font-weight: 600; overflow: hidden; user-select: none; touch-action: none; transition: transform .16s var(--ease) }
-    .hold:active:not(:disabled) { transform: scale(.98) }
-    .hold .fill { position: absolute; inset: 0; width: 0; background: var(--lime) } .hold span { position: relative }
-    .hold:disabled { opacity: .4; cursor: default }
+    /* tooltips: hover or keyboard/tap focus */
+    .tip { position: relative; text-decoration: underline dotted 1.5px; text-underline-offset: 3px; cursor: help }
+    [data-tip] { position: relative }
+    [data-tip]:hover::after, [data-tip]:focus-visible::after, [data-tip]:focus::after {
+      content: attr(data-tip); position: absolute; left: 0; top: calc(100% + 8px); z-index: 30; width: max-content; max-width: min(300px, 80vw);
+      padding: 10px 12px; border-radius: 14px; background: var(--ink); color: var(--paper); font: 500 13px/1.4 var(--sans); white-space: normal; text-align: left; pointer-events: none }
 
-    /* pay */
-    .pay { grid-template-columns: 1.45fr 1fr }
-    .stage { height: 400px; padding: 0; overflow: hidden; background: linear-gradient(180deg, var(--cyan), var(--lime)) }
-    .stage svg { position: absolute; inset: 0; width: 100%; height: 100% }
-    .acct { position: absolute; top: 24px; width: 220px; padding: 16px; border-radius: 22px; background: var(--paper); border: 1.5px solid var(--line) }
-    .acct.left { left: 24px } .acct.right { right: 24px }
-    .acct .bal { font-size: 26px; font-weight: 600; letter-spacing: -.02em; margin-top: 2px }
-    .acct .delta { font-family: var(--mono); font-size: 12px; height: 16px }
-    .policy { position: absolute; left: 24px; top: 164px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start }
-    .policy .pill { opacity: 0; transform: translateY(4px); transition: opacity .25s var(--ease), transform .25s var(--ease) } .policy .pill.on { opacity: 1; transform: none }
-    .ledger { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); white-space: nowrap }
-    .ledger.flash .pill { animation: pop .5s var(--ease) } @keyframes pop { 40% { transform: scale(1.06) } }
-    .steps-list { margin: 0; padding: 0; list-style: none }
-    .steps-list li { display: grid; grid-template-columns: 26px 1fr auto; gap: 12px; padding: 10px 0; border-bottom: 1px solid #1111111a; align-items: start }
-    .steps-list li:last-child { border-bottom: 0 }
-    .steps-list .t { font-weight: 500 } .steps-list .d { color: var(--muted); font-size: 12px; font-family: var(--mono); overflow-wrap: anywhere } .steps-list .ms { color: var(--muted); font-family: var(--mono); font-size: 12px }
-    .ic { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #11111140; margin-top: 1px }
-    .ic.run { border-color: var(--ink); border-top-color: transparent; animation: spin .7s linear infinite }
-    .ic.ok { background: var(--lime); border-color: var(--ink); position: relative } .ic.ok::after { content: ''; position: absolute; left: 6px; top: 3px; width: 4px; height: 8px; border: solid var(--ink); border-width: 0 2px 2px 0; transform: rotate(45deg) }
-    .ic.fail { background: var(--hot); border-color: var(--ink) }
-    @keyframes spin { to { transform: rotate(360deg) } }
-    .ticket { background: var(--pink); opacity: 0; transform: translateY(12px); transition: opacity .4s var(--ease), transform .4s var(--ease) }
-    .ticket.show { opacity: 1; transform: none }
-    .ticket .big { font-family: var(--mono); font-size: 20px; font-weight: 600; margin: 10px 0 14px; overflow-wrap: anywhere }
-    .ticket .pattern { position: absolute; right: 24px; top: 24px; width: 56px; height: 56px; image-rendering: pixelated; border-radius: 10px; border: 1.5px solid var(--line) }
+    /* hero */
+    .hero { position: relative; overflow: hidden; min-height: 460px; display: flex; align-items: center; padding: 48px }
+    .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .75 }
+    .hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #161616 0%, #161616e0 38%, #16161600 75%); pointer-events: none }
+    .hero-text { position: relative; z-index: 1; max-width: 560px }
+    .hero h1 { font-size: clamp(28px, 3vw, 40px); line-height: 1.15; font-weight: 600; color: var(--paper) }
+    .lidar-label { position: absolute; right: 20px; bottom: 16px; z-index: 1; font: 12px var(--mono); color: #b8b8b2 }
+    .fact { color: var(--yellow); font-weight: 600; margin: 12px 0 0 }
+    .replay canvas { width: 100%; height: 340px; display: block; border-radius: 20px; border: 1.5px solid var(--line) }
+    #ex-feed { max-height: 340px }
+    .arch { display: grid; gap: 6px; margin-top: 18px }
+    .arow { display: grid; grid-template-columns: minmax(0,1fr) 130px minmax(0,1fr) 130px minmax(0,1fr); gap: 0; align-items: center }
+    .arow.four { grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px } .arow.two { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; width: 60%; margin: 0 auto }
+    .ab { border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; background: var(--paper); display: flex; flex-direction: column; gap: 2px; min-width: 0; transition: transform .2s var(--ease) }
+    .ab:hover { transform: translateY(-2px) }
+    .ab.l { background: var(--lime) } .ab.p { background: var(--pink) } .ab.c { background: #e6fbfd } .ab.y { background: #fbfcd0 }
+    .ab b { font-size: 15px; font-weight: 600 } .ab span { font-size: 13px; color: #444; overflow-wrap: anywhere }
+    .ar { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0 6px }
+    .ar span, .adown span { font: 11px var(--mono); color: var(--muted); text-align: center; line-height: 1.3 }
+    .ar i { position: relative; display: block; width: 100%; height: 1.5px; background: var(--ink) }
+    .ar i::before, .ar i::after { content: ''; position: absolute; top: -3.25px; border: 4px solid transparent }
+    .ar i::after { right: -1px; border-left: 6px solid var(--ink); border-right: 0 } .ar i::before { left: -1px; border-right: 6px solid var(--ink); border-left: 0 }
+    .adown { display: flex; align-items: center; gap: 8px; justify-content: center; height: 34px }
+    .adown i { position: relative; width: 1.5px; height: 100%; background: var(--ink) }
+    .adown i::after { content: ''; position: absolute; bottom: -1px; left: -3.25px; border: 4px solid transparent; border-top: 6px solid var(--ink); border-bottom: 0 }
+    .sec { font-size: clamp(24px, 2.6vw, 34px); font-weight: 600; margin-bottom: 12px }
+    .kicker { font: 13px var(--mono); margin: 0 0 8px; color: var(--muted) } .card.k .kicker { color: #9a9a94 }
+    .two-col { display: grid; grid-template-columns: 1fr 1.4fr; gap: 28px; align-items: start } .big-copy { font-size: 19px; margin: 0 }
+    .roles { list-style: none; padding: 0; margin: 16px 0 0; display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px 20px }
+    .roles li { display: flex; gap: 8px; align-items: center; font-size: 15px } .roles i { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--ink); flex: none }
+    .moments { list-style: none; padding: 0; margin: 20px 0 0; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px }
+    .moments img, .still img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; display: block; border-radius: 14px; border: 1px solid var(--line); transition: transform .3s var(--ease) }
+    .still img.contain { object-fit: contain; background: var(--paper) }
+    .moments li { display: flex; flex-direction: column; gap: 4px } .moments b { font: 600 13px var(--mono); margin-top: 6px } .moments span { font-size: 14px }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-top: 18px }
+    .stats div, .numbers div { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column }
+    .stats b { font-size: 22px } .stats span, .numbers span { font-size: 13px; color: var(--muted) }
+    .receipts { margin: 14px 0 0; font-size: 14px } .linkbtn { text-decoration: underline; font-weight: 600; padding: 0; min-height: 0 }
+    .cards3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-top: 8px }
+    .cards3 div { background: var(--paper); border: 1px solid var(--line); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 4px; transition: transform .2s var(--ease) }
+    .cards3 div:hover { transform: translateY(-2px) } .cards3 b { font-size: 16px } .cards3 span { font-size: 14px; color: #333 }
+    .stills { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px }
+    .still { margin: 0; display: flex; flex-direction: column; gap: 8px; overflow: hidden } .still:hover img { transform: scale(1.02) }
+    .still figcaption { display: flex; flex-direction: column; gap: 2px } .still b { font-size: 16px } .still span { font-size: 14px; color: var(--muted) }
+    .numbers { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px }
+    .numbers div { background: #161616; border-color: #2a2a2a; color: var(--paper); padding: 20px } .numbers b { font-size: 34px; font-weight: 700; color: var(--yellow) } .numbers span { color: #b8b8b2 }
+    .why { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 16px }
+    .why div { background: #1f1f1f; border: 1.5px solid #333; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 6px; transition: transform .2s var(--ease) }
+    .why div:hover { transform: translateY(-2px) }
+    .why b { color: var(--yellow); font-size: 17px } .why span { color: #d0d0ca; font-size: 14px }
+    .sub1 { color: var(--paper); font-weight: 600; margin: 10px 0 0 }
+    #rscene.mini { height: 140px !important; margin-top: 12px }
+    .steps5 { margin: 0; padding-left: 22px; display: grid; gap: 10px } .steps5 li { font-size: 16px }
+    .codebox { position: relative; min-width: 0 } .codebox .copy { position: absolute; top: 18px; right: 10px }
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px } .tabs .on { background: var(--ink); color: var(--paper) }
+    .split2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.2fr); gap: 14px; align-items: start }
+    .hero2 { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center; padding: 40px }
+    .hero2 h1 { font-size: clamp(28px, 3.2vw, 44px); line-height: 1.12; font-weight: 600; color: var(--paper) }
+    .hero-clip { margin: 0; position: relative } .hero-clip video { border-color: #333 }
+    .hero-clip figcaption { position: absolute; left: 12px; top: 12px; font: 12px var(--mono); background: #000000b0; color: #fff; padding: 4px 8px; border-radius: 8px }
+    .pitch { color: var(--paper); font-size: clamp(18px, 2vw, 24px); font-weight: 500; text-align: center; margin: 12px auto; max-width: 900px }
+    .groups3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px }
+    .groups3 div { background: #1f1f1f; border: 1px solid #333; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 6px }
+    .groups3 b { color: var(--yellow); font-size: 17px } .groups3 span { color: #d0d0ca; font-size: 14px }
+    a.btn { color: inherit } .card.k a.btn:not(.k) { color: var(--ink) }
+    nav.top a { min-height: 36px; padding: 0 14px; border-radius: 999px; color: #b8b8b2; font-weight: 500; white-space: nowrap; display: inline-flex; align-items: center; text-decoration: none }
+    .mc-head { display: flex; justify-content: space-between; gap: 16px; align-items: center; flex-wrap: wrap }
+    .states { list-style: none; display: flex; gap: 6px; flex-wrap: wrap; padding: 0; margin: 0 }
+    .states li { font: 12px var(--mono); padding: 5px 10px; border-radius: 999px; border: 1px solid #444; color: #9a9a94 }
+    .states li.done { color: var(--paper); border-color: #666 } .states li.cur { background: var(--paper); color: var(--ink); border-color: var(--paper) }
+    .states li.bad { background: var(--hot); color: var(--ink); border-color: var(--hot) }
+    .mc-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start }
+    .mc-main { padding: 16px } .mc-stage { position: relative } .mc-stage video, .mc-stage img { width: 100%; aspect-ratio: 16 / 9; display: block; border-radius: 14px; background: #000; object-fit: contain; border: 0 }
+    .mc-overlay { position: absolute; left: 12px; bottom: 58px; display: flex; gap: 6px; flex-wrap: wrap; pointer-events: none }
+    .mc-overlay span { font: 600 13px var(--mono); background: #000000c0; color: #fff; padding: 5px 9px; border-radius: 8px }
+    .mc-overlay .act-on { background: var(--yellow); color: var(--ink) }
+    .mc-progress { aspect-ratio: 16 / 9; background: #0d0d0d; border-radius: 14px; padding: 20px; overflow: auto; color: var(--paper) }
+    .mc-progress h3 { margin: 0 0 6px } .mc-progress .eta { font: 13px var(--mono); color: #9a9a94; margin: 0 0 12px }
+    .mc-progress ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px }
+    .mc-progress li { border-left: 3px solid #444; padding: 4px 10px; font-size: 14px } .mc-progress li.ok { border-color: var(--lime) } .mc-progress li.run { border-color: var(--yellow) } .mc-progress li.bad { border-color: var(--hot) }
+    .mc-progress small { display: block; font: 12px var(--mono); color: #9a9a94 }
+    #mc-live.peek { position: absolute; right: 12px; bottom: 12px; width: 32%; aspect-ratio: 16 / 9; border: 1px solid #444 }
+    .mc-note { color: #9a9a94; font-size: 13px; margin: 8px 0 0 } .mc-note:empty { display: none }
+    .mc-timeline { display: flex; gap: 6px; overflow-x: auto; padding: 12px 0 2px }
+    .mc-timeline button { flex: none; font: 12px var(--mono); color: var(--paper); border: 1px solid #444; border-radius: 10px; padding: 6px 9px; text-align: left; min-height: 44px }
+    .mc-timeline button.on { background: var(--paper); color: var(--ink) } .mc-timeline button.halt { border-color: var(--hot) } .mc-timeline button.plan { border-color: var(--yellow) }
+    .mc-insp { max-height: 640px; overflow: auto } .mc-insp dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; font-size: 14px }
+    .mc-insp dt { color: var(--muted) } .mc-insp dd { margin: 0; font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere }
+    .mc-insp .why-q { background: #f1f1ea; border-radius: 12px; padding: 10px 12px; margin: 12px 0 }
+    .srcs { font: 12px var(--mono); color: var(--muted) }
+    .vf-in { flex: 1; min-width: 220px; min-height: 48px; border-radius: 999px; border: 1px solid #444; background: #111; color: var(--paper); padding: 0 16px; font: 14px var(--mono) }
+    .vtl { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px }
+    .vtl li { border-top: 3px solid #ccc; padding-top: 8px } .vtl li.ok { border-color: #2f9e44 } .vtl li.na { border-color: #ccc } .vtl b { display: block } .vtl span { font: 12px var(--mono); color: var(--muted); overflow-wrap: anywhere }
+    .proof { border: 1px solid #ddd; border-radius: 14px; margin-top: 10px; background: #fff } .proof summary { cursor: pointer; padding: 12px 14px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap }
+    .proof .body { padding: 0 14px 14px; font-size: 14px } .proof code { font-size: 12px }
+    .st { font: 600 12px var(--mono); padding: 3px 8px; border-radius: 6px; border: 1px solid currentColor; white-space: nowrap }
+    .st.verified { color: #2b8a3e } .st.failed { color: #c92a2a } .st.unavailable { color: #a06200 } .st.notchecked, .st.na { color: #666 }
+    .note-a2 { font-size: 14px }
+    .res-head { display: grid; grid-template-columns: 1.1fr 1fr; gap: 24px; align-items: center }
+    .reason { padding-left: 20px; display: grid; gap: 10px } .reason li span { display: block } .reason small { display: block; font: 12px var(--mono); color: var(--muted) }
+    .claims { display: grid; gap: 8px } .claim { border: 1px solid #ddd; border-radius: 14px; background: #fff } .claim summary { cursor: pointer; padding: 12px 14px; display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap }
+    .claim .body { padding: 0 14px 14px; font-size: 14px } tr.win td { background: #eefbe6 }
+    .auth2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px } .auth-box { border: 1px solid var(--line); border-radius: 16px; padding: 14px; background: #fff; display: flex; flex-direction: column; gap: 4px }
+    .auth-box span { font-size: 14px; color: #333 } .choice .iface { font: 12px var(--mono); color: var(--muted) }
+    .judge { position: fixed; right: 16px; bottom: 16px; z-index: 60; width: min(420px, calc(100vw - 32px)); background: var(--paper); border: 1px solid var(--line); border-radius: 20px; padding: 18px; box-shadow: 0 10px 40px #0008 }
+    .judge h3 { margin: 6px 0 6px; font-size: 20px } .judge p { margin: 0 0 12px; font-size: 15px } .jtop { display: flex; justify-content: space-between; align-items: center }
+    .hl { outline: 3px solid var(--yellow) !important; outline-offset: 4px; border-radius: 14px }
+    .split .stats { grid-template-columns: 1fr 1fr }
+    .fam { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 12px; margin-top: 12px } .fam.compact { margin-top: 18px }
+    .fam figure { margin: 0 } .fam video { border-radius: 12px; border: 1px solid var(--line) } .fam b { display: block; font-size: 15px; margin-top: 6px } .fam small { font: 12px var(--mono); color: var(--muted) }
+    .why-line { font-size: 14px; margin-top: 2px } 
+    .plan b { display: block; margin-bottom: 8px } .plan ul { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px }
+    .plan li { display: flex; gap: 8px; align-items: center; font-size: 14px } .plan li i { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--ink); flex: none }
+    .enables { margin: 18px 0 0; font-size: 18px; font-weight: 600 }
+    .btn:hover:not(:disabled) { transform: translateY(-1px) }
+    .diagram { width: 100%; max-width: 980px; height: auto; display: block; margin: 0 auto }
+    .card.k .btn:not(.k) { color: var(--ink) }
+    .diagram .bx rect { stroke: var(--ink); stroke-width: 2 }
+    .diagram text { font: 15px var(--sans); fill: var(--ink) } .diagram text.t { font-weight: 700; font-size: 19px } .diagram text.s { font-size: 14px; fill: var(--muted) }
+    .how-list { display: none; margin: 0; padding-left: 20px } .how-list li { margin: 8px 0 }
+    .get { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 10px 0 0 }
+    .get li { border: 1.5px solid var(--line); border-radius: 999px; padding: 6px 14px; background: var(--lime); font-weight: 500 }
+    /* stepper */
+    .stepper { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; padding: 0; list-style: none }
+    .stepper button { min-height: 40px; padding: 0 16px 0 6px; border-radius: 999px; background: #1a1a1a; color: #b8b8b2; font-weight: 500; display: inline-flex; gap: 8px; align-items: center }
+    .stepper button i { font-style: normal; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #2a2a2a; font-weight: 700; font-size: 14px }
+    .stepper button.on { background: var(--paper); color: var(--ink) } .stepper button.on i { background: var(--ink); color: var(--paper) }
+    .stepper button.done i { background: var(--lime); color: var(--ink) }
+    .stepper button:disabled { opacity: .5; cursor: not-allowed }
+    .step h2 { font-size: 30px; font-weight: 700 }
+    .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px }
+    .choices.three { grid-template-columns: repeat(3, 1fr) }
+    .choice { text-align: left; border: 1.5px solid var(--line); border-radius: 24px; padding: 20px; background: var(--paper); transition: transform .16s var(--ease), box-shadow .16s var(--ease); display: flex; flex-direction: column; gap: 6px }
+    .choice:active:not(:disabled) { transform: scale(.985) }
+    .choice[aria-checked="true"] { box-shadow: 0 0 0 4px var(--ink); background: var(--lime) }
+    .choice:disabled { opacity: .55; cursor: not-allowed }
+    .choice b { font-size: 20px } .choice span { color: var(--muted) } .choice small { color: var(--muted); font-size: 13px }
+    .note { background: #ffffff90; border: 1.5px dashed var(--line); border-radius: 18px; padding: 14px 16px; margin-top: 18px; font-size: 15px }
+    .nav-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; align-items: center }
+    .wallets { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px }
+    .wallets img { width: 24px; height: 24px; border-radius: 6px }
+    .summary { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 18px 0 0 }
+    .summary dt { color: var(--muted) } .summary dd { margin: 0; font-weight: 600 }
+    pre.msg { background: var(--ink); color: var(--paper); border-radius: 16px; padding: 14px; font: 13px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0 0 }
 
-    /* run */
-    .pit { grid-template-columns: 250px 1fr 320px }
-    .statusbar { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 14px 16px }
-    .stat { display: flex; flex-direction: column; padding: 0 12px } .stat small { color: var(--muted); font-size: 12px } .stat b { font-family: var(--mono); font-size: 20px; font-weight: 600 }
-    .live { animation: blink 1.2s steps(2) infinite } @keyframes blink { 50% { opacity: .5 } }
-    .timeline { margin: 0; padding: 0; list-style: none }
-    .timeline li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; padding: 7px 0; position: relative }
-    .timeline li:not(:last-child)::after { content: ''; position: absolute; left: 9.5px; top: 30px; bottom: -6px; width: 1.5px; background: #1111112a }
-    .timeline .t { font-weight: 500; font-size: 14px } .timeline .d { font-size: 11px; color: var(--muted); font-family: var(--mono); overflow-wrap: anywhere }
-    .scene { padding: 0; overflow: hidden; display: flex } .scene canvas { width: 100%; height: 100%; min-height: 380px; display: block }
-    .tower { font-family: var(--mono); font-size: 12px; max-height: 470px; overflow: auto; display: flex; flex-direction: column; gap: 6px }
-    .tower .row { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 16px; background: #ffffff; border: 1.5px solid transparent }
-    .tower .row.new { animation: rowin .35s var(--ease); border-color: var(--line) }
+    /* live */
+    .pit { grid-template-columns: 1fr 360px; align-items: start }
+    .statusbar { display: flex; gap: 8px 20px; align-items: center; flex-wrap: wrap; padding: 16px 20px }
+    .stat small { display: block; color: var(--muted); font-size: 13px } .stat b { font-family: var(--mono); font-size: 20px; font-weight: 600 }
+    .live { animation: blink 1.2s steps(2) infinite } @keyframes blink { 50% { opacity: .55 } }
+    .scene { padding: 0; overflow: hidden } .scene canvas { width: 100%; height: 360px; display: block } #live-cam, #replay-vid { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: #000 } video.clip { margin-top: 14px }
+    .feed { display: flex; flex-direction: column; gap: 8px; max-height: 560px; overflow: auto }
+    .dec { background: #ffffffc0; border: 1.5px solid transparent; border-radius: 16px; padding: 10px 12px }
+    .dec.new { animation: rowin .35s var(--ease); border-color: var(--line) }
     @keyframes rowin { from { opacity: 0; transform: translateY(-6px) } }
-    .tower .row.wait { background: transparent; border: 1.5px dashed #11111155; color: #111111a8 }
-    .tower .sub { grid-column: 2 / 4; color: var(--muted); font-size: 10px }
-    .act { font-family: var(--sans); font-weight: 600; font-size: 12px; padding: 2px 9px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper) }
-    .act.CUT_IN_AGGRESSIVE, .act.BRAKE_HARD, .act.SAFE_HALT { background: var(--pink) }
-    .act.CUT_IN, .act.BRAKE_SOFT, .act.SLOW_DOWN, .act.ACCELERATE { background: var(--yellow) }
-    .act.MAINTAIN, .act.COAST, .act.KEEP_LANE { background: var(--cyan) }
-    .telemetry { grid-column: 1 / 3; display: grid; grid-template-columns: 1fr 190px; gap: 20px; align-items: center }
-    .telemetry canvas { width: 100%; height: 160px; display: block }
-    .gauge canvas { width: 190px; height: 130px; display: block }
-    .log { font-family: var(--mono); font-size: 11px; max-height: 190px; overflow: auto; white-space: pre-wrap }
+    .dec.wait { background: transparent; border: 1.5px dashed #11111170 }
+    .dec .what { font-weight: 600 } .dec .meta { color: var(--muted); font-size: 13px }
+    .dec details summary { cursor: pointer; font-size: 13px; color: var(--muted); margin-top: 4px }
+    .dec pre { font: 11px/1.4 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 0; background: var(--ink); color: var(--paper); padding: 8px; border-radius: 10px }
+    .progress { margin: 0; padding: 0; list-style: none }
+    .progress li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; padding: 6px 0 }
+    .progress .d { font-size: 13px; color: var(--muted); overflow-wrap: anywhere }
+    .ic { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #11111150; margin-top: 2px }
+    .ic.run { border-color: var(--ink); border-top-color: transparent; animation: spin .7s linear infinite }
+    .ic.ok { background: var(--lime); border-color: var(--ink) } .ic.fail { background: var(--hot); border-color: var(--ink) }
+    @keyframes spin { to { transform: rotate(360deg) } }
+    .tele canvas { width: 100%; height: 150px; display: block }
+    .log { font-family: var(--mono); font-size: 11px; max-height: 220px; overflow: auto; white-space: pre-wrap; margin-top: 10px }
+    details.more > summary { cursor: pointer; font-weight: 600; min-height: 36px; display: flex; align-items: center }
 
     /* results */
-    .verdict { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 20px }
-    .results { grid-template-columns: 1.55fr 1fr }
-    .scrub { display: flex; gap: 12px; align-items: center; margin-top: 14px }
-    .scrub input { flex: 1; accent-color: var(--ink) }
-    /* judge guide, trust rail, featured, A/B */
-    .dot.part { background: var(--yellow) }
-    .modal { position: fixed; inset: 0; z-index: 50; background: #000000b0; display: grid; place-items: center; padding: 16px }
-    .sheet { width: min(820px, 100%); max-height: calc(100vh - 32px); overflow: auto; animation: rowin .3s var(--ease) }
-    .gsteps { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px }
-    .gsteps button.on { background: var(--ink); color: var(--paper) }
-    .gbody h3 { font-size: 28px; font-weight: 600; letter-spacing: -.02em; margin: 0 0 14px; line-height: 1.1 }
-    .opt { display: block; width: 100%; text-align: left; border: 1.5px solid var(--line); border-radius: 22px; padding: 16px; margin-bottom: 10px; background: var(--paper); transition: transform .16s var(--ease) }
-    .opt:active { transform: scale(.98) } .opt.on { background: var(--lime) }
-    .opt .mono { font-size: 12px; overflow-wrap: anywhere }
-    .row-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px }
-    .rail { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 14px 16px }
-    .rail .tp { height: auto; min-height: 30px; padding: 5px 12px; white-space: normal; flex-wrap: wrap; text-decoration: none }
-    .rail .tp b { font-weight: 600 } .rail .tp small { font-family: var(--mono); font-size: 11px; color: #111111b0 }
-    .feat { grid-template-columns: 1fr 1fr; align-items: start }
-    .feat .wide { grid-column: 1 / -1 }
-    .split { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) }
-    .grid > * { min-width: 0 } #ab-table, .tscroll { overflow-x: auto }
-    video { width: 100%; display: block; border-radius: 20px; background: #000; aspect-ratio: 16 / 9 }
-    .feed { font-family: var(--mono); font-size: 11px; max-height: 260px; overflow: auto; display: flex; flex-direction: column; gap: 6px; margin-top: 12px }
-    .feed div { background: #ffffffb0; border-radius: 12px; padding: 6px 10px; overflow-wrap: anywhere }
-    .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px }
+    .verdict h2 { font-size: clamp(26px, 3.4vw, 40px); font-weight: 700; line-height: 1.1 }
+    .scrub { display: flex; gap: 12px; align-items: center; margin-top: 14px; flex-wrap: wrap }
+    .scrub input { flex: 1; min-width: 160px; accent-color: var(--ink); min-height: 32px }
+    .rail { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px }
+    .tp { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 18px; border: 1.5px solid var(--line); background: var(--paper); text-decoration: none; min-height: 72px }
+    .tp .n { display: flex; gap: 8px; align-items: center; font-weight: 600 } .tp .s { font-size: 13px; color: var(--muted); overflow-wrap: anywhere }
+    a.tp:hover { background: #fff }
+    .kv { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 10px 0 0 }
+    .kv dt { color: var(--muted) } .kv dd { margin: 0; text-align: right; overflow-wrap: anywhere }
+    .drawer { margin-top: 14px; border-top: 1.5px solid #11111125; padding-top: 10px }
+
+    /* explore */
+    .explore-nav { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px }
+    .split { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 20px; align-items: start; margin-top: 14px }
+    .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px }
     .board .cell { border: 1.5px solid var(--line); border-radius: 18px; padding: 12px; background: var(--paper) }
-    .board .cell b { display: block; font-size: 22px; font-family: var(--mono) }
-    .ab-pick { display: flex; gap: 8px; flex-wrap: wrap; align-items: center }
-    select { font: inherit; height: 44px; border-radius: 999px; border: 1.5px solid var(--line); padding: 0 14px; background: var(--paper) }
+    .board .cell b { display: block; font-size: 20px; font-family: var(--mono) }
+    select { font: inherit; min-height: 48px; border-radius: 999px; border: 1.5px solid var(--line); padding: 0 14px; background: var(--paper) }
     #offline { margin-bottom: 16px }
-    @media (max-width: 1100px) { .feat, .board { grid-template-columns: 1fr 1fr } }
-    @media (max-width: 640px) { header { flex-wrap: wrap; gap: 10px; padding: 12px 16px } nav.steps { overflow-x: auto; max-width: 100% } main { padding: 8px 16px 40px } .split, .feat, .board { grid-template-columns: 1fr } .card { padding: 18px; border-radius: 22px } .pill.big { font-size: 18px; height: 40px } .acct { width: 150px } }
-    @media (max-width: 1100px) { .order, .pay, .pit, .results, .suites, .telemetry { grid-template-columns: 1fr } .telemetry { grid-column: auto } .net { display: none } }
+
+    @media (max-width: 1000px) {
+      .fam { grid-template-columns: 1fr 1fr }
+      .res-head { grid-template-columns: 1fr }
+      .hero2, .mc-grid, .groups3 { grid-template-columns: 1fr } .vtl { grid-template-columns: 1fr 1fr }
+      .pit, .split { grid-template-columns: minmax(0, 1fr) } .how { grid-template-columns: 1fr 1fr } .choices.three { grid-template-columns: 1fr }
+      .board { grid-template-columns: 1fr 1fr } .hdr-right #console-pill { display: none }
+    }
+    @media (max-width: 640px) {
+      .auth2 { grid-template-columns: 1fr }
+      .lidar-label { display: none } .split2 { grid-template-columns: 1fr } .hdr-right #console-pill { display: inline-flex } #console-txt { display: none }
+      .arow, .arow.four, .arow.two { grid-template-columns: 1fr; width: 100%; gap: 0 } .arow.four .ab + .ab, .arow.two .ab + .ab { margin-top: 8px }
+      .ar { flex-direction: row-reverse; justify-content: center; height: 34px; gap: 8px; padding: 0 } .ar i { width: 1.5px; height: 100%; flex: none }
+      .ar i::before { left: -3.25px; top: -1px; border: 4px solid transparent; border-bottom: 6px solid var(--ink); border-top: 0 } .ar i::after { right: auto; left: -3.25px; top: auto; bottom: -1px; border: 4px solid transparent; border-top: 6px solid var(--ink); border-bottom: 0 }
+      .two-col, .cards3, .stills, .roles { grid-template-columns: 1fr } .moments, .stats, .numbers { grid-template-columns: 1fr 1fr } .hero { padding: 24px; min-height: 420px } .hero::after { background: #161616c0 }
+      header { flex-wrap: wrap; gap: 10px; padding: 12px 16px } nav.top { order: 3; width: 100%; overflow-x: auto } nav.top a { flex: none; padding: 0 10px; font-size: 13px }
+      main { padding: 8px 16px 40px } .card { padding: 20px; border-radius: 22px } .hero { padding: 22px }
+      .how, .choices, .facts { grid-template-columns: 1fr } .step h2 { font-size: 24px } .scene canvas { height: 260px }
+      .stepper button span { display: none } .stepper button { padding: 0 6px }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important } }
   </style>
 </head>
 <body>
 <header>
-  <div class="brand">faultline<i>.</i></div>
-  <nav class="steps">
-    <button data-view="featured">Featured</button>
-    <button data-view="ab">A/B</button>
-    <button data-view="order" class="on">Order</button>
-    <button data-view="pay" disabled>Pay</button>
-    <button data-view="live" disabled>Run</button>
-    <button data-view="results" disabled>Results</button>
+  <a class="brand" href="#" id="home-link">faultline<i>.</i></a>
+  <nav class="top" aria-label="Main">
+    <a href="/" data-nav="home">01 Discover</a>
+    <a href="/lab" data-nav="flow">02 Safety Lab</a>
+    <a href="/mission/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051" data-nav="mission">03 Mission Control</a>
+    <a href="/research" data-nav="research">04 Results &amp; Research</a>
+    <a href="/verify/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051" data-nav="verify">05 Proof Explorer</a>
   </nav>
-  <div class="net">
-    <span class="pill sm"><i class="dot" id="n-hedera"></i>Hedera</span>
-    <span class="pill sm"><i class="dot" id="n-zg"></i>0G</span>
-    <span class="pill sm"><i class="dot" id="n-carla"></i>CARLA</span>
-    <span class="pill sm" id="n-queue">Queue —</span>
+  <div class="hdr-right">
+    <span class="pill sm" id="console-pill" tabindex="0" data-tip="Checking the test console…"><i class="dot" id="console-dot"></i><span id="console-txt">Connecting…</span></span>
+    <button class="pill" id="wallet-btn">Sign in with wallet</button>
   </div>
-  <button class="pill sm y" id="guide-btn">Judge guide</button>
 </header>
 <main>
-  <div class="card k hidden" id="offline"><b>Console offline</b> <span class="muted">· recorded evidence only · live runs need the agent console</span></div>
-  <section id="v-featured" class="hidden"><div class="grid feat" id="featured"></div></section>
+  <div class="card k hidden" id="offline" role="status"><b>The live test console is offline right now.</b> You can still watch recorded tests in Explore; live runs come back when it reconnects.</div>
 
-  <section id="v-ab" class="hidden">
+  <!-- HOME -->
+  <section id="v-home">
     <div class="grid">
+      <div class="card k hero2">
+        <div>
+          <p class="kicker">Autonomous vehicle red-teaming</p>
+          <h1>Your autonomous car passed the test. Who tested the tester?</h1>
+          <p class="lede">Faultline uses AI-controlled traffic adversaries to challenge autonomous vehicles in CARLA, then publishes independently checkable evidence of every decision and outcome.</p>
+          <div class="row" style="margin-top:22px">
+            <a class="btn y big" href="/mission/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051" data-link>Explore real attack</a>
+            <a class="btn big" href="/verify/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051" data-link>Verify evidence</a>
+            <button class="btn" id="judge-btn">Judge mode (3 min)</button>
+          </div>
+        </div>
+        <figure class="hero-clip"><video src="/hero-loop.mp4" poster="/stills/paid.jpg" autoplay muted loop playsinline aria-label="Recorded CARLA chase camera of paid test 002"></video><figcaption>Recorded · paid test 002 · CARLA Town10</figcaption></figure>
+      </div>
+      <p class="pitch">Faultline doesn’t ask you to trust the AI testing your car. It gives you the experiment, the evidence, and the means to challenge both.</p>
+
+      <div class="card" id="problem">
+        <div class="two-col">
+          <h2 class="sec">The trust problem</h2>
+          <p class="big-copy">Every safety benchmark today is run by someone with a stake in the answer: the car maker, or the vendor it pays. Scenarios can be picked after the fact, and nobody outside can check the record. Faultline makes the attacker independent and the record public.</p>
+        </div>
+      </div>
+
+      <div class="card" id="example">
+        <p class="kicker">swarm-carla-010 · CARLA Town10 · prototype run, not anchored</p>
+        <h2 class="sec">One attack, four AI-controlled cars</h2>
+        <p class="lede">Before the first tick, the 0G strategist wrote a plan named “Staggered Cut-in”: “B and C sequentially cut into the ego lane ahead, while A progressively brakes. This compresses the ego’s forward space, forcing emergency deceleration.”</p>
+        <ul class="roles" data-roles></ul>
+        <ol class="moments">
+          <li><img src="/stills/cutin.jpg" alt="Chase camera: the yellow taxi cuts in ahead of the car under test" loading="lazy" width="960" height="540"><b>3 s</b><span>B cuts in ahead while A holds speed.</span></li>
+          <li><img src="/stills/compress.jpg" alt="Chase camera: the blue car alongside, the gap ahead closing" loading="lazy" width="960" height="540"><b>5 s</b><span>A brakes to compress the gap; C waits alongside.</span></li>
+          <li><img src="/stills/squeeze.jpg" alt="Chase camera: blue car left, taxi right, red car braking ahead" loading="lazy" width="960" height="540"><b>7 s</b><span>A and B brake together; the car under test is boxed in.</span></li>
+          <li><img src="/stills/box.jpg" alt="Drone view: four attacker cars around the car under test" loading="lazy" width="960" height="540"><b>11 s</b><span>C cuts in; the car under test stops behind B.</span></li>
+        </ol>
+        <div class="row" style="margin-top:16px"><a class="btn k" href="/mission/swarm-carla-010" data-link>Open in Mission Control</a></div>
+      </div>
+
+      <div class="card" id="consequence">
+        <h2 class="sec">The consequences</h2>
+        <div class="split">
+          <div><img src="/stills/squeeze.jpg" alt="The car under test boxed in by the attackers" loading="lazy" width="960" height="540"></div>
+          <div>
+            <div class="stats">
+              <div><b>No crash</b><span>outcome</span></div><div><b>3.49 m</b><span>closest gap (ground truth)</span></div>
+              <div><b>1.13 s</b><span>minimum time to collision</span></div><div><b>7.03 m/s²</b><span>hardest braking by the car under test</span></div>
+            </div>
+            <p style="margin:14px 0 0">PDM-Lite drove on its own LiDAR and braked to a stop behind B. Every number comes from the run’s recorded metrics.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="families-home">
+        <h2 class="sec">Scenario families</h2>
+        <p class="lede" style="margin-top:-6px">Short CARLA clips of the situations Faultline targets. These clips are scripted illustrations; only the cut-in runs live against a 0G attacker today.</p>
+        <div class="fam" data-families></div>
+      </div>
+
+      <div class="card k" id="trail">
+        <h2 class="sec">The evidence trail</h2>
+        <div class="groups3">
+          <div><b>Who made the decisions?</b><span>Each attacker move is a 0G Router private-inference response with a request ID; provider signatures are archived (paid test 002: 7 of 7). The attacker is ERC-8004 agent #579.</span></div>
+          <div><b>Can the evidence be altered?</b><span>Paid runs commit the scenario on 0G Galileo before the first decision, store the logs on 0G Storage, and finalize the result after the last decision.</span></div>
+          <div><b>Who requested and paid?</b><span>The tester’s wallet signs the request; our agent pays 0.001 HBAR on Hedera through x402 and receives a one-run permit.</span></div>
+        </div>
+        <div class="row" style="margin-top:16px"><a class="btn y" href="/verify/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051" data-link>Open the Proof Explorer</a></div>
+      </div>
+
+      <div class="card" id="how">
+        <h2 class="sec">How Faultline works</h2>
+        <div class="arch">
+          <div class="arow">
+            <div class="ab"><b>Your AV stack</b><span>Plugged in through an adapter; sees only its own sensors.</span></div>
+            <div class="ar" aria-hidden="true"><span>observations · actions</span><i></i></div>
+            <div class="ab l"><b>CARLA + Faultline controller</b><span>Physics, LiDAR, safety limits, safe stop.</span></div>
+            <div class="ar" aria-hidden="true"><span>signed decision</span><i></i></div>
+            <div class="ab p"><b>0G Router (inference)</b><span>Attacker model, private tier; request ID and signature per answer.</span></div>
+          </div>
+          <div class="adown" aria-hidden="true"><i></i><span>roots + receipts</span></div>
+          <div class="arow four">
+            <div class="ab c"><b>0G Storage</b><span>Public and sealed log of each paid run.</span></div>
+            <div class="ab c"><b>0G Galileo (chain)</b><span>Commit before, finalize after.</span></div>
+            <div class="ab c"><b>Hedera</b><span>x402 payment and permit.</span></div>
+            <div class="ab c"><b>Arkiv</b><span>Shareable safety claims.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="findings">
+        <h2 class="sec">Research findings, including where the model lost</h2>
+        <div class="cards3">
+          <div><b>Bisection found the boundary better</b><span>Safety boundary error: per-delay bisection 0.57 m, 0G with tools 0.73 m (6 calls instead of 25).</span></div>
+          <div><b>Random search found more failure types</b><span>On the open benchmark, random search found 7 distinct failure fingerprints; 0G with tools found 4.</span></div>
+          <div><b>Claims are audited</b><span>The agent blamed friction-limited braking; the run shows the car peaked at 5.76 m/s² against a 6.28 m/s² limit. Claim contradicted.</span></div>
+        </div>
+        <p style="margin:14px 0 0">We don’t force a language model to do what deterministic algorithms do better. 0G handles experiment strategy and hypotheses; classical tools handle search and physical validity; every claim is audited against the results.</p>
+        <div class="row" style="margin-top:14px"><a class="btn" href="/research" data-link>See the research</a></div>
+      </div>
+
+      <div class="card y cta">
+        <h2 class="sec">Test your own stack</h2>
+        <p class="lede">Python, CARLA Leaderboard and ROS 2 adapters, a compatibility check, then a free dry run or a paid anchored test.</p>
+        <div class="row" style="margin-top:16px"><a class="btn k big" href="/stack" data-link>Connect your stack</a><a class="btn big" href="/lab" data-link>Open the Safety Lab</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MISSION CONTROL -->
+  <section id="v-mission" class="hidden">
+    <div class="grid">
+      <div class="card k mc-head">
+        <div><p class="kicker" id="mc-kind">Mission Control</p><h2 class="sec" id="mc-title" style="color:var(--paper);margin:0">Loading…</h2></div>
+        <ol class="states" id="mc-states" aria-label="Run state"></ol>
+      </div>
+      <div class="card hidden" id="mc-plan"></div>
+      <div class="mc-grid">
+        <div class="card k mc-main">
+          <div class="mc-stage">
+            <video id="mc-video" controls muted playsinline preload="metadata" aria-label="Recorded CARLA camera"></video>
+            <img id="mc-live" class="hidden" alt="Live CARLA chase camera (low frame rate preview)">
+            <div id="mc-progress" class="mc-progress hidden" aria-live="polite"></div>
+            <div class="mc-overlay" id="mc-overlay" aria-live="polite"></div>
+          </div>
+          <div class="row" style="margin-top:10px"><button class="btn y" id="mc-worst">Jump to worst moment</button><button class="btn hidden" id="mc-peek">Peek live (low frame rate)</button></div>
+          <p class="mc-note" id="mc-note"></p>
+          <div class="mc-timeline" id="mc-timeline" role="list" aria-label="Decision timeline"></div>
+        </div>
+        <aside class="card mc-insp" id="mc-insp" aria-label="Decision inspector"></aside>
+      </div>
+      <div class="card">
+        <div class="head"><h2>Telemetry</h2><span class="srcs">gap, TTC, speeds: simulator ground truth · CCS: recomputed from ground truth · LiDAR gap: measured</span></div>
+        <canvas id="mc-tele" style="width:100%;height:220px;display:block" aria-label="Telemetry over simulation time"></canvas>
+      </div>
+      <div class="card" id="mc-verdict"></div>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="v-results2" class="hidden">
+    <div class="grid">
+      <div class="card k res-head">
+        <div><p class="kicker" id="rs-kind">Results</p><h2 class="sec" id="rs-verdict" style="color:var(--paper)">Loading…</h2><p class="lede" id="rs-sub"></p>
+          <div class="row" style="margin-top:12px"><a class="btn y" id="rs-mission" href="/">Open in Mission Control</a><a class="btn" id="rs-verify" href="/verify">Check the evidence</a></div></div>
+        <figure class="hero-clip" style="margin:0"><video id="rs-frame" muted playsinline preload="auto" aria-label="Recorded frame at the worst moment"></video><figcaption id="rs-frame-cap">Worst moment</figcaption></figure>
+      </div>
+      <div class="tabs" role="tablist" id="rs-tabs">
+        <button class="pill on" data-rtab="replay" role="tab">Replay</button><button class="pill" data-rtab="metrics" role="tab">Driving metrics</button>
+        <button class="pill" data-rtab="reasoning" role="tab">Reasoning</button><button class="pill" data-rtab="compare" role="tab">Compare</button><button class="pill" data-rtab="evidence" role="tab">Evidence</button>
+      </div>
+      <div class="card" id="rs-body"></div>
+    </div>
+  </section>
+
+  <!-- RESEARCH -->
+  <section id="v-research" class="hidden">
+    <div class="grid">
+      <div class="card k"><p class="kicker">Results &amp; Research</p><h2 class="sec" style="color:var(--paper)">What the agent found, and where it lost</h2>
+        <p class="lede">We don’t force a language model to do what deterministic algorithms do better. 0G handles experiment strategy and hypotheses; classical tools handle search and physical validity; every claim is audited against the results.</p>
+        <div class="row" style="margin-top:12px"><a class="btn y" href="/results/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051">Featured result: paid test 002</a><a class="btn" href="/library">All recorded tests</a></div></div>
+      <div class="card">
+        <h2 class="sec">Finding the safety boundary</h2>
+        <p class="lede" style="margin-top:-6px">hunt-bench-002: where does a car-following policy go from safe to unsafe as reaction delay grows? Each dot is one experiment the 0G designer chose; the dashed line is the true boundary.</p>
+        <canvas id="hunt" style="width:100%;height:280px;display:block;margin-top:12px" aria-label="Experiments chosen by the 0G designer against the true safety boundary"></canvas>
+        <details class="more"><summary>Why it chose each experiment</summary><div class="feed" id="hunt-feed" style="max-height:240px"></div></details>
+      </div>
+      <div class="card">
+        <h2 class="sec">Benchmark: the honest result</h2>
+        <div class="split2">
+          <div class="tscroll"><table><thead><tr><th>Boundary search (budget 24)</th><th>Boundary error</th><th>Model calls</th></tr></thead><tbody>
+            <tr><td>Grid 6×4</td><td class="mono">5.87 m</td><td class="mono">0</td></tr>
+            <tr><td>Random</td><td class="mono">6.84 m</td><td class="mono">0</td></tr>
+            <tr class="win"><td><b>Per-delay bisection</b></td><td class="mono"><b>0.57 m</b></td><td class="mono">0</td></tr>
+            <tr><td>Old 0G designer</td><td class="mono">5.57 m</td><td class="mono">25</td></tr>
+            <tr><td>0G + tools (final)</td><td class="mono">0.73 m</td><td class="mono">6</td></tr></tbody></table></div>
+          <div class="tscroll"><table><thead><tr><th>Open discovery (budget 16)</th><th>Failure types found</th><th>Coverage</th></tr></thead><tbody>
+            <tr class="win"><td><b>Random</b></td><td class="mono"><b>7</b></td><td class="mono">0.93</td></tr>
+            <tr><td>Old 0G designer</td><td class="mono">3</td><td class="mono">0.47</td></tr>
+            <tr><td>0G + tools</td><td class="mono">4</td><td class="mono">0.50</td></tr></tbody></table></div>
+        </div>
+        <p style="margin:12px 0 0">Bisection beats every model-driven search on boundary accuracy, and random search found more failure types. The model’s value is cheaper strategy (6 calls instead of 25) and hypotheses, which we then audit.</p>
+      </div>
+      <div class="card">
+        <h2 class="sec">Claim audit</h2>
+        <p class="lede" style="margin-top:-6px">Open a claim the agent made to see the experiment that checks it.</p>
+        <div class="claims" id="claims"></div>
+      </div>
+      <div class="card">
+        <h2 class="sec">Counterfactual: the failure and the fix</h2>
+        <p class="lede" style="margin-top:-6px">research-mission-001: the smallest failing case (18.75 m/s, gap 25 m, reaction delay 0.6 s) crashes; the model’s suggested fix did not help, a grid-searched fix did (unsafe cases 19 → 0).</p>
+        <div class="split2" style="margin-top:12px">
+          <figure class="still"><video class="clip" controls muted playsinline preload="metadata" data-src="videos/research-mission-001__carla-failure.mp4" aria-label="CARLA: the minimized failing case"></video><figcaption><b>Failing case</b><span>collision, minimum gap −0.008 m</span></figcaption></figure>
+          <figure class="still"><video class="clip" controls muted playsinline preload="metadata" data-src="videos/research-mission-001__carla-fix-baseline.mp4" aria-label="CARLA: the grid-searched fix"></video><figcaption><b>Grid-searched fix</b><span>safe, minimum gap 4.74 m</span></figcaption></figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROOF EXPLORER -->
+  <section id="v-verify" class="hidden">
+    <div class="grid">
+      <div class="card k">
+        <p class="kicker">Proof Explorer</p>
+        <h2 class="sec" style="color:var(--paper)">Check the evidence yourself</h2>
+        <p class="lede">Pick a run or paste a 0G Storage public root. Each proof says what it guarantees, shows the exact artifact, and has an honest status.</p>
+        <div class="row" style="margin-top:14px"><label class="sr" for="vf-in">Run name or public root</label><input id="vf-in" class="vf-in" placeholder="run name or 0x public root" autocomplete="off"><button class="btn y" id="vf-go">Check</button></div>
+      </div>
+      <div class="card" id="vf-timeline"></div>
+      <div id="vf-groups" class="grid"></div>
+      <div class="card note-a2"><b>Limitation.</b> Provider signatures prove which 0G provider returned each response. They do not prove the physics, and under end-to-end encryption they do not bind the plaintext prompt. The physics is checked separately from the recorded trajectory.</div>
+    </div>
+  </section>
+
+  <!-- GUIDED FLOW -->
+  <section id="v-flow" class="hidden">
+    <ol class="stepper" id="stepper" aria-label="Test steps"></ol>
+
+    <div class="card step" id="s1" data-step="1">
+      <h2>What are you testing?</h2>
+      <p class="lede">The self-driving software that has to survive the attack.</p>
+      <div class="choices" role="radiogroup" aria-label="Driving policy" id="policies"></div>
+      <div class="nav-btns"><button class="btn k" id="s1-next">Next: how to challenge it</button><button class="btn" id="byo">Connect your own stack</button></div>
+    </div>
+
+    <div class="card step hidden" id="s2" data-step="2">
+      <h2>How to challenge it</h2>
+      <p class="lede">The attacker model controls the other traffic and tries to force a crash.</p>
+      <div class="choices three" role="radiogroup" aria-label="Attack" id="attacks"></div>
+      <div class="fam compact" data-families></div>
+      <div class="nav-btns"><button class="btn" data-back>← Back</button><button class="btn k" id="s2-next">Next: how to run it</button></div>
+    </div>
+
+    <div class="card step hidden" id="s3" data-step="3">
+      <h2>How to run it</h2>
+      <p class="lede" id="exec-lede">Live runs need the CARLA server; its status is checked before you can launch.</p>
+      <div class="choices three" role="radiogroup" aria-label="Execution" id="modes"></div>
+      <div class="nav-btns"><button class="btn" data-back>← Back</button><button class="btn k" id="s3-next">Next: authorize</button></div>
+    </div>
+
+    <div class="card step hidden" id="s4" data-step="4">
+      <h2>Authorize</h2>
+      <div class="auth2">
+        <div class="auth-box"><b>You sign a test request</b><span>Your wallet signs one readable message (policy, attack, run type, nonce, time). No transaction, no token approval, no gas.</span></div>
+        <div class="auth-box"><b>Our agent pays for the test on Hedera</b><span id="pay-line">Free demo runs are not paid. Paid runs: our agent pays 0.001 HBAR through x402 under its spending limit and receives a one-run permit.</span></div>
+      </div>
+      <dl class="summary" id="summary"></dl>
+      <div class="note" style="margin-top:14px"><b>Coinbase Wallet may warn about this new domain. Choose “Continue to site”.</b> We only ask for a signature, never a transaction.</div>
+      <div class="wallets" id="wallets"></div>
+      <div class="err" id="wallet-err" role="alert"></div>
+      <div class="nav-btns"><button class="btn" id="guest">Continue without a wallet</button><button class="btn" data-goto-explore="runs">Watch a recorded test</button></div>
+      <p style="color:var(--muted);font-size:14px;margin:10px 0 0">Without a wallet you can start up to 3 free demo runs per hour from your network, with a daily limit. Paid runs need a wallet signature.</p>
+      <details class="more" style="margin-top:12px"><summary>Show the exact message your wallet will sign</summary><pre class="msg" id="msg-preview"></pre></details>
+      <div id="pending-box"></div>
+      <p class="err" id="start-err"></p>
+      <div class="nav-btns"><button class="btn" data-back>← Back</button><button class="btn k big" id="start">Sign and launch</button><button class="hidden" id="s1-wallet-next" disabled></button></div>
+    </div>
+
+    <div class="step hidden" id="oldlive">
+      <div class="grid">
+        <div class="card statusbar">
+          <span class="pill k live" id="live-tag">Starting</span>
+          <span class="pill" id="s-job">-</span>
+          <div class="stat"><small>Time</small><b id="s-t">0.0 s</b></div>
+          <div class="stat"><small>AI decisions</small><b id="s-dec">0</b></div>
+          <div class="stat"><small>Gap to attacker</small><b id="s-gap">-</b></div>
+          <div class="stat"><small><span class="tip" tabindex="0" data-tip="Time to collision: how many seconds until the cars touch if nobody changes speed. Under 1.5 s is dangerous.">Time to collision</span></small><b id="s-ttc">-</b></div>
+          <button class="btn k hidden" id="to-results" style="margin-left:auto">See results →</button>
+        </div>
+        <div class="grid pit">
+          <div class="grid">
+            <div class="card scene"><img id="live-cam" class="hidden" alt="Live CARLA chase camera of your test"><video id="replay-vid" class="hidden" controls muted playsinline aria-label="Recorded CARLA camera of this run"></video><p id="no-cam" class="hidden" style="padding:40px 24px;margin:0;color:var(--muted)">This run has no camera recording. The decisions and telemetry below are from its recorded data.</p><canvas id="scene" class="hidden" aria-label="Top-down view"></canvas></div>
+            <div class="card tele"><canvas id="tele" aria-label="Danger over time"></canvas></div>
+            <div class="card">
+              <div class="head"><h2>Progress</h2></div>
+              <ul class="progress" id="progress"></ul>
+              <details class="more"><summary>Technical log</summary><div class="log" id="log"></div></details>
+            </div>
+          </div>
+          <div class="card c">
+            <div class="head"><h2 style="font-size:20px">Attacker decisions</h2></div>
+            <p style="margin:-6px 0 12px;color:var(--muted);font-size:14px">Each line is one answer from the model on 0G's private computer.</p>
+            <div class="feed" id="feed" aria-live="polite"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step hidden" id="oldres">
+      <div class="grid">
+        <div class="card verdict" id="verdict"></div>
+        <div class="card">
+          <video id="rvideo" class="hidden" controls muted playsinline preload="metadata" aria-label="Recorded CARLA camera of this test" style="aspect-ratio:16/9"></video>
+          <canvas id="rscene" style="width:100%;height:320px;display:block;border-radius:20px" aria-label="Top-down map of the test"></canvas>
+          <div class="scrub"><button class="btn y" id="worst">Jump to the closest call</button><label class="sr" for="scrub">Replay position</label><input type="range" id="scrub" min="0" max="0" value="0"><span class="pill sm mono" id="scrub-t">0.00 s</span></div>
+          <canvas id="rtele" style="width:100%;height:140px;display:block;margin-top:14px"></canvas>
+        </div>
+        <div class="card">
+          <div class="head"><h2>Proof</h2><span style="color:var(--muted);font-size:14px">A green dot means the data proves it. Tap a card to see what it proves.</span></div>
+          <div class="rail" id="rail-results"></div>
+          <details class="more drawer"><summary>Evidence (IDs, roots and transactions)</summary><dl class="kv" id="evidence"></dl></details>
+        </div>
+        <div class="nav-btns"><button class="btn y" id="again">Run another test</button><button class="btn" data-goto-explore="runs">Browse recorded tests</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- YOUR STACK -->
+  <section id="v-stack" class="hidden">
+    <div class="grid">
+      <div class="card k"><h2 class="sec" style="color:var(--paper)">Test your own AV stack</h2><p class="lede">Faultline owns the world, the attacker and the clock. Your stack owns the car’s decisions. One small interface connects them.</p></div>
+      <div class="card">
+        <h2 class="sec">Five steps</h2>
+        <ol class="steps5">
+          <li><b>Pick an adapter.</b> Python in-process, an existing CARLA Leaderboard agent (no changes), or ROS 2 (Autoware and similar).</li>
+          <li><b>Write stack.yaml.</b> Name, adapter, entry point or sensors, latency budget, and the files whose digest identifies your stack.</li>
+          <li><b>Run the checker.</b> <code>python -m faultline.stack check stack.yaml</code> checks sensors against the live CARLA 0.10 blueprints, controls, latency, determinism and the digest.</li>
+          <li><b>Dry run for free.</b> <code>python -m faultline.stack.arena --site seed:0 --stacks stack.yaml --mode script</code>; add a second stack for an A/B comparison.</li>
+          <li><b>Buy a paid run.</b> The Hedera permit binds the digest from step 3, so the run you pay for is provably your declared stack.</li>
+        </ol>
+      </div>
+      <div class="card c">
+        <h2 class="sec">Adapters</h2>
+        <div class="tabs" role="tablist"><button class="pill on" data-tab="t-py" role="tab">Python</button><button class="pill" data-tab="t-lb" role="tab">CARLA Leaderboard</button><button class="pill" data-tab="t-ros" role="tab">ROS 2</button></div>
+        <div class="tab" id="t-py"><div class="split2"><div class="codebox"><button class="pill sm copy" data-copy="c-py-yaml">Copy</button><pre class="msg" id="c-py-yaml">name: my-planner
+adapter: python            # python | leaderboard | ros2
+entry: my_pkg.stack:MyStack
+latency_budget_s: 0.1
+files:                     # digest over these is bound into the paid permit
+  - my_pkg/stack.py</pre></div><div class="codebox"><button class="pill sm copy" data-copy="c-py">Copy</button><pre class="msg" id="c-py">from faultline.stack.interface import Control, SensorSpec
+
+class MyStack:
+    def sensors(self):
+        return [SensorSpec(id=&quot;LIDAR&quot;, type=&quot;lidar&quot;, x=1.5, z=1.9, rate_hz=20,
+                           params={&quot;channels&quot;: &quot;64&quot;, &quot;range&quot;: &quot;80&quot;})]
+
+    def setup(self, mission, hd_map_path):
+        self.route = mission  # route, speed limit, lane width, dt
+
+    def run_step(self, observations, ego_state, t_s):
+        frame, points = observations[&quot;LIDAR&quot;]   # float32 (N, 4), sensor frame
+        return Control(throttle=0.3, brake=0.0, steer=0.0)
+
+    def destroy(self):
+        pass</pre></div></div></div>
+        <div class="tab hidden" id="t-lb"><div class="split2"><div class="codebox"><button class="pill sm copy" data-copy="c-lb-yaml">Copy</button><pre class="msg" id="c-lb-yaml">name: my-leaderboard-agent
+adapter: leaderboard
+entry: my_agent:MyAgent    # your existing Leaderboard agent class
+config: configs/agent.yaml # passed to setup(path_to_conf_file)
+latency_budget_s: 0.1
+files:
+  - my_agent.py</pre></div><p>Your agent keeps its usual <code>setup(path_to_conf_file)</code>, <code>sensors()</code>, <code>set_global_plan()</code>, <code>run_step(input_data, timestamp)</code> and <code>destroy()</code>. Faultline calls them by duck typing and already produces observations in the Leaderboard <code>input_data</code> format. Radar and the OpenDRIVE map sensor are not bridged yet.</p></div></div>
+        <div class="tab hidden" id="t-ros"><div class="split2"><div class="codebox"><button class="pill sm copy" data-copy="c-ros-yaml">Copy</button><pre class="msg" id="c-ros-yaml">name: ros2-pdm-lite
+adapter: ros2
+control: ackermann         # or twist
+latency_budget_s: 0.2      # no control in time: full brake that step
+sensors:
+  - {id: LIDAR, type: lidar, x: 1.5, z: 1.9, rate_hz: 20,
+     params: {channels: &quot;64&quot;, range: &quot;80&quot;}}
+files:
+  - faultline/stack/ros_node.py</pre></div><div class="codebox"><button class="pill sm copy" data-copy="c-ros">Copy</button><pre class="msg" id="c-ros">publishes (ROS_DOMAIN_ID=42, frame map = CARLA with y flipped)
+  /faultline/stack/&lt;sensor id&gt;   sensor_msgs/PointCloud2
+  /faultline/stack/odom          nav_msgs/Odometry
+  /tf, /clock
+  /faultline/stack/route         nav_msgs/Path (latched)
+  /faultline/stack/map_path      std_msgs/String (latched, Lanelet2 .osm)
+your stack answers on
+  /faultline/stack/control       ackermann_msgs/AckermannDriveStamped
+                                 or geometry_msgs/Twist</pre></div></div></div>
+        <p style="margin:14px 0 0;font-size:14px">Your stack never receives other actors, ground truth, the attacker’s plan or the server. Faultline ticks CARLA at 0.05 s; an out-of-range control is never applied (the car brakes that step).</p>
+      </div>
+      <div class="card">
+        <h2 class="sec">Recorded compatibility checks</h2>
+        <table><thead><tr><th>Stack</th><th>Adapter</th><th>Result</th></tr></thead><tbody>
+          <tr><td>PDM-Lite on our LiDAR tracker</td><td>Python</td><td><span class="pill sm l">Compatible</span> 8 of 8 checks</td></tr>
+          <tr><td>Cautious IDM (1.6 s headway)</td><td>Python</td><td><span class="pill sm l">Compatible</span></td></tr>
+          <tr><td>PDM-Lite as a ROS 2 node</td><td>ROS 2</td><td><span class="pill sm l">Compatible</span> 40/40 controls over ROS, 1 first-step timeout (braked)</td></tr>
+        </tbody></table>
+        <div class="codebox"><button class="pill sm copy" data-copy="c-check">Copy</button><pre class="msg" id="c-check">stack pdm-lite-lidar (adapter python)
+  [OK  ] sensor LIDAR (lidar): rate 20 Hz -&gt; every tick (dt 0.05 s)
+  [OK  ] sensor LIDAR (lidar): present in the live blueprint library, 6 attributes checked
+  [OK  ] sensor SPEED (odometry): rate 20 Hz -&gt; every tick (dt 0.05 s)
+  [OK  ] control interface: 40/40 steps returned Control in range
+  [OK  ] reacts to the synthetic closing lead: brakes at step 4
+  [OK  ] latency: p50 2.7 ms, p95 3.5 ms, max 3.8 ms vs budget 100 ms
+  [OK  ] determinism: two fresh instances, same inputs -&gt; identical controls
+  RESULT: COMPATIBLE  digest 0x537db480f1840d95832fa2b2bd855075ad45b5f4cafb7b64f9eed6c2dd266bba</pre></div>
+      </div>
       <div class="card y">
-        <div class="head"><h2>A/B arena</h2><span class="pill sm">same adversary script · free</span></div>
-        <div class="ab-pick"><select id="ab-a" aria-label="Policy A"></select><span class="pill k">vs</span><select id="ab-b" aria-label="Policy B"></select>
-          <button class="btn k" id="ab-run">Run arena</button><span class="pill sm" id="ab-status">—</span></div>
-        <p class="err" id="ab-err"></p>
-      </div>
-      <div class="card"><div class="head"><h2>Metrics</h2><span class="pill sm" id="ab-src">—</span></div><div id="ab-table"></div></div>
-      <div class="card k" id="ab-video"></div>
-    </div>
-  </section>
-
-  <section id="v-order" class="hidden">
-    <div class="grid order">
-      <div class="grid">
-        <div class="grid suites" id="suites"></div>
-        <div class="card">
-          <div class="head"><h2>Runs</h2><span class="pill sm">replay is free</span></div>
-          <table><thead><tr><th>Run</th><th>World</th><th>0G</th><th>Peak CCS</th><th>Min TTC</th><th></th><th></th></tr></thead><tbody id="runs"></tbody></table>
-        </div>
-      </div>
-      <div class="card">
-        <div class="head"><h2>Order</h2><span class="pill sm c">x402 · Hedera</span></div>
-        <div class="price"><b id="price">0.001</b><span class="pill y">ℏ per run</span></div>
-        <dl class="kv" id="order-kv"></dl>
-        <div style="height:22px"></div>
-        <button class="hold" id="hold" disabled><div class="fill"></div><span>Hold to pay</span></button>
-        <button class="btn" id="quote" style="width:100%;margin-top:8px" disabled>Quote only</button>
-        <p class="err" id="order-err"></p>
+        <h2 class="sec">Onboard your stack</h2>
+        <p class="lede">Copy a ready-made onboarding request with your stack details and send it to the Faultline team.</p>
+        <div class="row" style="margin-top:14px"><button class="btn k big" id="onboard">Copy onboarding request</button><span id="onboard-msg" role="status"></span></div>
       </div>
     </div>
   </section>
 
-  <section id="v-pay" class="hidden">
-    <div class="grid pay">
-      <div class="grid">
-        <div class="card stage">
-          <svg id="flow" viewBox="0 0 1000 400" preserveAspectRatio="none"></svg>
-          <div class="acct left"><small class="muted">Payer</small><div class="mono" id="payer-id">—</div><div class="bal" id="payer-bal">—</div><div class="delta" id="payer-delta"></div></div>
-          <div class="acct right"><small class="muted">Merchant</small><div class="mono" id="merchant-id">—</div><div class="bal" id="merchant-bal">—</div><div class="delta" id="merchant-delta"></div></div>
-          <div class="policy" id="checks"></div>
-          <div class="ledger" id="ledger"><span class="pill" id="ledger-v">—</span></div>
-        </div>
-        <div class="card ticket" id="ticket">
-          <canvas class="pattern" id="pattern" width="8" height="8"></canvas>
-          <span class="pill sm">Run permit · single use</span>
-          <div class="big" id="t-job">—</div>
-          <dl class="kv" id="t-kv"></dl>
-          <div style="margin-top:18px;display:flex;gap:8px"><button class="btn k" id="launch">Launch run</button><a class="btn" id="t-hashscan" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center">HashScan ↗</a></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="head"><h2>Payment</h2><span class="pill sm" id="pay-mode">x402</span></div>
-        <ul class="steps-list" id="paysteps"></ul>
-        <p class="err" id="pay-err"></p>
-      </div>
-    </div>
-  </section>
-
-  <section id="v-live" class="hidden">
-    <div class="grid pit">
-      <div class="card statusbar">
-        <span class="pill k live" id="live-tag">Live</span>
-        <span class="pill" id="s-job">—</span>
-        <span class="pill c" id="s-world">—</span>
-        <div class="stat"><small>Time</small><b id="s-t">0.00 s</b></div>
-        <div class="stat"><small>0G decisions</small><b id="s-dec">0</b></div>
-        <div class="stat"><small>Gap</small><b id="s-gap">—</b></div>
-        <div class="stat"><small>TTC</small><b id="s-ttc">—</b></div>
-        <button class="btn k hidden" id="to-results" style="margin-left:auto">Results →</button>
-      </div>
-      <div class="card rail" id="rail-live"></div>
-      <div class="card"><div class="head"><h2>Job</h2></div><ul class="timeline" id="timeline"></ul></div>
-      <div class="card scene"><canvas id="scene"></canvas></div>
-      <div class="card c"><div class="head"><h2>0G decisions</h2><span class="pill sm">private tier</span></div><div class="tower" id="tower"></div></div>
-      <div class="card telemetry"><canvas id="tele"></canvas><div class="gauge"><canvas id="gauge"></canvas></div></div>
-      <div class="card k"><div class="head"><h2>Log</h2></div><div class="log" id="log"></div></div>
-    </div>
-  </section>
-
-  <section id="v-results" class="hidden">
-    <div class="grid">
-      <div class="card verdict" id="verdict"></div>
-      <div class="card rail" id="rail-results"></div>
-      <div class="grid results">
-        <div class="card">
-          <canvas id="rscene" style="width:100%;height:330px;display:block;border-radius:20px"></canvas>
-          <div class="scrub"><button class="btn y" id="worst">Worst moment</button><input type="range" id="scrub" min="0" max="0" value="0"><span class="pill sm mono" id="scrub-t">0.00 s</span></div>
-          <canvas id="rtele" style="width:100%;height:150px;display:block;margin-top:14px"></canvas>
-        </div>
-        <div class="grid">
-          <div class="card p"><div class="head"><h2>Payment</h2><span class="pill sm">Hedera</span></div><dl class="kv" id="ev-h"></dl></div>
-          <div class="card c"><div class="head"><h2>Evidence</h2><span class="pill sm">0G</span></div><dl class="kv" id="ev-z"></dl></div>
-        </div>
-      </div>
-    </div>
+  <!-- EXPLORE -->
+  <section id="v-explore" class="hidden">
+    <div class="card k" style="margin-bottom:16px"><h2 style="font-size:28px">Test library</h2><p class="lede">Recorded tests and deeper results for judges and engineers.</p>
+      <div class="explore-nav" id="explore-nav" style="margin-top:14px">
+        <a class="pill" href="#x-runs">Recorded tests</a><a class="pill" href="#x-swarm">Coordinated multi-vehicle attack</a><a class="pill" href="#x-ab">A/B policy comparison</a>
+        <a class="pill" href="#x-paid002">Paid test run</a><a class="pill" href="/research">Research</a></div></div>
+    <div class="grid" id="explore"></div>
   </section>
 </main>
-<div class="modal hidden" id="guide" role="dialog" aria-modal="true" aria-labelledby="g-title">
-  <div class="card sheet">
-    <div class="head"><h2 id="g-title">Judge guide</h2><button class="pill sm" id="g-skip">Skip</button></div>
-    <div class="gsteps" id="g-steps"></div>
-    <div class="gbody" id="g-body"></div>
-  </div>
+<div class="judge hidden" id="judge" role="dialog" aria-label="Judge mode" aria-live="polite">
+  <div class="jtop"><span class="kicker" id="j-step">Judge mode</span><button class="pill sm" id="j-close" aria-label="Close judge mode">Close</button></div>
+  <h3 id="j-title"></h3><p id="j-text"></p>
+  <div class="row"><button class="btn" id="j-prev">← Previous</button><button class="btn y" id="j-next">Next →</button></div>
 </div>
-<script type="module" src="app.js"></script>
+<script type="module" src="/app.js"></script>
 </body>
 </html>

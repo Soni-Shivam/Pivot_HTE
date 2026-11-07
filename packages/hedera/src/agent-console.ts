@@ -13,11 +13,12 @@ import 'dotenv/config'
 import express, { type Request, type Response } from 'express'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
-import { appendFileSync, existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { appendFileSync, existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { createConnection } from 'node:net'
 import { join, relative, resolve } from 'node:path'
 import { buy, buyerConfigFromEnv, hashscanTx, MIRROR, type Activation } from './buyer.ts'
-import { clientIp, DailyCaps, mediaPath, parseOrigins, RateLimit } from './console-guard.ts'
+import { verifyMessage } from 'viem'
+import { clientIp, DailyCaps, mediaPath, parseOrigins, RateLimit, verifyRunRequest, WalletCaps } from './console-guard.ts'
 import { SUITES, suiteOf } from './suites.ts'
 
 const PORT = Number(process.env.FAULTLINE_CONSOLE_PORT ?? 8788)
@@ -34,7 +35,15 @@ const policyCommitment = () => `0x${createHash('sha256').update(readFileSync(res
 const bought = new Map<string, Activation>() // jobId -> activation (permit stays in this process)
 const procs = new Map<string, { child: ChildProcess, log: string[], exit: number | null, jobId: string }>() // run name -> runner
 const caps = new DailyCaps(join(RUNS, 'backend', 'caps.json'), MAX_BUYS, MAX_RUNS)
-const PAUSED = 'Live runs are paused for today — replay a recorded run'
+const PAUSED = 'Live runs are paused for today. Replay a recorded run'
+// Live runs need a wallet-signed request (EIP-191); nonces are single-use (in memory: a restart within 5 min forgets them).
+const nonces = new Map<string, number>()
+const walletCaps = new WalletCaps(Number(process.env.FAULTLINE_WALLET_MAX_RUNS ?? 3))
+// Guest path (no wallet): free demo runs only, 1 per IP per hour, 6 per day in total. Paid runs always need a signature.
+const guestKey = (req: Request) => req.header('x-vercel-forwarded-for')?.split(',')[0].trim() || clientIp(req.socket.remoteAddress, req.header('x-forwarded-for'))
+// A double click must not start two runs: the same visitor (wallet or network) within 30 s gets the job it already has.
+const recentStart = new Map<string, { jobId: string, at: number }>()
+const guestPerIp = new RateLimit(Number(process.env.FAULTLINE_GUEST_PER_IP_HOUR ?? 3), 3600_000), guestDaily = new WalletCaps(Number(process.env.FAULTLINE_GUEST_MAX_RUNS ?? 30))
 const postLimit = new RateLimit(Number(process.env.FAULTLINE_RATE_POST ?? 12), 60_000)
 const allLimit = new RateLimit(Number(process.env.FAULTLINE_RATE_ALL ?? 600), 60_000)
 const HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`, PUBLIC_HOST, `${PUBLIC_HOST}:443`])
@@ -72,7 +81,7 @@ app.use((req, res, next) => {
   const host = req.headers.host ?? ''
   if (!HOSTS.has(host)) { res.status(421).end(); return }
   const ip = clientIp(req.socket.remoteAddress, req.header('x-forwarded-for'))
-  if (!allLimit.allow(ip) || (req.method === 'POST' && !postLimit.allow(ip))) { res.status(429).json({ error: 'Too many requests — wait a minute' }); return }
+  if (!allLimit.allow(ip) || (req.method === 'POST' && !postLimit.allow(ip))) { res.status(429).json({ error: 'Too many requests. Wait a minute' }); return }
   const origin = req.header('origin')
   const sameOrigin = origin === `https://${PUBLIC_HOST}` || origin === `http://127.0.0.1:${PORT}` || origin === `http://localhost:${PORT}`
   if (origin && ORIGINS.has(origin)) {
@@ -80,6 +89,8 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Headers', 'content-type, x-faultline-console, range')
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST')
     res.setHeader('Access-Control-Expose-Headers', 'content-range, accept-ranges, content-length')
+    // Chrome Private Network Access: tailnet devices resolve the Funnel host to a 100.x address and preflight with this
+    if (req.header('access-control-request-private-network') === 'true') res.setHeader('Access-Control-Allow-Private-Network', 'true')
     if (req.method === 'OPTIONS') { res.status(204).end(); return }
   } else if (origin && !sameOrigin && req.method !== 'GET' && req.method !== 'HEAD') { res.status(403).json({ error: 'origin not allowed' }); return }
   if (req.method === 'POST' && (req.header('x-faultline-console') !== '1' || !req.is('application/json'))) { res.status(403).end(); return }
@@ -88,6 +99,8 @@ app.use((req, res, next) => {
 })
 app.use(express.json({ limit: '4kb' }))
 app.use(express.static(DIST))
+// SPA routes of the studio (same list as the Vercel fallback rewrite)
+app.get(/^\/(lab|mission|verify|research|results|library|stack)(\/[^.]*)?$/, (_req, res) => { res.sendFile(join(DIST, 'index.html')) })
 
 const ndjson = (res: Response) => {
   res.setHeader('content-type', 'application/x-ndjson')
@@ -124,6 +137,12 @@ app.post('/api/buy', async (req: Request, res: Response) => {
   const mode = req.body?.mode === 'pay' ? 'pay' : 'quote'
   try {
     const { suite } = suiteOf(req.body?.suite)
+    if (mode === 'pay') {
+      const v = await verifyRunRequest(req.body, { policy: 'pdm-lite', suite, mode: 'paid' }, nonces, verifyMessage)
+      if ('error' in v) throw new Error(v.error)
+      if (!walletCaps.take(v.address)) throw new Error('This wallet has used its live runs for today. Replay a recorded run')
+      appendLive(`buy requested_by ${v.address} ${suite}`)
+    }
     const notReady = mode === 'pay' ? runnerError() : null
     if (notReady) throw new Error(`runner not ready, nothing was paid: ${notReady}`)
     if (mode === 'pay' && !caps.take('buys')) throw new Error(`${PAUSED} (${MAX_BUYS} paid buys per day used)`)
@@ -183,16 +202,22 @@ function runSummary(name: string) {
     chain: a ? { registry: a.registry, commitTx: a.commitTx, commitBlockTimestamp: a.commitBlockTimestamp, finalizeTx: a.finalizeTx ?? null, onchainMatches: a.onchainMatches ?? null } : null,
     storage: p ? { publicRoot: p.publicRoot, sealedRoot: p.sealedRoot, publicTx: p.publicTx, sealedTx: p.sealedTx, signaturesArchived: p.signatures_archived ?? null, signatures0g: p.signatures_0g ?? null, signaturesVerified: sig?.verified ?? null } : null,
     // ERC-8004 adversary identity (docs/submission/CHECKLIST.md) shown only for anchored runs; no per-run Arkiv entity exists
-    agentId: a ? 579 : null, arkivEntity: null, free: name.startsWith('demo-free-'),
+    video: mediaUrl(`runs/${name}/screen.mp4`) ?? mediaUrl(`runs/${name}/chase_raw.mp4`),
+    agentId: a ? 579 : null, arkivEntity: null, free: name.startsWith('demo-free-'), requestedBy: readJson(join(dir, 'requested_by.json'))?.requested_by ?? null,
     payment: job ? { transaction: job.transaction, payer: job.payer, suite: job.suite, hashscan: hashscanTx(job.transaction) } : null,
   }
 }
-const isRunName = (n: unknown): n is string => typeof n === 'string' && /^[A-Za-z0-9._-]+$/.test(n) && existsSync(join(RUNS, n, 'decisions.jsonl'))
+// one optional sub-folder (CARLA demo runs: demo-free-carla-<stamp>/<site>__<stack>); no segment may start with '.'
+const isRunName = (n: unknown): n is string => typeof n === 'string' && /^[A-Za-z0-9_-][A-Za-z0-9._-]*(\/[A-Za-z0-9_-][A-Za-z0-9._-]*)?$/.test(n) && existsSync(join(RUNS, n, 'decisions.jsonl'))
 
 app.get('/api/runs', (_req, res) => {
-  const names = existsSync(RUNS) ? readdirSync(RUNS).filter((n) => isRunName(n) && !n.includes('-replay-')) : []
+  const top = existsSync(RUNS) ? readdirSync(RUNS) : []
+  // CARLA demo runs live one level down (demo-free-carla-<stamp>/<site>__<stack>)
+  const nested = top.filter((n) => n.startsWith('demo-free-carla-')).flatMap((n) => { try { return readdirSync(join(RUNS, n)).map((c) => `${n}/${c}`) } catch { return [] } })
+  const names = [...top, ...nested].filter((n) => isRunName(n) && !n.includes('-replay-'))
   res.json(names.map(runSummary).sort((a, b) => b.mtime - a.mtime))
 })
+app.get('/api/run', (req, res) => { const n = req.query.name; if (!isRunName(n)) { res.status(404).json({ error: 'unknown run' }); return } res.json(runSummary(n)) })
 app.get('/api/runs/:name', (req, res) => {
   if (!isRunName(req.params.name)) { res.status(404).end(); return }
   res.json(runSummary(req.params.name))
@@ -314,7 +339,7 @@ function checkPolicies() {
 }
 
 type Job = { id: string, kind: 'demo' | 'arena', lane: 'carla' | 'kin', policy?: PolicyId, policies?: PolicyId[], suite?: string, site: string,
-  seed: number, mode: 'free' | 'paid' | 'script', label: string, status: 'queued' | 'running' | 'done' | 'error', error?: string,
+  seed: number, mode: 'free' | 'paid' | 'script', label: string, requestedBy?: string, status: 'queued' | 'running' | 'done' | 'error', error?: string,
   createdAt: number, startedAt?: number, finishedAt?: number, dirs: string[], events: unknown[], log: string[], result?: unknown }
 const jobs = new Map<string, Job>()
 const lanes = { carla: [] as Job[], kin: [] as Job[] } // index 0 = running
@@ -328,7 +353,7 @@ const arenaRows = (j: Job) => ((j.result as any)?.results ?? []).map((r: any, i:
 const jobVideo = (j: Job) => j.kind === 'arena' ? ((j.result as any)?.sideBySide ?? null) : j.dirs[0] && existsSync(join(j.dirs[0], 'screen.mp4')) ? relative(ROOT, join(j.dirs[0], 'screen.mp4')) : null
 const jobPublic = (j: Job) => ({ id: j.id, kind: j.kind, lane: j.lane, policy: j.policy ?? null, policies: j.policies ?? null, suite: j.suite ?? null,
   site: j.site, seed: j.seed, mode: j.mode, label: j.label, status: j.status, error: j.error ?? null, queuePos: queuePos(j),
-  createdAt: j.createdAt, startedAt: j.startedAt ?? null, finishedAt: j.finishedAt ?? null, runs: j.dirs.map((d) => relative(RUNS, d)), result: j.result ?? null,
+  requested_by: j.requestedBy ?? null, createdAt: j.createdAt, startedAt: j.startedAt ?? null, finishedAt: j.finishedAt ?? null, runs: j.dirs.map((d) => relative(RUNS, d)), result: j.result ?? null,
   etaS: j.status === 'queued' || j.status === 'running' ? Math.round(etaS(j) ?? 0) : null, results: j.kind === 'arena' ? arenaRows(j) : [], video: jobVideo(j) })
 const deny = (res: Response, code: number, error: string) => { res.status(code).json({ error }) }
 
@@ -342,7 +367,7 @@ async function pump(lane: 'carla' | 'kin') {
   j.status = 'running'; j.startedAt = Date.now()
   try { await runJob(j); if ((j.status as Job['status']) !== 'error') j.status = 'done' } catch (e) { j.status = 'error'; j.error = (e as Error).message }
   j.finishedAt = Date.now()
-  appendLive(`job ${j.id} ${j.kind}/${j.mode} ${j.policy ?? j.policies?.join(',')} ${j.suite ?? ''} -> ${j.status}${j.error ? ` (${j.error})` : ''}`)
+  appendLive(`job ${j.id} ${j.kind}/${j.mode}${j.requestedBy ? ` by ${j.requestedBy}` : ''} ${j.policy ?? j.policies?.join(',')} ${j.suite ?? ''} -> ${j.status}${j.error ? ` (${j.error})` : ''}`)
   lanes[lane].shift(); void pump(lane)
 }
 const appendLive = (m: string) => { try { appendFileSync(join(RUNS, 'agent-live.log'), `${new Date().toTimeString().slice(0, 8)} [backend-agent] ${m}\n`) } catch { /* log is best effort */ } }
@@ -357,7 +382,7 @@ function spawnPy(j: Job, args: string[]) {
 const summaryOf = (dir: string) => existsSync(join(dir, 'decisions.jsonl')) ? runSummary(relative(RUNS, dir)) : null
 
 async function runJob(j: Job) {
-  if (j.lane === 'carla' && !(await tcpOpen(2000))) throw new Error('CARLA is offline right now — try the kinematic suite or replay a recorded run')
+  if (j.lane === 'carla' && !(await tcpOpen(2000))) throw new Error('CARLA is offline right now. Try the kinematic suite or replay a recorded run')
   const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)
   let code: number
   if (j.kind === 'arena') {
@@ -389,6 +414,7 @@ async function runJob(j: Job) {
     code = r.entry.exit
     j.result = summaryOf(j.dirs[0])
   }
+  if (j.requestedBy && j.dirs[0] && existsSync(j.dirs[0])) writeFileSync(join(j.dirs[0], 'requested_by.json'), JSON.stringify({ requested_by: j.requestedBy, job: j.id, signed: 'EIP-191 personal_sign' }) + '\n')
   if (code !== 0) { j.status = 'error'; j.error = `runner exited ${code}` }
 }
 
@@ -408,7 +434,7 @@ app.get('/api/policies', (_req, res) => {
   }))
 })
 
-app.post('/api/demo-run', (req, res) => {
+app.post('/api/demo-run', async (req, res) => {
   const { policy, suite, mode } = req.body ?? {}
   if (!isPolicy(policy)) return deny(res, 400, 'policy must be one of: ' + Object.keys(POLICIES).join(', '))
   if (!Object.hasOwn(SUITES, suite)) return deny(res, 400, 'suite must be cut-in-v1-kinematic or cut-in-v1-carla')
@@ -422,14 +448,29 @@ app.post('/api/demo-run', (req, res) => {
     try { buyerConfigFromEnv() } catch (e) { return deny(res, 503, (e as Error).message) }
   }
   const lane = suite === 'cut-in-v1-carla' ? 'carla' : 'kin'
-  if (lanes[lane].length > MAX_WAITING) return deny(res, 429, 'The queue is full — try again in a few minutes or replay a recorded run')
+  if (lanes[lane].length > MAX_WAITING) return deny(res, 429, 'The queue is full. Try again in a few minutes or replay a recorded run')
   if (caps.left().runs_left < 1 || (mode === 'paid' && caps.left().buys_left < 1)) return deny(res, 429, PAUSED)
+  const visitor = typeof req.body?.address === 'string' ? req.body.address.toLowerCase() : `ip:${guestKey(req)}`
+  const prev = recentStart.get(visitor), pj = prev && Date.now() - prev.at < 30_000 ? jobs.get(prev.jobId) : undefined
+  if (pj) { res.json({ jobId: pj.id, queuePos: queuePos(pj), label: pj.label, duplicate: true }); return }
+  let v: { address: string } | { error: string }
+  if (req.body?.guest === true && !req.body?.signature) {
+    if (mode !== 'free') return deny(res, 401, 'Paid runs need a signed wallet request. Connect a wallet, or use a free guest run')
+    // behind the Vercel proxy, key on the visitor, not Vercel
+    if (!guestPerIp.allow(guestKey(req))) return deny(res, 429, 'Guest run limit reached for your network this hour. Connect a wallet for more, or replay a recorded test')
+    if (!guestDaily.take('guest')) return deny(res, 429, 'Guest runs are used up for today. Connect a wallet, or replay a recorded test')
+    v = { address: 'guest run' }
+  } else {
+    v = await verifyRunRequest(req.body, { policy, suite, mode }, nonces, verifyMessage)
+    if ('error' in v) return deny(res, 401, v.error)
+    if (!walletCaps.take(v.address)) return deny(res, 429, 'This wallet has used its live runs for today. Replay a recorded run')
+  }
   if (mode === 'paid' && !caps.take('buys')) return deny(res, 429, PAUSED)
   caps.take('runs')
-  const j: Job = { id: randomBytes(8).toString('hex'), kind: 'demo', lane, policy, suite, site: DEFAULT_SITE, seed, mode, status: 'queued',
+  const j: Job = { id: randomBytes(8).toString('hex'), kind: 'demo', lane, policy, suite, site: DEFAULT_SITE, seed, mode, status: 'queued', requestedBy: v.address,
     label: mode === 'free' ? 'demo, unpaid, not anchored' : 'paid: Hedera x402, anchored on 0G Galileo',
     createdAt: Date.now(), dirs: [], events: [], log: [] }
-  enqueue(j)
+  enqueue(j); recentStart.set(visitor, { jobId: j.id, at: Date.now() })
   res.json({ jobId: j.id, queuePos: queuePos(j), label: j.label, kinematicNote: lane === 'kin' ? POLICIES[policy].kinematic : null })
 })
 
@@ -439,11 +480,32 @@ app.post('/api/arena', (req, res) => {
   const site = req.body?.site ?? DEFAULT_SITE
   if (!SITES.includes(site)) return deny(res, 400, 'site must be one of: ' + SITES.join(', '))
   if ((req.body?.mode ?? 'script') !== 'script') return deny(res, 400, 'only mode script (replayed adversary, no 0G cost) is public')
-  if (lanes.carla.length > MAX_WAITING) return deny(res, 429, 'The queue is full — try again in a few minutes or replay a recorded run')
+  if (lanes.carla.length > MAX_WAITING) return deny(res, 429, 'The queue is full. Try again in a few minutes or replay a recorded run')
   const j: Job = { id: randomBytes(8).toString('hex'), kind: 'arena', lane: 'carla', policies: pol, site, seed: 0, mode: 'script', status: 'queued',
     label: 'A/B arena: identical adversary script replayed from runs/cutin-002 (no 0G calls)', createdAt: Date.now(), dirs: [], events: [], log: [] }
   enqueue(j)
   res.json({ jobId: j.id, queuePos: queuePos(j), label: j.label })
+})
+
+// Live CARLA chase camera as MJPEG: SimClockRecorder keeps runs/<run>/live.jpg current (atomic writes) while a job runs.
+app.get('/api/live/:id', async (req, res) => {
+  const j = jobs.get(req.params.id)
+  if (!j) return deny(res, 404, 'unknown job')
+  res.writeHead(200, { 'content-type': 'multipart/x-mixed-replace; boundary=frame', 'cache-control': 'no-store', 'x-accel-buffering': 'no' })
+  let closed = false, last = 0; res.on('close', () => { closed = true })
+  const until = Date.now() + 20 * 60_000
+  while (!closed && Date.now() < until) {
+    const dir = j.dirs.filter((d) => existsSync(join(d, 'live.jpg'))).at(-1)
+    if (dir) {
+      try {
+        const p = join(dir, 'live.jpg'), m = statSync(p).mtimeMs
+        if (m !== last) { last = m; const b = readFileSync(p); res.write(`--frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${b.length}\r\n\r\n`); res.write(b); res.write('\r\n') }
+      } catch { /* frame being replaced: next poll */ }
+    }
+    if (j.status === 'done' || j.status === 'error') break
+    await sleep(100)
+  }
+  res.end()
 })
 
 app.get('/api/jobs/:id', (req, res) => {
@@ -547,7 +609,7 @@ function showcase() {
   const sw = body.swarm.find((x: any) => x.run === 'swarm-carla-010') as any, p2 = body.episodes.paidJob002
   const ARKIV = 'https://rabdi.explorer.arkiv.network' // entity URL format not confirmed (SPA answers every path), so base only
   const items = [
-    sw && { id: 'swarm', video: sw.video ?? mediaUrl('videos/swarm-carla-010__stitched.mp4'), trust: { decisions0g: sw.decisions0g, requestId: sw.planRequestId, provider: sw.provider,
+    sw && { id: 'swarm', plan: sw.plan ? { name: sw.plan.name, summary: sw.plan.summary, roles: sw.plan.roles, phases: sw.plan.phases } : null, video: sw.video ?? mediaUrl('videos/swarm-carla-010__stitched.mp4'), trust: { decisions0g: sw.decisions0g, requestId: sw.planRequestId, provider: sw.provider,
       sigsVerified: sw.signatures?.verified ?? null, sigsTotal: sw.signatures?.total ?? null }, links: { decisionsHtml: sw.decisionsHtml, director: sw.director } },
     body.arena && { id: 'arena', video: body.arena.sites.find((x: any) => x.site === 'r4l2s24')?.sideBySide ?? null, trust: { note: 'replayed adversary script (cutin-002) · no 0G calls' } },
     { id: 'research', video: mediaUrl('videos/research-mission-001__carla-failure.mp4'), trust: {} },

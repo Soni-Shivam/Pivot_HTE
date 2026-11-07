@@ -54,3 +54,42 @@ export function mediaPath(root: string, rel: string): string | null {
   if (!MEDIA_EXT.has(extname(base).toLowerCase()) && !MEDIA_HTML.has(base)) return null
   return existsSync(abs) ? abs : null
 }
+
+// ---------- wallet-signed run requests (EIP-191 personal_sign; the page asks only for eth_requestAccounts + personal_sign) ----------
+export const REQUEST_MAX_AGE_MS = 5 * 60_000
+/** The exact text the studio asks the wallet to sign. */
+export const requestMessage = (r: { policy: string, suite: string, mode: string, nonce: string, issued: string }) =>
+  `Faultline test request\npolicy: ${r.policy}\nsuite: ${r.suite}\nmode: ${r.mode}\nnonce: ${r.nonce}\nissued: ${r.issued}`
+
+/** Check a signed request: shape, fields match the body, fresh (≤ 5 min), nonce single-use, signature recovers `address`.
+ *  Returns the lower-cased signer or an error string for the 4xx response. */
+export async function verifyRunRequest(body: any, want: { policy: string, suite: string, mode: string }, seen: Map<string, number>,
+  verify: (a: { address: `0x${string}`, message: string, signature: `0x${string}` }) => Promise<boolean>, now = Date.now()): Promise<{ address: string } | { error: string }> {
+  const { address, message, signature } = body ?? {}
+  if (typeof address !== 'string' || typeof message !== 'string' || typeof signature !== 'string') return { error: 'Connect a wallet and sign the request first (unsigned requests are refused)' }
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address) || !/^0x[0-9a-fA-F]{130}$/.test(signature) || message.length > 400) return { error: 'malformed signed request' }
+  const m = /^Faultline test request\npolicy: (\S+)\nsuite: (\S+)\nmode: (\S+)\nnonce: ([0-9a-f]{16,64})\nissued: (\S+)$/.exec(message)
+  if (!m) return { error: 'signed message is not a Faultline test request' }
+  const [, policy, suite, mode, nonce, issued] = m
+  if (policy !== want.policy || suite !== want.suite || mode !== want.mode) return { error: 'signed message does not match the request (policy/suite/mode)' }
+  const t = Date.parse(issued)
+  if (!Number.isFinite(t) || now - t > REQUEST_MAX_AGE_MS || t - now > 60_000) return { error: 'signed request expired. Sign again (valid 5 minutes)' }
+  for (const [k, exp] of seen) if (exp < now) seen.delete(k)
+  if (seen.has(nonce)) return { error: 'this signed request was already used. Sign a new one' }
+  let ok = false
+  try { ok = await verify({ address: address as `0x${string}`, message, signature: signature as `0x${string}` }) } catch { ok = false }
+  if (!ok) return { error: 'signature does not match the wallet address' }
+  seen.set(nonce, t + REQUEST_MAX_AGE_MS + 60_000)
+  return { address: address.toLowerCase() }
+}
+
+/** Live runs per wallet per UTC day (in memory; the global DailyCaps still bounds total spend). */
+export class WalletCaps {
+  private day = ''; private m = new Map<string, number>()
+  constructor(public max: number, private now = () => new Date()) {}
+  take(addr: string): boolean {
+    const d = this.now().toISOString().slice(0, 10); if (d !== this.day) { this.day = d; this.m.clear() }
+    const n = this.m.get(addr) ?? 0; if (n >= this.max) return false
+    this.m.set(addr, n + 1); return true
+  }
+}

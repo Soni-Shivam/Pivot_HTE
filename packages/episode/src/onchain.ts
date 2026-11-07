@@ -8,8 +8,11 @@ import { EPISODE_REGISTRY, EPISODE_REGISTRY_V2, episodeRegistryAbi, episodeRegis
 export const GALILEO_RPC = 'https://evmrpc-testnet.0g.ai'
 const ZERO = '0x0000000000000000000000000000000000000000'
 const commitOf = (bytes: Uint8Array, salt: Hex) => keccak256(encodeAbiParameters([{ type: 'bytes32' }, { type: 'bytes32' }], [salt, sha256(bytes)]))
-export const configHashOf = (c: { prompt_hash: string; model: string; git_commit: string }) =>
-  keccak256(encodeAbiParameters([{ type: 'bytes32' }, { type: 'string' }, { type: 'string' }], [`0x${c.prompt_hash}` as Hex, c.model, c.git_commit]))
+export const configHashOf = (c: { prompt_hash: string; model: string; git_commit: string; paid_binding_hash?: string }) =>
+  c.paid_binding_hash
+    ? keccak256(encodeAbiParameters([{ type: 'bytes32' }, { type: 'string' }, { type: 'string' }, { type: 'bytes32' }],
+      [`0x${c.prompt_hash}` as Hex, c.model, c.git_commit, c.paid_binding_hash as Hex]))
+    : keccak256(encodeAbiParameters([{ type: 'bytes32' }, { type: 'string' }, { type: 'string' }], [`0x${c.prompt_hash}` as Hex, c.model, c.git_commit]))
 
 /** Reveal (audit R7): scenario.json bytes match manifest.files, and both salted commitments recompute. */
 export function revealCommitments(pub: any) {

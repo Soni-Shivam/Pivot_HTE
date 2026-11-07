@@ -1,5 +1,6 @@
-// Headless check of the built Studio: mocks the agent console API, replays a fixture run (paid job 002, CARLA),
-// asserts the judge guide opens, the job timeline reaches "Report ✓" and the trust rail shows only proven ticks.
+// Headless check of the built Studio: mocks the agent console API and an injected EIP-1193 wallet (throwaway viem key,
+// announced via EIP-6963), walks the guided flow (connect → policy → attack → signed request → live → results) on the
+// fixture run (paid job 002, CARLA), and checks the trust rail shows only proven ticks.
 // npm run studio:build && node apps/faultline-studio/test/headless.mjs [--shots <dir>]
 import { createServer } from 'node:http'
 import { readFileSync, existsSync } from 'node:fs'
@@ -13,7 +14,7 @@ const arg = (f) => { const i = process.argv.indexOf(f); return i > 0 ? process.a
 const shots = arg('--shots')
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.map': 'application/json' }
 const server = createServer((req, res) => {
-  const u = req.url.split('?')[0], p = join(dist, u === '/' ? 'index.html' : u)
+  const u = req.url.split('?')[0], p = join(dist, u === '/' || !extname(u) ? 'index.html' : u) // SPA fallback like Vercel
   if (!p.startsWith(dist) || !existsSync(p)) { res.writeHead(404).end(); return }
   res.writeHead(200, { 'content-type': types[extname(p)] ?? 'application/octet-stream' }).end(readFileSync(p))
 }).listen(0)
@@ -31,12 +32,23 @@ const API = {
   '/api/catalog': { suites: [{ id: 'cut-in-v1-kinematic', simulator: 'kinematic' }], serviceUp: false, carlaUp: false, cfgError: 'fixture', payer: null, merchant: null, cap: null, policyCommitment: '0x8edf', buysLeft: 0, pending: [] },
   '/api/runs': [meta],
 }
+const { privateKeyToAccount, generatePrivateKey } = await import('viem/accounts')
+const { verifyMessage } = await import('viem')
+const acct = privateKeyToAccount(generatePrivateKey())
+let signedBody = null, guestBody = null
 async function mock(page, online) {
   await page.route('**/*', (route) => {
     const u = new URL(route.request().url())
     if (u.origin !== base) return u.hostname.endsWith('googleapis.com') || u.hostname.endsWith('gstatic.com') ? route.continue() : route.abort()
     if (!u.pathname.startsWith('/api/') && !u.pathname.startsWith('/media/')) return route.continue()
     if (!online || u.pathname.startsWith('/media/')) return route.fulfill({ status: 404, body: '' })
+    if (u.pathname === '/api/demo-run') {
+      const b = JSON.parse(route.request().postData() ?? '{}')
+      if (b.guest === true && !b.signature && b.mode === 'free') { guestBody = b; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ jobId: 'fedcba9876543210', queuePos: 0 }) }) }
+      if (!b.signature) return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'unsigned' }) })
+      signedBody = b
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ jobId: '0123456789abcdef', queuePos: 0 }) })
+    }
     if (u.pathname === '/api/stream') return route.fulfill({ status: 200, contentType: 'application/x-ndjson', body: fixture })
     const body = API[u.pathname]
     return body ? route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) }) : route.fulfill({ status: 404, body: '{}' })
@@ -44,52 +56,157 @@ async function mock(page, online) {
 }
 const text = (page, sel) => page.locator(sel).innerText()
 
+async function wallet(page) {
+  await page.exposeFunction('__fixtureSign', (hex) => acct.signMessage({ message: { raw: hex } }))
+  await page.addInitScript((address) => {
+    const provider = { request: async ({ method, params }) => {
+      if (method === 'eth_requestAccounts' || method === 'eth_accounts') return [address]
+      if (method === 'personal_sign') return window.__fixtureSign(params[0])
+      throw new Error(`unexpected wallet call ${method}`) } }
+    window.addEventListener('eip6963:requestProvider', () => window.dispatchEvent(new CustomEvent('eip6963:announceProvider',
+      { detail: { info: { uuid: 'fixture', name: 'Fixture Wallet', icon: '', rdns: 'test.fixture' }, provider } })))
+  }, acct.address)
+}
+const shot = async (page, name, full = false) => { if (shots) { await page.waitForTimeout(400); await page.screenshot({ path: `${shots}/studio-v6-${name}.png`, fullPage: full }) } }
+
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {})
 try {
-  const ctx = await browser.newContext({ deviceScaleFactor: shots ? 2 : 1, viewport: { width: 1360, height: 900 } })
+  const ctx = await browser.newContext({ deviceScaleFactor: shots ? 2 : 1, viewport: { width: 1440, height: 900 } })
   const page = await ctx.newPage()
   const errors = []; page.on('pageerror', (e) => errors.push(e.message))
-  await mock(page, true)
+  await mock(page, true); await wallet(page)
   await page.goto(base)
-  await page.waitForSelector('#guide:not(.hidden)')
-  check(await page.locator('#guide').isVisible(), 'judge guide opens on first visit')
-  check(/digest 0x537db480/.test(await text(page, '#g-body')) && /COMPATIBLE/.test(await text(page, '#g-body')), 'step 1 shows policy digest + COMPATIBLE')
-  if (shots) { await page.waitForTimeout(500); await page.screenshot({ path: `${shots}/studio-onboarding.png` }) }
-  await page.click('#g-next'); await page.click('#g-next')
-  check(await page.locator('[data-demo="cut-in-v1-kinematic"]').isEnabled(), 'step 3 free run enabled when console online')
-  await page.click('#g-skip')
-  check(await page.locator('#guide').isHidden(), 'guide closes')
-  await page.reload(); await page.waitForTimeout(400)
-  check(await page.locator('#guide').isHidden(), 'guide remembered (not reopened)')
-  check(await page.locator('#f-paid002').isVisible() && await page.locator('#hunt').isVisible(), 'featured: paid job 002 + hunt chart')
-  if (shots) { await page.waitForTimeout(3000); await page.screenshot({ path: `${shots}/studio-featured.png`, fullPage: true }) }
+  await page.waitForSelector('#console-dot.up', { state: 'attached' })
+  check(/Who tested the tester\?/.test(await text(page, '#v-home h1')), 'discover: hero H1')
+  check(await page.locator('canvas:visible').count() === 0, 'discover: no canvas (no 2-D simulator view)')
+  check(/doesn’t ask you to trust/.test(await text(page, '.pitch')), 'discover: pitch line')
+  check(!(await page.locator('body').innerText()).includes('—'), 'discover: no em dashes')
+  check(!/v1\.1|version memory/i.test(await page.locator('body').innerText()), 'no version-history content')
+  const fits = await page.evaluate(() => [...document.querySelectorAll('.ab')].every((b) => b.scrollWidth <= b.clientWidth + 1))
+  check(fits, 'architecture boxes: no text overflow')
+  await shot(page, 'home'); await shot(page, 'home-full', true)
 
-  await page.click('nav.steps button[data-view="order"]')
-  await page.click('[data-replay]')
-  await page.waitForSelector('#tl-report .ic.ok', { timeout: 30000 })
-  check(/CCS 0\.929/.test(await text(page, '#tl-report')), 'timeline reaches "Report ✓"')
-  const rail = await text(page, '#rail-live')
-  check(/commit before 1st decision ✓/.test(rail) && /finalize ✓/.test(rail), 'rail: Galileo commit-before + finalize ticks (proven by data)')
-  check(/sigs archived 7\/7 · not checked here/.test(rail) && !/sig ✓/.test(rail), 'rail: no signature tick without a verified count')
-  check(/receipt 0\.0\.918580/.test(rail) && /public 0xc1219e…6748/.test(rail), 'rail: Hedera receipt + 0G Storage root')
-  check(/no claim/.test(rail), 'rail: Arkiv grey without a claim')
-  if (shots) await page.screenshot({ path: `${shots}/studio-live.png` })
-  await page.waitForSelector('#v-results:not(.hidden)', { timeout: 5000 })
-  check(/finalize ✓/.test(await text(page, '#rail-results')), 'results: trust rail rendered')
-  if (shots) { await page.waitForTimeout(500); await page.screenshot({ path: `${shots}/studio-results.png` }) }
+  // Judge mode: 6 steps driving the pages
+  await page.click('#judge-btn'); await page.waitForSelector('#problem.hl', { timeout: 5000 })
+  check(/1 of 6/.test(await text(page, '#j-step')) && await page.locator('#problem.hl').count() === 1, 'judge 1: the problem highlighted')
+  await page.click('#j-next'); await page.waitForSelector('#mc-plan.hl', { timeout: 15000 })
+  check(new URL(page.url()).pathname === '/mission/swarm-carla-010', 'judge 2: swarm plan in Mission Control')
+  await page.click('#j-next'); await page.waitForSelector('#mc-verdict.hl', { timeout: 20000 })
+  check(/avoided collision/.test(await text(page, '#mc-verdict')), 'judge 3: safety result, worst moment')
+  await page.click('#j-next'); await page.waitForSelector('#vf-timeline.hl', { timeout: 20000 })
+  await page.click('#j-next'); await page.waitForSelector('#vf-groups .card.hl', { timeout: 20000 })
+  check(/Hedera x402 payment/.test(await text(page, '#vf-groups .card.hl')), 'judge 4-5: proof timeline, then agentic payment')
+  await page.click('#j-next'); await page.waitForSelector('#claims.hl', { timeout: 15000 })
+  await shot(page, 'judge')
+  await page.click('#j-next')
+  check(await page.locator('#judge').isHidden(), 'judge 6: research vision, then finish')
+
+  // Mission Control on the featured recorded run (deep link through the SPA fallback)
+  await page.goto(`${base}/mission/${meta.name}`)
+  await page.waitForSelector('#mc-timeline [data-di]', { timeout: 30000 })
+  check(await page.locator('#v-mission').isVisible() && await page.locator('#mc-video').isVisible(), 'mission: recorded CARLA video in the centre')
+  await page.click('#mc-timeline [data-di="2"]')
+  check(/Checkpoint/.test(await text(page, '#mc-insp')) && /Request ID/.test(await text(page, '#mc-insp')), 'mission: clicking a decision opens the inspector')
+  check(/avoided collision/.test(await text(page, '#mc-verdict')), 'mission: verdict in words')
+  check(/Completed|Safe halt/.test(await text(page, '#mc-states')), 'mission: state machine shown')
+  await shot(page, 'mission', true)
+
+  // Proof Explorer
+  await page.click('#mc-verdict a[href^="/verify/"]')
+  await page.waitForSelector('#vf-groups .proof', { timeout: 30000 })
+  const vf = await text(page, '#vf-groups')
+  check(/Committed before the first decision\s*Verified/.test(vf), 'verify: commit-before Verified from block time vs first call')
+  check(/Archived provider signatures\s*Not checked/.test(vf), 'verify: signatures archived but not re-checked are "Not checked", not green')
+  check(/Hedera x402 payment\s*Verified/.test(vf) && /Attacker identity \(ERC-8004 #579\)\s*Not checked/.test(vf), 'verify: payment verified, identity honest')
+  await shot(page, 'verify', true)
+
+  // Results and Research
+  await page.goto(`${base}/results/${meta.name}`)
+  await page.waitForFunction(() => /avoided collision|collided/.test(document.getElementById('rs-verdict').textContent), null, { timeout: 30000 })
+  check(/minimum TTC was 1\.03 s/.test(await text(page, '#rs-verdict')), 'results: verdict and minimum TTC first')
+  await page.click('[data-rtab="reasoning"]')
+  check(/0G request/.test(await text(page, '#rs-body')), 'results: reasoning tab lists the 0G decisions with reasons')
+  await page.click('[data-rtab="compare"]')
+  check(/Scripted replay/.test(await text(page, '#rs-body')) && /Fresh 0G loop/.test(await text(page, '#rs-body')), 'results: compare labels scripted replay vs fresh 0G loop')
+  await shot(page, 'results', true)
+  await page.click('nav.top a[data-nav="research"]')
+  await page.waitForSelector('#claims .claim')
+  await page.click('#claims .claim summary')
+  check(/5\.76 m\/s²/.test(await text(page, '#claims')) && /Contradicted/.test(await text(page, '#claims')), 'research: claim opens the contradicting experiment')
+  check(/0\.57 m/.test(await text(page, '#v-research')) && /0\.73 m/.test(await text(page, '#v-research')), 'research: honest benchmark (bisection wins)')
+  await shot(page, 'research', true)
+
+  // Safety Lab: what → how → run → authorize (wallet signs) → Mission Control (live)
+  await page.click('nav.top a[data-nav="flow"]')
+  check(await page.locator('#s1').isVisible() && (await page.locator('#policies .choice').count()) === 2, 'lab step 1: two policies with interfaces')
+  await page.click('#s1-next')
+  check(!(await page.locator('#attacks').innerText()).includes('fast simulation') && /Recorded only/.test(await text(page, '#attacks')), 'lab step 2: CARLA cut-in live, others marked recorded only')
+  await page.click('#s2-next')
+  check(/CARLA is online/.test(await text(page, '#exec-lede')), 'lab step 3: CARLA availability checked')
+  await page.click('[data-mode="paid"]'); await page.click('#s3-next')
+  check(/You sign a test request/.test(await text(page, '#s4')) && /Our agent pays/.test(await text(page, '#s4')) && /never a transaction/.test(await text(page, '#s4')), 'lab step 4: sign vs pay explained')
+  await page.click('[data-w="0"]')
+  await page.waitForFunction(() => /0x/.test(document.getElementById('wallet-btn').textContent))
+  check((await text(page, '#wallet-btn')).includes(acct.address.slice(0, 6)), 'wallet connected: address shown')
+  check(/Anchored test · our agent pays/.test(await text(page, '#summary')) && /Hedera testnet/.test(await text(page, '#summary')), 'lab step 4: price, spending limit and payment chain shown')
+  await shot(page, 'attack')
+  await page.click('#start')
+  await page.waitForSelector('#v-mission:not(.hidden)')
+  check(!!signedBody && await verifyMessage({ address: signedBody.address, message: signedBody.message, signature: signedBody.signature }), 'signed request: EIP-191 signature verifies for the wallet')
+  check(/^Faultline test request\npolicy: pdm-lite\nsuite: cut-in-v1-carla\nmode: paid\nnonce: [0-9a-f]{32}\nissued: \S+$/.test(signedBody?.message ?? ''), 'signed request: readable message format')
+  check(new URL(page.url()).pathname === '/mission/0123456789abcdef', 'launch: lands on Mission Control with the job id')
+  await page.waitForSelector('#mc-timeline [data-di]', { timeout: 30000 })
+  check(/live run/.test(await text(page, '#mc-kind')), 'mission: live job view')
+  await shot(page, 'live')
   check(errors.length === 0, `no page errors ${errors.join(' | ')}`)
 
+  // Coinbase-style legacy injection
+  const cctx = await browser.newContext({ viewport: { width: 1360, height: 900 } })
+  const cb = await cctx.newPage(); const err4 = []; cb.on('pageerror', (e) => err4.push(e.message))
+  await mock(cb, true)
+  await cb.exposeFunction('__fixtureSign', (hex) => acct.signMessage({ message: { raw: hex } }))
+  await cb.addInitScript((address) => {
+    const cbw = { isCoinbaseWallet: true, request: async ({ method, params }) => {
+      if (method === 'eth_requestAccounts' || method === 'eth_accounts') return [address]
+      if (method === 'personal_sign') { if (!/^0x[0-9a-f]+$/.test(params[0]) || params[1] !== address) throw Object.assign(new Error('bad params'), { code: -32602 }); return window.__fixtureSign(params[0]) }
+      throw Object.assign(new Error(`unsupported ${method}`), { code: 4200 }) } }
+    window.ethereum = { isMetaMask: false, providers: [cbw], request: cbw.request }
+    window.coinbaseWalletExtension = cbw
+  }, acct.address)
+  signedBody = null
+  await cb.goto(`${base}/lab`); await cb.waitForSelector('#console-dot.up', { state: 'attached' }); await cb.waitForTimeout(700)
+  await cb.click('#wallet-btn')
+  await cb.waitForFunction(() => /0x/.test(document.getElementById('wallet-btn').textContent), null, { timeout: 5000 })
+  check(/Coinbase Wallet/.test(await text(cb, '#wallets')), 'coinbase legacy provider: discovered and connected from the header button')
+  await cb.click('#start'); await cb.waitForSelector('#v-mission:not(.hidden)')
+  check(!!signedBody && await verifyMessage({ address: signedBody.address, message: signedBody.message, signature: signedBody.signature }), 'coinbase legacy provider: personal_sign [hex, address] verifies')
+  check(err4.length === 0, `coinbase: no page errors ${err4.join(' | ')}`)
+
+  // Guest path
+  const gctx = await browser.newContext({ viewport: { width: 1360, height: 900 } })
+  const g = await gctx.newPage(); const err3 = []; g.on('pageerror', (e) => err3.push(e.message))
+  await mock(g, true); await g.goto(`${base}/lab`); await g.waitForSelector('#console-dot.up', { state: 'attached' })
+  await g.click('#s1-next'); await g.click('#s2-next'); await g.click('#s3-next')
+  await g.click('#guest')
+  check(/Start free guest run/.test(await text(g, '#start')), 'guest: continue without a wallet, one click')
+  await g.click('#start'); await g.waitForSelector('#v-mission:not(.hidden)')
+  check(guestBody?.guest === true && guestBody?.mode === 'free' && !guestBody?.signature, 'guest: unsigned free run requested with guest flag')
+  check(err3.length === 0, `guest: no page errors ${err3.join(' | ')}`)
+
+  // Phone, console offline
   const off = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: shots ? 2 : 1 })
   const p2 = await off.newPage(); const err2 = []; p2.on('pageerror', (e) => err2.push(e.message))
   await mock(p2, false)
-  await p2.goto(base); await p2.waitForSelector('#guide:not(.hidden)')
-  check(!(await p2.locator('[data-demo="cut-in-v1-kinematic"]').count()) || true, 'offline: guide opens')
-  await p2.click('#g-skip')
+  await p2.goto(base); await p2.waitForSelector('#console-dot.down', { state: 'attached' })
   check(await p2.locator('#offline').isVisible(), 'offline: banner shown')
-  check(!/0G Galileo commit before 1st decision ✓/.test(await text(p2, '#f-arena .rail')) && /no 0G decisions yet|replayed adversary/.test(await text(p2, '#f-arena .rail')), 'offline: arena (no 0G) shows no 0G tick')
   const sw = await p2.evaluate(() => document.documentElement.scrollWidth)
   check(sw <= 390, `phone width: no horizontal scroll (scrollWidth ${sw})`)
-  if (shots) await p2.screenshot({ path: `${shots}/studio-phone.png` })
+  await shot(p2, 'phone', true)
+  await p2.goto(`${base}/lab`)
+  check(/No wallet found/.test(await text(p2, '#wallets')), 'no wallet: install hint + recorded-test path')
+  const sw2 = await p2.evaluate(() => document.documentElement.scrollWidth)
+  check(sw2 <= 390, `phone flow: no horizontal scroll (scrollWidth ${sw2})`)
+  await shot(p2, 'phone-flow')
   check(err2.length === 0, `offline: no page errors ${err2.join(' | ')}`)
 } finally { await browser.close(); server.close() }
 console.log(failed ? `${failed} FAILED` : 'ALL PASS')

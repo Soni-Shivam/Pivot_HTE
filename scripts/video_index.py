@@ -48,7 +48,9 @@ for p in sorted((ROOT / "runs").glob("*/carla-*/screen.mp4")):  # hunt / researc
         lab = "scripted execution"
     rows.append((p, f"{p.parent.parent.name}__{p.parent.name}.mp4", lab))
 for p in sorted((ROOT / "runs").glob("arena-*/*side_by_side.mp4")):  # A/B arena: same scenario, two AV stacks
-    rows.append((p, f"{p.parent.name}__{p.name}", "A/B arena: same scenario, two AV stacks side by side (scripted adversary replay)"))
+    live = json.loads((p.parent / "compare.json").read_text()).get("mode") == "live" if (p.parent / "compare.json").exists() else False
+    rows.append((p, f"{p.parent.name}__{p.name}", "A/B arena: same scenario, two AV stacks side by side (" +
+                 ("live 0G adversary, fresh decisions per stack" if live else "scripted adversary replay") + ")"))
 for p in sorted((ROOT / "runs").glob("arena-*/*/screen.mp4")):
     rows.append((p, f"{p.parent.parent.name}__{p.parent.name}.mp4", "A/B arena single-stack run"))
 for p in sorted((ROOT / "runs" / "screenrec").glob("desk-*.mp4")):

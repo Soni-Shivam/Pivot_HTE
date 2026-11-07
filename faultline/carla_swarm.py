@@ -114,7 +114,7 @@ def swarm_bridge():
         def on_tick(self, world, st) -> None:
             super().on_tick(world, st)
             stamp = self._stamp(st.t_s)
-            gt = self._gt_box(world.ego, "gt", 0, (0.2, 0.9, 0.3, 0.35), stamp, "EGO PDM-Lite")
+            gt = self._gt_box(world.ego, "gt", 0, (0.2, 0.9, 0.3, 0.35), stamp, "EGO (AV stack)")
             actors = {"B": world.lead, **world.car_actors}
             for i, c in enumerate(sorted(actors), start=1):
                 r, g, b = (x / 255 for x in COLORS[c])

@@ -38,12 +38,19 @@ for p in sorted((ROOT / "runs").glob("*/screen.mp4")):
 for kind in ("stitched", "director"):  # swarm runs: sim-time mosaic, and the mosaic + RViz/HMI desktop crops
     for p in sorted((ROOT / "runs").glob(f"*/{kind}.mp4")):
         rows.append((p, f"{p.parent.name}__{kind}.mp4", describe(p.parent) + " · not anchored"))
+    for p in sorted((ROOT / "runs").glob(f"campaign-*/carla-*/{kind}.mp4")):  # campaign elites re-run in CARLA
+        rows.append((p, f"{p.parent.parent.name}__{p.parent.name}__{kind}.mp4",
+                     "campaign elite (recorded 0G plan, live 0G executor) · " + describe(p.parent) + " · not anchored"))
 for p in sorted((ROOT / "runs").glob("*/carla-*/screen.mp4")):  # hunt / research CARLA pairs (scripted executions)
     try:
         lab = json.loads((p.parent / "experiment.json").read_text()).get("label", "scripted execution")
     except (OSError, ValueError):
         lab = "scripted execution"
     rows.append((p, f"{p.parent.parent.name}__{p.parent.name}.mp4", lab))
+for p in sorted((ROOT / "runs").glob("arena-*/*side_by_side.mp4")):  # A/B arena: same scenario, two AV stacks
+    rows.append((p, f"{p.parent.name}__{p.name}", "A/B arena: same scenario, two AV stacks side by side (scripted adversary replay)"))
+for p in sorted((ROOT / "runs").glob("arena-*/*/screen.mp4")):
+    rows.append((p, f"{p.parent.parent.name}__{p.parent.name}.mp4", "A/B arena single-stack run"))
 for p in sorted((ROOT / "runs" / "screenrec").glob("desk-*.mp4")):
     rows.append((p, f"desktop__{p.stem[5:]}.mp4", "full :2 desktop recording (5-min segment)"))
 for p in sorted((ROOT / "docs" / "evidence" / "media").glob("*.mp4")):

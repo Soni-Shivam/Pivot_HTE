@@ -4,11 +4,23 @@ Recorded Faultline runs (CARLA 0.10 + 0G), re-encoded for GitHub. Newest first. 
 
 | video | length | recorded | what |
 |---|---|---|---|
+| [arena-script-001__r4l2s24__side_by_side.mp4](arena-script-001__r4l2s24__side_by_side.mp4) | 12 s | 11-07 05:35 | A/B arena: same scenario, two AV stacks side by side (scripted adversary replay) |
+| [arena-script-001__r4l2s24__idm_lidar.mp4](arena-script-001__r4l2s24__idm_lidar.mp4) | 12 s | 11-07 05:35 | A/B arena single-stack run |
+| [arena-script-001__r4l2s24__pdm_lite.mp4](arena-script-001__r4l2s24__pdm_lite.mp4) | 10 s | 11-07 05:34 | A/B arena single-stack run |
+| [arena-script-001__r1l2s42__side_by_side.mp4](arena-script-001__r1l2s42__side_by_side.mp4) | 12 s | 11-07 05:34 | A/B arena: same scenario, two AV stacks side by side (scripted adversary replay) |
+| [arena-script-001__r1l2s42__idm_lidar.mp4](arena-script-001__r1l2s42__idm_lidar.mp4) | 12 s | 11-07 05:34 | A/B arena single-stack run |
+| [campaign-002__carla-08__stitched.mp4](campaign-002__carla-08__stitched.mp4) | 32 s | 11-07 05:34 | campaign elite (recorded 0G plan, live 0G executor) · swarm · completed · 10 0G decisions (0G) · collision False · CCS 0.51 (ground truth) · not anchored |
+| [campaign-002__carla-08__director.mp4](campaign-002__carla-08__director.mp4) | 32 s | 11-07 05:34 | campaign elite (recorded 0G plan, live 0G executor) · swarm · completed · 10 0G decisions (0G) · collision False · CCS 0.51 (ground truth) · not anchored |
+| [arena-script-001__r1l2s42__pdm_lite.mp4](arena-script-001__r1l2s42__pdm_lite.mp4) | 10 s | 11-07 05:33 | A/B arena single-stack run |
+| [arena-ros-001__r4l2s24__ros2_pdm_lite.mp4](arena-ros-001__r4l2s24__ros2_pdm_lite.mp4) | 10 s | 11-07 05:32 | A/B arena single-stack run |
 | [campaign-002__carla-07__stitched.mp4](campaign-002__carla-07__stitched.mp4) | 32 s | 11-07 05:32 | campaign elite (recorded 0G plan, live 0G executor) · swarm · completed · 10 0G decisions (0G) · collision False · CCS 0.83 (ground truth) · not anchored |
 | [campaign-002__carla-07__director.mp4](campaign-002__carla-07__director.mp4) | 32 s | 11-07 05:32 | campaign elite (recorded 0G plan, live 0G executor) · swarm · completed · 10 0G decisions (0G) · collision False · CCS 0.83 (ground truth) · not anchored |
+| [arena-script-001__r10l-2s64__side_by_side.mp4](arena-script-001__r10l-2s64__side_by_side.mp4) | 12 s | 11-07 05:31 | A/B arena: same scenario, two AV stacks side by side (scripted adversary replay) |
+| [arena-script-001__r10l-2s64__idm_lidar.mp4](arena-script-001__r10l-2s64__idm_lidar.mp4) | 12 s | 11-07 05:31 | A/B arena single-stack run |
 | [campaign-002__carla-06__stitched.mp4](campaign-002__carla-06__stitched.mp4) | 32 s | 11-07 05:31 | campaign elite (recorded 0G plan, live 0G executor) · swarm · completed · 10 0G decisions (0G) · collision False · CCS 0.72 (ground truth) · not anchored |
 | [campaign-002__carla-06__director.mp4](campaign-002__carla-06__director.mp4) | 32 s | 11-07 05:30 | campaign elite (recorded 0G plan, live 0G executor) · swarm · completed · 10 0G decisions (0G) · collision False · CCS 0.72 (ground truth) · not anchored |
 | [smart-carla-004__stitched.mp4](smart-carla-004__stitched.mp4) | 20 s | 11-07 05:30 | swarm · completed · 5 0G decisions (0G) · collision True · CCS 0.71 (ground truth) · not anchored |
+| [arena-script-001__r10l-2s64__pdm_lite.mp4](arena-script-001__r10l-2s64__pdm_lite.mp4) | 10 s | 11-07 05:30 | A/B arena single-stack run |
 | [swarm-carla-010__stitched.mp4](swarm-carla-010__stitched.mp4) | 32 s | 11-07 05:29 | swarm · completed · 10 0G decisions (0G) · collision False · CCS 0.90 (ground truth) · not anchored |
 | [swarm-carla-009__stitched.mp4](swarm-carla-009__stitched.mp4) | 24 s | 11-07 05:29 | swarm · interrupted · 4 0G decisions (0G) · collision False · CCS 0.89 (ground truth) · not anchored |
 | [smart-carla-004__director.mp4](smart-carla-004__director.mp4) | 20 s | 11-07 05:29 | swarm · completed · 5 0G decisions (0G) · collision True · CCS 0.71 (ground truth) · not anchored |
@@ -21,7 +33,10 @@ Recorded Faultline runs (CARLA 0.10 + 0G), re-encoded for GitHub. Newest first. 
 | [campaign-002__carla-05__stitched.mp4](campaign-002__carla-05__stitched.mp4) | 32 s | 11-07 05:29 | campaign elite (recorded 0G plan, live 0G executor) · swarm · completed · 10 0G decisions (0G) · collision False · CCS 0.88 (ground truth) · not anchored |
 | [swarm-carla-002__stitched.mp4](swarm-carla-002__stitched.mp4) | 29 s | 11-07 05:29 | swarm · completed · 9 0G decisions (0G) · collision False · CCS 0.91 (ground truth) · not anchored |
 | [campaign-002__carla-05__director.mp4](campaign-002__carla-05__director.mp4) | 32 s | 11-07 05:28 | campaign elite (recorded 0G plan, live 0G executor) · swarm · completed · 10 0G decisions (0G) · collision False · CCS 0.88 (ground truth) · not anchored |
+| [arena-script-001__r7l-2s3__side_by_side.mp4](arena-script-001__r7l-2s3__side_by_side.mp4) | 12 s | 11-07 05:28 | A/B arena: same scenario, two AV stacks side by side (scripted adversary replay) |
+| [arena-script-001__r7l-2s3__idm_lidar.mp4](arena-script-001__r7l-2s3__idm_lidar.mp4) | 12 s | 11-07 05:28 | A/B arena single-stack run |
 | [viz-demo-20261107T052657__stitched.mp4](viz-demo-20261107T052657__stitched.mp4) | 11 s | 11-07 05:27 | cut_in · completed · 0 0G decisions (scripted) · collision False · CCS 0.89 (ground truth) · not anchored |
+| [arena-script-001__r7l-2s3__pdm_lite.mp4](arena-script-001__r7l-2s3__pdm_lite.mp4) | 10 s | 11-07 05:27 | A/B arena single-stack run |
 | [campaign-002__carla-03__stitched.mp4](campaign-002__carla-03__stitched.mp4) | 16 s | 11-07 05:20 | campaign elite (recorded 0G plan, live 0G executor) · swarm · interrupted · 0 0G decisions (halt) · collision False · CCS 0.90 (ground truth) · not anchored |
 | [campaign-002__carla-03__director.mp4](campaign-002__carla-03__director.mp4) | 16 s | 11-07 05:20 | campaign elite (recorded 0G plan, live 0G executor) · swarm · interrupted · 0 0G decisions (halt) · collision False · CCS 0.90 (ground truth) · not anchored |
 | [campaign-002__carla-02__stitched.mp4](campaign-002__carla-02__stitched.mp4) | 15 s | 11-07 05:20 | campaign elite (recorded 0G plan, live 0G executor) · swarm · interrupted · 0 0G decisions (halt) · collision False · CCS 0.90 (ground truth) · not anchored |

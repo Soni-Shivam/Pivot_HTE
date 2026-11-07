@@ -40,7 +40,7 @@ const PAUSED = 'Live runs are paused for today. Replay a recorded run'
 const nonces = new Map<string, number>()
 const walletCaps = new WalletCaps(Number(process.env.FAULTLINE_WALLET_MAX_RUNS ?? 3))
 // Guest path (no wallet): free demo runs only, 1 per IP per hour, 6 per day in total. Paid runs always need a signature.
-const guestPerIp = new RateLimit(1, 3600_000), guestDaily = new WalletCaps(Number(process.env.FAULTLINE_GUEST_MAX_RUNS ?? 6))
+const guestPerIp = new RateLimit(Number(process.env.FAULTLINE_GUEST_PER_IP_HOUR ?? 3), 3600_000), guestDaily = new WalletCaps(Number(process.env.FAULTLINE_GUEST_MAX_RUNS ?? 30))
 const postLimit = new RateLimit(Number(process.env.FAULTLINE_RATE_POST ?? 12), 60_000)
 const allLimit = new RateLimit(Number(process.env.FAULTLINE_RATE_ALL ?? 600), 60_000)
 const HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`, PUBLIC_HOST, `${PUBLIC_HOST}:443`])
@@ -442,7 +442,7 @@ app.post('/api/demo-run', async (req, res) => {
   let v: { address: string } | { error: string }
   if (req.body?.guest === true && !req.body?.signature) {
     if (mode !== 'free') return deny(res, 401, 'Paid runs need a signed wallet request. Connect a wallet, or use a free guest run')
-    if (!guestPerIp.allow(clientIp(req.socket.remoteAddress, req.header('x-forwarded-for')))) return deny(res, 429, 'One guest run per hour from your network. Connect a wallet for more, or replay a recorded test')
+    if (!guestPerIp.allow(req.header('x-vercel-forwarded-for')?.split(',')[0].trim() || clientIp(req.socket.remoteAddress, req.header('x-forwarded-for'))))  // behind the Vercel proxy, key on the visitor, not Vercel return deny(res, 429, 'Guest run limit reached for your network this hour. Connect a wallet for more, or replay a recorded test')
     if (!guestDaily.take('guest')) return deny(res, 429, 'Guest runs are used up for today. Connect a wallet, or replay a recorded test')
     v = { address: 'guest run' }
   } else {

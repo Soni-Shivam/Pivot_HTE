@@ -1,0 +1,384 @@
+{
+ "agent": {
+  "cost_usd": 0.009305,
+  "inference_calls": 4,
+  "latency_ms": [
+   17625,
+   48780,
+   46332,
+   38820
+  ],
+  "providers": [
+   "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250"
+  ],
+  "request_ids": [
+   "64acf711-ec91-4571-9c68-f934e00a878a",
+   "5b22fde8-6380-4d7b-9113-e9150f876345",
+   "2cc713f8-e94d-41e1-a7e2-6ef7a12a0158",
+   "315dca09-ab82-4e2d-a699-f4fbb4290f56"
+  ],
+  "tokens": {
+   "completion_tokens": 18116,
+   "prompt_tokens": 8789
+  }
+ },
+ "benign": {
+  "brake_after_cp": 2,
+  "brake_mps2": 0.0,
+  "cut_in_cp": 2,
+  "ego_speed_mps": 8.0,
+  "environment": "clear_noon",
+  "initial_gap_m": 12.0,
+  "lane_change_s": 2.0,
+  "lead_speed_mps": 9.0
+ },
+ "environments": {
+  "clear_night": {
+   "lidar": {
+    "atmosphere_attenuation_rate": 0.004,
+    "dropoff_general_rate": 0.45,
+    "dropoff_intensity_limit": 0.8,
+    "dropoff_zero_intensity": 0.4,
+    "noise_stddev": 0.0
+   },
+   "mu": 0.8,
+   "weather": {
+    "cloudiness": 0.0,
+    "fog_density": 0.0,
+    "fog_distance": 0.0,
+    "fog_falloff": 0.0,
+    "precipitation": 0.0,
+    "precipitation_deposits": 0.0,
+    "sun_altitude_angle": -90.0,
+    "sun_azimuth_angle": 0.0,
+    "wetness": 0.0,
+    "wind_intensity": 0.0
+   }
+  },
+  "clear_noon": {
+   "lidar": {
+    "atmosphere_attenuation_rate": 0.004,
+    "dropoff_general_rate": 0.45,
+    "dropoff_intensity_limit": 0.8,
+    "dropoff_zero_intensity": 0.4,
+    "noise_stddev": 0.0
+   },
+   "mu": 0.8,
+   "weather": {
+    "cloudiness": 0.0,
+    "fog_density": 0.0,
+    "fog_distance": 0.0,
+    "fog_falloff": 0.0,
+    "precipitation": 0.0,
+    "precipitation_deposits": 0.0,
+    "sun_altitude_angle": 70.0,
+    "sun_azimuth_angle": 0.0,
+    "wetness": 0.0,
+    "wind_intensity": 0.0
+   }
+  },
+  "dense_fog": {
+   "lidar": {
+    "atmosphere_attenuation_rate": 0.06,
+    "dropoff_general_rate": 0.75,
+    "dropoff_intensity_limit": 0.9,
+    "dropoff_zero_intensity": 0.4,
+    "noise_stddev": 0.02
+   },
+   "mu": 0.7,
+   "weather": {
+    "cloudiness": 90.0,
+    "fog_density": 90.0,
+    "fog_distance": 2.0,
+    "fog_falloff": 1.0,
+    "precipitation": 0.0,
+    "precipitation_deposits": 0.0,
+    "sun_altitude_angle": 70.0,
+    "sun_azimuth_angle": 0.0,
+    "wetness": 30.0,
+    "wind_intensity": 0.0
+   }
+  },
+  "hard_rain_night": {
+   "lidar": {
+    "atmosphere_attenuation_rate": 0.03,
+    "dropoff_general_rate": 0.65,
+    "dropoff_intensity_limit": 0.8,
+    "dropoff_zero_intensity": 0.4,
+    "noise_stddev": 0.03
+   },
+   "mu": 0.5,
+   "weather": {
+    "cloudiness": 100.0,
+    "fog_density": 0.0,
+    "fog_distance": 0.0,
+    "fog_falloff": 0.0,
+    "precipitation": 100.0,
+    "precipitation_deposits": 90.0,
+    "sun_altitude_angle": -90.0,
+    "sun_azimuth_angle": 0.0,
+    "wetness": 100.0,
+    "wind_intensity": 100.0
+   }
+  },
+  "wet_noon": {
+   "lidar": {
+    "atmosphere_attenuation_rate": 0.004,
+    "dropoff_general_rate": 0.45,
+    "dropoff_intensity_limit": 0.8,
+    "dropoff_zero_intensity": 0.4,
+    "noise_stddev": 0.01
+   },
+   "mu": 0.6,
+   "weather": {
+    "cloudiness": 60.0,
+    "fog_density": 0.0,
+    "fog_distance": 0.0,
+    "fog_falloff": 0.0,
+    "precipitation": 0.0,
+    "precipitation_deposits": 50.0,
+    "sun_altitude_angle": 70.0,
+    "sun_azimuth_angle": 0.0,
+    "wetness": 100.0,
+    "wind_intensity": 0.0
+   }
+  }
+ },
+ "experiments": [
+  {
+   "criticality": 0.0995,
+   "dir": "runs/carla-hunt-002/exp-01",
+   "n": 1,
+   "outcome": {
+    "brake_reaction_s": 0.0,
+    "collision": false,
+    "end_t_s": 10.25,
+    "episode_id": "e7690b5964525125b1d06e38e263236d75c0e590a3006ec2f3ffc33b6f21a493",
+    "first_lidar_in_lane_t_s": 4.6,
+    "gap_at_in_path_m": 5.673,
+    "in_path_t_s": 4.95,
+    "max_ego_brake": 1.0,
+    "max_ego_decel_mps2": 7.351,
+    "min_gap_m": 3.602,
+    "min_ttc_s": 1.646,
+    "needed_decel_at_in_path_mps2": null
+   },
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 5.0,
+    "cut_in_cp": 2,
+    "ego_speed_mps": 10.0,
+    "environment": "clear_noon",
+    "initial_gap_m": 6.0,
+    "lane_change_s": 1.8,
+    "lead_speed_mps": 10.0
+   },
+   "reason": null,
+   "status": "ran",
+   "tool": "probe",
+   "turn": 1,
+   "wall_s": 27.9
+  },
+  {
+   "criticality": 1.0,
+   "dir": "runs/carla-hunt-002/exp-02",
+   "n": 2,
+   "outcome": {
+    "brake_reaction_s": null,
+    "collision": true,
+    "end_t_s": 3.05,
+    "episode_id": "d247d7a2de8454db09ce84152cb676448b4cb3dd98dea8dff81e61cfe73799b6",
+    "first_lidar_in_lane_t_s": 2.65,
+    "gap_at_in_path_m": null,
+    "in_path_t_s": null,
+    "max_ego_brake": 1.0,
+    "max_ego_decel_mps2": 32.531,
+    "min_gap_m": null,
+    "min_ttc_s": null,
+    "needed_decel_at_in_path_mps2": null
+   },
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 0.0,
+    "cut_in_cp": 0,
+    "ego_speed_mps": 12.0,
+    "environment": "hard_rain_night",
+    "initial_gap_m": 20.0,
+    "lane_change_s": 2.27,
+    "lead_speed_mps": 4.0
+   },
+   "reason": null,
+   "status": "ran",
+   "tool": "probe",
+   "turn": 2,
+   "wall_s": 149.5
+  },
+  {
+   "criticality": 1.0,
+   "dir": "runs/carla-hunt-002/exp-03",
+   "n": 3,
+   "outcome": {
+    "brake_reaction_s": null,
+    "collision": true,
+    "end_t_s": 3.05,
+    "episode_id": "1714f7f9148c3869a316ea8cc02897ed2cdc7805b37be3e939faed818029df98",
+    "first_lidar_in_lane_t_s": 2.65,
+    "gap_at_in_path_m": null,
+    "in_path_t_s": null,
+    "max_ego_brake": 1.0,
+    "max_ego_decel_mps2": 32.531,
+    "min_gap_m": null,
+    "min_ttc_s": null,
+    "needed_decel_at_in_path_mps2": null
+   },
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 0.0,
+    "cut_in_cp": 0,
+    "ego_speed_mps": 12.0,
+    "environment": "clear_noon",
+    "initial_gap_m": 20.0,
+    "lane_change_s": 2.27,
+    "lead_speed_mps": 4.0
+   },
+   "reason": null,
+   "status": "ran",
+   "tool": "probe",
+   "turn": 3,
+   "wall_s": 80.7
+  }
+ ],
+ "reason": "turn 4: invalid_json",
+ "space": {
+  "brake_after_cp": [
+   1,
+   4
+  ],
+  "brake_mps2": [
+   0.0,
+   8.0
+  ],
+  "cut_in_cp": [
+   0,
+   6
+  ],
+  "ego_speed_mps": [
+   6.0,
+   12.0
+  ],
+  "initial_gap_m": [
+   3.0,
+   25.0
+  ],
+  "lane_change_s": [
+   1.0,
+   3.0
+  ],
+  "lead_speed_mps": [
+   4.0,
+   14.0
+  ]
+ },
+ "status": "halted",
+ "tool_log": [
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 2,
+     "brake_mps2": 5.0,
+     "cut_in_cp": 2,
+     "ego_speed_mps": 10.0,
+     "environment": "clear_noon",
+     "initial_gap_m": 6.0,
+     "lane_change_s": 1.8,
+     "lead_speed_mps": 10.0
+    }
+   },
+   "experiments": [
+    1
+   ],
+   "hypothesis": "Reducing initial gap and increasing speeds, combined with adversary braking, will cause a collision.",
+   "request_id": "64acf711-ec91-4571-9c68-f934e00a878a",
+   "result": {
+    "runs": [
+     {
+      "brake_reaction_s": 0.0,
+      "collision": false,
+      "min_gap_m": 3.602,
+      "min_ttc_s": 1.646,
+      "n": 1,
+      "needed_decel_at_in_path_mps2": null
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 1
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 2,
+     "brake_mps2": 0.0,
+     "cut_in_cp": 0,
+     "ego_speed_mps": 12.0,
+     "environment": "hard_rain_night",
+     "initial_gap_m": 20.0,
+     "lane_change_s": 2.27,
+     "lead_speed_mps": 4.0
+    }
+   },
+   "experiments": [
+    2
+   ],
+   "hypothesis": "Hard rain night reduces friction and LiDAR quality; high ego/low lead speed differential overwhelms braking capability.",
+   "request_id": "5b22fde8-6380-4d7b-9113-e9150f876345",
+   "result": {
+    "runs": [
+     {
+      "brake_reaction_s": null,
+      "collision": true,
+      "min_gap_m": null,
+      "min_ttc_s": null,
+      "n": 2,
+      "needed_decel_at_in_path_mps2": null
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 2
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_mps2": 0.0,
+     "cut_in_cp": 0,
+     "ego_speed_mps": 12.0,
+     "environment": "clear_noon",
+     "initial_gap_m": 20.0,
+     "lane_change_s": 2.27,
+     "lead_speed_mps": 4.0
+    }
+   },
+   "experiments": [
+    3
+   ],
+   "hypothesis": "Collision requires hard_rain_night environment due to LiDAR degradation causing late detection, combined with high relative speed.",
+   "request_id": "2cc713f8-e94d-41e1-a7e2-6ef7a12a0158",
+   "result": {
+    "runs": [
+     {
+      "brake_reaction_s": null,
+      "collision": true,
+      "min_gap_m": null,
+      "min_ttc_s": null,
+      "n": 3,
+      "needed_decel_at_in_path_mps2": null
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 3
+  }
+ ],
+ "wall_s": 409.7
+}

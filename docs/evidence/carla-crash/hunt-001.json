@@ -1,0 +1,1200 @@
+{
+ "agent": {
+  "cost_usd": 0.00522,
+  "inference_calls": 18,
+  "latency_ms": [
+   3079,
+   2957,
+   2845,
+   2700,
+   2846,
+   2727,
+   4253,
+   3290,
+   3292,
+   3296,
+   4968,
+   6063,
+   5409,
+   4695,
+   4293,
+   6062,
+   3874,
+   3766
+  ],
+  "providers": [
+   "0xf4FB8d2bD856e672b5f9848b0eD235A20079B250"
+  ],
+  "request_ids": [
+   "a297cc6e-c260-47b6-b66e-dd9fb228edc5",
+   "7d203a0b-5c79-4e94-93a3-652433d41ccd",
+   "12e1c0be-0ce0-4916-b452-e6b2ed9bb95d",
+   "ec9c0430-98b4-4028-aedb-19d72b83a373",
+   "8ad78917-4cfc-4132-8792-1281bbf185ba",
+   "03fbece7-5e49-464b-9673-98348f07ec8a",
+   "b2eb1311-3f14-4cc7-9139-c2f31e6c39cb",
+   "e3155ed9-9e6f-481c-b9b2-622ad314cd3e",
+   "a9688475-7601-4a2d-8109-89da5188e1b6",
+   "b9cf789a-defa-441e-8bb7-46039a088953",
+   "5006cb08-66f5-4675-9b64-9a0093aed382",
+   "2fef6060-9499-4e15-ae79-89d8f171d3fa",
+   "73996146-9a13-475f-9381-5fa37a952d7e",
+   "5cea7492-8413-4d5a-92a1-52135a853bcc",
+   "57262c3e-db9f-401e-9f0d-179fb0c2a6a5",
+   "4f21f831-923d-43ae-a93c-7577dbd9c6e1",
+   "84a271bf-7976-4824-be60-38b05da14ed1",
+   "2410641c-0b3d-44ba-adce-7f0dfaf3b149"
+  ],
+  "tokens": {
+   "completion_tokens": 3225,
+   "prompt_tokens": 62363
+  }
+ },
+ "benign": {
+  "brake_after_cp": 2,
+  "brake_mps2": 0.0,
+  "cut_in_cp": 2,
+  "ego_speed_mps": 8.0,
+  "environment": "clear_noon",
+  "initial_gap_m": 12.0,
+  "lane_change_s": 2.0,
+  "lead_speed_mps": 9.0
+ },
+ "environments": {
+  "clear_night": {
+   "lidar": {
+    "atmosphere_attenuation_rate": 0.004,
+    "dropoff_general_rate": 0.45,
+    "dropoff_intensity_limit": 0.8,
+    "dropoff_zero_intensity": 0.4,
+    "noise_stddev": 0.0
+   },
+   "mu": 0.8,
+   "weather": {
+    "cloudiness": 0.0,
+    "fog_density": 0.0,
+    "fog_distance": 0.0,
+    "fog_falloff": 0.0,
+    "precipitation": 0.0,
+    "precipitation_deposits": 0.0,
+    "sun_altitude_angle": -90.0,
+    "sun_azimuth_angle": 0.0,
+    "wetness": 0.0,
+    "wind_intensity": 0.0
+   }
+  },
+  "clear_noon": {
+   "lidar": {
+    "atmosphere_attenuation_rate": 0.004,
+    "dropoff_general_rate": 0.45,
+    "dropoff_intensity_limit": 0.8,
+    "dropoff_zero_intensity": 0.4,
+    "noise_stddev": 0.0
+   },
+   "mu": 0.8,
+   "weather": {
+    "cloudiness": 0.0,
+    "fog_density": 0.0,
+    "fog_distance": 0.0,
+    "fog_falloff": 0.0,
+    "precipitation": 0.0,
+    "precipitation_deposits": 0.0,
+    "sun_altitude_angle": 70.0,
+    "sun_azimuth_angle": 0.0,
+    "wetness": 0.0,
+    "wind_intensity": 0.0
+   }
+  },
+  "dense_fog": {
+   "lidar": {
+    "atmosphere_attenuation_rate": 0.06,
+    "dropoff_general_rate": 0.75,
+    "dropoff_intensity_limit": 0.9,
+    "dropoff_zero_intensity": 0.4,
+    "noise_stddev": 0.02
+   },
+   "mu": 0.7,
+   "weather": {
+    "cloudiness": 90.0,
+    "fog_density": 90.0,
+    "fog_distance": 2.0,
+    "fog_falloff": 1.0,
+    "precipitation": 0.0,
+    "precipitation_deposits": 0.0,
+    "sun_altitude_angle": 70.0,
+    "sun_azimuth_angle": 0.0,
+    "wetness": 30.0,
+    "wind_intensity": 0.0
+   }
+  },
+  "hard_rain_night": {
+   "lidar": {
+    "atmosphere_attenuation_rate": 0.03,
+    "dropoff_general_rate": 0.65,
+    "dropoff_intensity_limit": 0.8,
+    "dropoff_zero_intensity": 0.4,
+    "noise_stddev": 0.03
+   },
+   "mu": 0.5,
+   "weather": {
+    "cloudiness": 100.0,
+    "fog_density": 0.0,
+    "fog_distance": 0.0,
+    "fog_falloff": 0.0,
+    "precipitation": 100.0,
+    "precipitation_deposits": 90.0,
+    "sun_altitude_angle": -90.0,
+    "sun_azimuth_angle": 0.0,
+    "wetness": 100.0,
+    "wind_intensity": 100.0
+   }
+  },
+  "wet_noon": {
+   "lidar": {
+    "atmosphere_attenuation_rate": 0.004,
+    "dropoff_general_rate": 0.45,
+    "dropoff_intensity_limit": 0.8,
+    "dropoff_zero_intensity": 0.4,
+    "noise_stddev": 0.01
+   },
+   "mu": 0.6,
+   "weather": {
+    "cloudiness": 60.0,
+    "fog_density": 0.0,
+    "fog_distance": 0.0,
+    "fog_falloff": 0.0,
+    "precipitation": 0.0,
+    "precipitation_deposits": 50.0,
+    "sun_altitude_angle": 70.0,
+    "sun_azimuth_angle": 0.0,
+    "wetness": 100.0,
+    "wind_intensity": 0.0
+   }
+  }
+ },
+ "experiments": [
+  {
+   "criticality": 0.0,
+   "dir": "runs/carla-hunt-001/exp-01",
+   "n": 1,
+   "outcome": {
+    "brake_reaction_s": null,
+    "collision": false,
+    "end_t_s": 12.0,
+    "episode_id": "23f2c0e6f7490dac4b50fe229fed9960a8b1b1b7394125aaad11c528ab4c14e5",
+    "first_lidar_in_lane_t_s": 4.7,
+    "gap_at_in_path_m": 16.699,
+    "in_path_t_s": 5.0,
+    "max_ego_brake": 0.0,
+    "max_ego_decel_mps2": 0.109,
+    "min_gap_m": 16.699,
+    "min_ttc_s": null,
+    "needed_decel_at_in_path_mps2": null
+   },
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 0.0,
+    "cut_in_cp": 2,
+    "ego_speed_mps": 8.0,
+    "environment": "clear_noon",
+    "initial_gap_m": 12.0,
+    "lane_change_s": 2.0,
+    "lead_speed_mps": 9.0
+   },
+   "reason": null,
+   "status": "ran",
+   "tool": "probe",
+   "turn": 1,
+   "wall_s": 13.1
+  },
+  {
+   "criticality": 0.0,
+   "dir": null,
+   "n": 2,
+   "outcome": null,
+   "params": {
+    "brake_after_cp": 0,
+    "brake_mps2": 5.0,
+    "cut_in_cp": 0,
+    "ego_speed_mps": 12.0,
+    "environment": "clear_noon",
+    "initial_gap_m": 5.0,
+    "lane_change_s": 1.0,
+    "lead_speed_mps": 9.0
+   },
+   "reason": "brake_after_cp=0 not a number in [1, 4]",
+   "status": "invalid",
+   "tool": "probe",
+   "turn": 2
+  },
+  {
+   "criticality": 0.0,
+   "dir": null,
+   "n": 3,
+   "outcome": null,
+   "params": {
+    "brake_after_cp": 0,
+    "brake_mps2": 5.0,
+    "cut_in_cp": 0,
+    "ego_speed_mps": 12.0,
+    "environment": "clear_noon",
+    "initial_gap_m": 5.0,
+    "lane_change_s": 1.0,
+    "lead_speed_mps": 9.0
+   },
+   "reason": "brake_after_cp=0 not a number in [1, 4]",
+   "status": "invalid",
+   "tool": "probe",
+   "turn": 3
+  },
+  {
+   "criticality": 0.0,
+   "dir": null,
+   "n": 4,
+   "outcome": null,
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 7.0,
+    "cut_in_cp": 2,
+    "ego_speed_mps": 10.0,
+    "environment": "clear_noon",
+    "initial_gap_m": 8.0,
+    "lane_change_s": 2.0,
+    "lead_speed_mps": 9.0
+   },
+   "reason": "brake_mps2=7.0 exceeds 0.8*g*mu = 6.28 m/s2 in clear_noon",
+   "status": "invalid",
+   "tool": "probe",
+   "turn": 4
+  },
+  {
+   "criticality": 0.0,
+   "dir": null,
+   "n": 5,
+   "outcome": null,
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 0.0,
+    "cut_in_cp": 2,
+    "ego_speed_mps": 10.0,
+    "environment": "hard_rain_night",
+    "initial_gap_m": 8.0,
+    "lane_change_s": 2.0,
+    "lead_speed_mps": 9.0
+   },
+   "reason": "lane_change_s=2.0 needs 5.05 m/s2 lateral, above 0.8*g*mu = 3.92; use >= 2.27 s",
+   "status": "invalid",
+   "tool": "probe",
+   "turn": 5
+  },
+  {
+   "criticality": 0.0,
+   "dir": "runs/carla-hunt-001/exp-06",
+   "n": 6,
+   "outcome": {
+    "brake_reaction_s": 0.0,
+    "collision": false,
+    "end_t_s": 12.0,
+    "episode_id": "1fb5cb8f19a945c7ee5ea1b26969ed62e1705dd293efc4ac407626c05fd53d3b",
+    "first_lidar_in_lane_t_s": 4.9,
+    "gap_at_in_path_m": 4.502,
+    "in_path_t_s": 5.25,
+    "max_ego_brake": 1.0,
+    "max_ego_decel_mps2": 7.292,
+    "min_gap_m": 4.502,
+    "min_ttc_s": null,
+    "needed_decel_at_in_path_mps2": null
+   },
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 0.0,
+    "cut_in_cp": 2,
+    "ego_speed_mps": 10.0,
+    "environment": "hard_rain_night",
+    "initial_gap_m": 10.0,
+    "lane_change_s": 2.5,
+    "lead_speed_mps": 9.0
+   },
+   "reason": null,
+   "status": "ran",
+   "tool": "probe",
+   "turn": 6,
+   "wall_s": 10.1
+  },
+  {
+   "criticality": 0.0,
+   "dir": null,
+   "n": 7,
+   "outcome": null,
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 0.0,
+    "cut_in_cp": 2,
+    "ego_speed_mps": 10.0,
+    "environment": "hard_rain_night",
+    "initial_gap_m": 5.0,
+    "lane_change_s": 2.5,
+    "lead_speed_mps": 9.0
+   },
+   "reason": "predicted gap at the cut-in start 1.0 m < 3.0 m (the cut-in would start alongside)",
+   "status": "invalid",
+   "tool": "probe",
+   "turn": 7
+  },
+  {
+   "criticality": 0.0,
+   "dir": "runs/carla-hunt-001/exp-08",
+   "n": 8,
+   "outcome": {
+    "brake_reaction_s": 0.0,
+    "collision": false,
+    "end_t_s": 12.0,
+    "episode_id": "a257d077e3002f6fd907d8cf759efedf5aafd8fdcfd250f8f3c7eb39040731e2",
+    "first_lidar_in_lane_t_s": 4.9,
+    "gap_at_in_path_m": 4.502,
+    "in_path_t_s": 5.25,
+    "max_ego_brake": 1.0,
+    "max_ego_decel_mps2": 7.292,
+    "min_gap_m": 4.502,
+    "min_ttc_s": null,
+    "needed_decel_at_in_path_mps2": null
+   },
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 0.0,
+    "cut_in_cp": 2,
+    "ego_speed_mps": 10.0,
+    "environment": "hard_rain_night",
+    "initial_gap_m": 10.0,
+    "lane_change_s": 2.5,
+    "lead_speed_mps": 9.0
+   },
+   "reason": null,
+   "status": "ran",
+   "tool": "probe",
+   "turn": 8,
+   "wall_s": 9.8
+  },
+  {
+   "criticality": 0.0,
+   "dir": null,
+   "n": 9,
+   "outcome": null,
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 0.0,
+    "cut_in_cp": 2,
+    "ego_speed_mps": 12.0,
+    "environment": "hard_rain_night",
+    "initial_gap_m": 10.0,
+    "lane_change_s": 2.5,
+    "lead_speed_mps": 9.0
+   },
+   "reason": "predicted gap at the cut-in start -2.0 m < 3.0 m (the cut-in would start alongside)",
+   "status": "invalid",
+   "tool": "probe",
+   "turn": 9
+  },
+  {
+   "criticality": 0.0,
+   "dir": "runs/carla-hunt-001/exp-10",
+   "n": 10,
+   "outcome": {
+    "brake_reaction_s": 0.0,
+    "collision": false,
+    "end_t_s": 12.0,
+    "episode_id": "23bbae1be697a7993afe1e779747b54e45bec06f472cd18b05de12495b77e17a",
+    "first_lidar_in_lane_t_s": 4.9,
+    "gap_at_in_path_m": 4.502,
+    "in_path_t_s": 5.25,
+    "max_ego_brake": 1.0,
+    "max_ego_decel_mps2": 7.292,
+    "min_gap_m": 4.502,
+    "min_ttc_s": null,
+    "needed_decel_at_in_path_mps2": null
+   },
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 0.0,
+    "cut_in_cp": 2,
+    "ego_speed_mps": 10.0,
+    "environment": "hard_rain_night",
+    "initial_gap_m": 10.0,
+    "lane_change_s": 2.5,
+    "lead_speed_mps": 9.0
+   },
+   "reason": null,
+   "status": "ran",
+   "tool": "probe",
+   "turn": 10,
+   "wall_s": 10.3
+  },
+  {
+   "criticality": 0.0,
+   "dir": null,
+   "n": 11,
+   "outcome": null,
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 6.0,
+    "cut_in_cp": 2,
+    "ego_speed_mps": 10.0,
+    "environment": "hard_rain_night",
+    "initial_gap_m": 10.0,
+    "lane_change_s": 2.5,
+    "lead_speed_mps": 9.0
+   },
+   "reason": "brake_mps2=6.0 exceeds 0.8*g*mu = 3.92 m/s2 in hard_rain_night",
+   "status": "invalid",
+   "tool": "probe",
+   "turn": 11
+  },
+  {
+   "criticality": 0.0,
+   "dir": "runs/carla-hunt-001/exp-12",
+   "n": 12,
+   "outcome": {
+    "brake_reaction_s": 0.0,
+    "collision": false,
+    "end_t_s": 12.0,
+    "episode_id": "78cc0a87f64f32782f1638c21434cb1f7b18caf2e26f8d665122b42560cb2cbe",
+    "first_lidar_in_lane_t_s": 4.9,
+    "gap_at_in_path_m": 4.502,
+    "in_path_t_s": 5.25,
+    "max_ego_brake": 1.0,
+    "max_ego_decel_mps2": 7.292,
+    "min_gap_m": 4.502,
+    "min_ttc_s": null,
+    "needed_decel_at_in_path_mps2": null
+   },
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 0.0,
+    "cut_in_cp": 2,
+    "ego_speed_mps": 10.0,
+    "environment": "dense_fog",
+    "initial_gap_m": 10.0,
+    "lane_change_s": 2.5,
+    "lead_speed_mps": 9.0
+   },
+   "reason": null,
+   "status": "ran",
+   "tool": "probe",
+   "turn": 12,
+   "wall_s": 37.0
+  },
+  {
+   "criticality": 0.0,
+   "dir": null,
+   "n": 13,
+   "outcome": null,
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 0.0,
+    "cut_in_cp": 2,
+    "ego_speed_mps": 12.0,
+    "environment": "hard_rain_night",
+    "initial_gap_m": 10.0,
+    "lane_change_s": 2.5,
+    "lead_speed_mps": 9.0
+   },
+   "reason": "predicted gap at the cut-in start -2.0 m < 3.0 m (the cut-in would start alongside)",
+   "status": "invalid",
+   "tool": "probe",
+   "turn": 13
+  },
+  {
+   "criticality": 0.0,
+   "dir": null,
+   "n": 14,
+   "outcome": null,
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 0.0,
+    "cut_in_cp": 2,
+    "ego_speed_mps": 12.0,
+    "environment": "hard_rain_night",
+    "initial_gap_m": 10.0,
+    "lane_change_s": 2.5,
+    "lead_speed_mps": 9.0
+   },
+   "reason": "predicted gap at the cut-in start -2.0 m < 3.0 m (the cut-in would start alongside)",
+   "status": "invalid",
+   "tool": "probe",
+   "turn": 14
+  },
+  {
+   "criticality": 0.0,
+   "dir": null,
+   "n": 15,
+   "outcome": null,
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 0.0,
+    "cut_in_cp": 2,
+    "ego_speed_mps": 12.0,
+    "environment": "hard_rain_night",
+    "initial_gap_m": 10.0,
+    "lane_change_s": 2.5,
+    "lead_speed_mps": 9.0
+   },
+   "reason": "predicted gap at the cut-in start -2.0 m < 3.0 m (the cut-in would start alongside)",
+   "status": "invalid",
+   "tool": "probe",
+   "turn": 15
+  },
+  {
+   "criticality": 0.0,
+   "dir": null,
+   "n": 16,
+   "outcome": null,
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 0.0,
+    "cut_in_cp": 2,
+    "ego_speed_mps": 12.0,
+    "environment": "hard_rain_night",
+    "initial_gap_m": 10.0,
+    "lane_change_s": 2.5,
+    "lead_speed_mps": 9.0
+   },
+   "reason": "predicted gap at the cut-in start -2.0 m < 3.0 m (the cut-in would start alongside)",
+   "status": "invalid",
+   "tool": "probe",
+   "turn": 16
+  },
+  {
+   "criticality": 0.0,
+   "dir": "runs/carla-hunt-001/exp-17",
+   "n": 17,
+   "outcome": {
+    "brake_reaction_s": 0.0,
+    "collision": false,
+    "end_t_s": 12.0,
+    "episode_id": "148e203be06ed11ce8c879fc6ccbbdfdcdb882df63f4800151166da5d0e1c997",
+    "first_lidar_in_lane_t_s": 4.9,
+    "gap_at_in_path_m": 4.502,
+    "in_path_t_s": 5.25,
+    "max_ego_brake": 1.0,
+    "max_ego_decel_mps2": 7.292,
+    "min_gap_m": 4.502,
+    "min_ttc_s": null,
+    "needed_decel_at_in_path_mps2": null
+   },
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 0.0,
+    "cut_in_cp": 2,
+    "ego_speed_mps": 10.0,
+    "environment": "hard_rain_night",
+    "initial_gap_m": 10.0,
+    "lane_change_s": 2.5,
+    "lead_speed_mps": 9.0
+   },
+   "reason": null,
+   "status": "ran",
+   "tool": "probe",
+   "turn": 17,
+   "wall_s": 11.4
+  },
+  {
+   "criticality": 0.0,
+   "dir": null,
+   "n": 18,
+   "outcome": null,
+   "params": {
+    "brake_after_cp": 2,
+    "brake_mps2": 0.0,
+    "cut_in_cp": 2,
+    "ego_speed_mps": 12.0,
+    "environment": "hard_rain_night",
+    "initial_gap_m": 10.0,
+    "lane_change_s": 2.5,
+    "lead_speed_mps": 9.0
+   },
+   "reason": "predicted gap at the cut-in start -2.0 m < 3.0 m (the cut-in would start alongside)",
+   "status": "invalid",
+   "tool": "probe",
+   "turn": 18
+  }
+ ],
+ "reason": null,
+ "space": {
+  "brake_after_cp": [
+   1,
+   4
+  ],
+  "brake_mps2": [
+   0.0,
+   8.0
+  ],
+  "cut_in_cp": [
+   0,
+   6
+  ],
+  "ego_speed_mps": [
+   6.0,
+   12.0
+  ],
+  "initial_gap_m": [
+   3.0,
+   25.0
+  ],
+  "lane_change_s": [
+   1.0,
+   3.0
+  ],
+  "lead_speed_mps": [
+   4.0,
+   14.0
+  ]
+ },
+ "status": "completed",
+ "tool_log": [
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 2,
+     "brake_mps2": 0.0,
+     "cut_in_cp": 2,
+     "ego_speed_mps": 8.0,
+     "environment": "clear_noon",
+     "initial_gap_m": 12.0,
+     "lane_change_s": 2.0,
+     "lead_speed_mps": 9.0
+    }
+   },
+   "experiments": [
+    1
+   ],
+   "hypothesis": "PDM-Lite fails to detect the cut-in vehicle early enough due to LiDAR occlusion or latency, leading to insufficient braking distance.",
+   "request_id": "a297cc6e-c260-47b6-b66e-dd9fb228edc5",
+   "result": {
+    "runs": [
+     {
+      "brake_reaction_s": null,
+      "collision": false,
+      "min_gap_m": 16.699,
+      "min_ttc_s": null,
+      "n": 1,
+      "needed_decel_at_in_path_mps2": null
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 1
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 0,
+     "brake_mps2": 5.0,
+     "cut_in_cp": 0,
+     "ego_speed_mps": 12.0,
+     "environment": "clear_noon",
+     "initial_gap_m": 5.0,
+     "lane_change_s": 1.0,
+     "lead_speed_mps": 9.0
+    }
+   },
+   "experiments": [
+    2
+   ],
+   "hypothesis": "PDM-Lite fails to detect the cut-in vehicle early enough due to LiDAR occlusion or tracking latency, leading to insufficient braking distance when the adversary brakes hard immediately after cutting in.",
+   "request_id": "7d203a0b-5c79-4e94-93a3-652433d41ccd",
+   "result": {
+    "runs": [
+     {
+      "invalid": "brake_after_cp=0 not a number in [1, 4]",
+      "n": 2
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 2
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 0,
+     "brake_mps2": 5.0,
+     "cut_in_cp": 0,
+     "ego_speed_mps": 12.0,
+     "environment": "clear_noon",
+     "initial_gap_m": 5.0,
+     "lane_change_s": 1.0,
+     "lead_speed_mps": 9.0
+    }
+   },
+   "experiments": [
+    3
+   ],
+   "hypothesis": "PDM-Lite fails to detect the cut-in vehicle early enough due to LiDAR occlusion or latency, leading to insufficient braking distance when the adversary brakes immediately after cutting in.",
+   "request_id": "12e1c0be-0ce0-4916-b452-e6b2ed9bb95d",
+   "result": {
+    "runs": [
+     {
+      "invalid": "brake_after_cp=0 not a number in [1, 4]",
+      "n": 3
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 3
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 2,
+     "brake_mps2": 7.0,
+     "cut_in_cp": 2,
+     "ego_speed_mps": 10.0,
+     "environment": "clear_noon",
+     "initial_gap_m": 8.0
+    }
+   },
+   "experiments": [
+    4
+   ],
+   "hypothesis": "PDM-Lite fails to detect the cut-in vehicle early enough due to LiDAR occlusion or latency, leading to insufficient braking distance when the adversary brakes hard immediately after cutting in.",
+   "request_id": "ec9c0430-98b4-4028-aedb-19d72b83a373",
+   "result": {
+    "runs": [
+     {
+      "invalid": "brake_mps2=7.0 exceeds 0.8*g*mu = 6.28 m/s2 in clear_noon",
+      "n": 4
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 4
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 2,
+     "brake_mps2": 0.0,
+     "cut_in_cp": 2,
+     "ego_speed_mps": 10.0,
+     "environment": "hard_rain_night",
+     "initial_gap_m": 8.0,
+     "lane_change_s": 2.0,
+     "lead_speed_mps": 9.0
+    }
+   },
+   "experiments": [
+    5
+   ],
+   "hypothesis": "PDM-Lite fails to detect the cut-in vehicle early enough in low-friction, low-visibility conditions, leading to insufficient braking distance.",
+   "request_id": "8ad78917-4cfc-4132-8792-1281bbf185ba",
+   "result": {
+    "runs": [
+     {
+      "invalid": "lane_change_s=2.0 needs 5.05 m/s2 lateral, above 0.8*g*mu = 3.92; use >= 2.27 s",
+      "n": 5
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 5
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 2,
+     "brake_mps2": 0.0,
+     "cut_in_cp": 2,
+     "ego_speed_mps": 10.0,
+     "environment": "hard_rain_night",
+     "initial_gap_m": 10.0,
+     "lane_change_s": 2.5,
+     "lead_speed_mps": 9.0
+    }
+   },
+   "experiments": [
+    6
+   ],
+   "hypothesis": "PDM-Lite fails to detect cut-ins early enough in low-friction, low-visibility conditions, leading to insufficient braking distance.",
+   "request_id": "03fbece7-5e49-464b-9673-98348f07ec8a",
+   "result": {
+    "runs": [
+     {
+      "brake_reaction_s": 0.0,
+      "collision": false,
+      "min_gap_m": 4.502,
+      "min_ttc_s": null,
+      "n": 6,
+      "needed_decel_at_in_path_mps2": null
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 6
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 2,
+     "brake_mps2": 0.0,
+     "cut_in_cp": 2,
+     "ego_speed_mps": 10.0,
+     "environment": "hard_rain_night",
+     "initial_gap_m": 5.0,
+     "lane_change_s": 2.5,
+     "lead_speed_mps": 9.0
+    }
+   },
+   "experiments": [
+    7
+   ],
+   "hypothesis": "PDM-Lite fails to detect the cut-in vehicle early enough in low-friction, low-visibility conditions (hard_rain_night) when the initial gap is small, leading to insufficient braking distance.",
+   "request_id": "b2eb1311-3f14-4cc7-9139-c2f31e6c39cb",
+   "result": {
+    "runs": [
+     {
+      "invalid": "predicted gap at the cut-in start 1.0 m < 3.0 m (the cut-in would start alongside)",
+      "n": 7
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 7
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 2,
+     "brake_mps2": 0.0,
+     "cut_in_cp": 2,
+     "ego_speed_mps": 10.0,
+     "environment": "hard_rain_night",
+     "initial_gap_m": 10.0,
+     "lane_change_s": 2.5,
+     "lead_speed_mps": 9.0
+    }
+   },
+   "experiments": [
+    8
+   ],
+   "hypothesis": "PDM-Lite fails to detect cut-ins in low-friction, low-visibility conditions due to delayed LiDAR tracking or conservative braking logic.",
+   "request_id": "e3155ed9-9e6f-481c-b9b2-622ad314cd3e",
+   "result": {
+    "runs": [
+     {
+      "brake_reaction_s": 0.0,
+      "collision": false,
+      "min_gap_m": 4.502,
+      "min_ttc_s": null,
+      "n": 8,
+      "needed_decel_at_in_path_mps2": null
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 8
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 2,
+     "brake_mps2": 0.0,
+     "cut_in_cp": 2,
+     "ego_speed_mps": 12.0,
+     "environment": "hard_rain_night",
+     "initial_gap_m": 10.0,
+     "lane_change_s": 2.5,
+     "lead_speed_mps": 9.0
+    }
+   },
+   "experiments": [
+    9
+   ],
+   "hypothesis": "PDM-Lite fails to detect cut-ins in low-friction, low-visibility conditions due to delayed LiDAR tracking or conservative braking thresholds.",
+   "request_id": "a9688475-7601-4a2d-8109-89da5188e1b6",
+   "result": {
+    "runs": [
+     {
+      "invalid": "predicted gap at the cut-in start -2.0 m < 3.0 m (the cut-in would start alongside)",
+      "n": 9
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 9
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 2,
+     "brake_mps2": 0.0,
+     "cut_in_cp": 2,
+     "ego_speed_mps": 10.0,
+     "environment": "hard_rain_night",
+     "initial_gap_m": 10.0,
+     "lane_change_s": 2.5,
+     "lead_speed_mps": 9.0
+    }
+   },
+   "experiments": [
+    10
+   ],
+   "hypothesis": "PDM-Lite fails to detect cut-ins in low-visibility conditions (night/fog) due to LiDAR dropoff, leading to late braking and collisions.",
+   "request_id": "b9cf789a-defa-441e-8bb7-46039a088953",
+   "result": {
+    "runs": [
+     {
+      "brake_reaction_s": 0.0,
+      "collision": false,
+      "min_gap_m": 4.502,
+      "min_ttc_s": null,
+      "n": 10,
+      "needed_decel_at_in_path_mps2": null
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 10
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 2,
+     "brake_mps2": 6.0,
+     "cut_in_cp": 2,
+     "ego_speed_mps": 10.0,
+     "environment": "hard_rain_night",
+     "initial_gap_m": 10.0,
+     "lane_change_s": 2.5,
+     "lead_speed_mps": 9.0
+    }
+   },
+   "experiments": [
+    11
+   ],
+   "hypothesis": "PDM-Lite fails to detect the cut-in vehicle early enough in low-friction, low-visibility conditions (hard_rain_night) when the adversary brakes hard immediately after cutting in, causing a collision due to insufficient braking distance.",
+   "request_id": "5006cb08-66f5-4675-9b64-9a0093aed382",
+   "result": {
+    "runs": [
+     {
+      "invalid": "brake_mps2=6.0 exceeds 0.8*g*mu = 3.92 m/s2 in hard_rain_night",
+      "n": 11
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 11
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 2,
+     "brake_mps2": 0.0,
+     "cut_in_cp": 2,
+     "ego_speed_mps": 10.0,
+     "environment": "dense_fog",
+     "initial_gap_m": 10.0,
+     "lane_change_s": 2.5,
+     "lead_speed_mps": 9.0
+    }
+   },
+   "experiments": [
+    12
+   ],
+   "hypothesis": "PDM-Lite fails to detect the cut-in vehicle early enough in low-friction, low-visibility conditions, leading to insufficient braking distance.",
+   "request_id": "2fef6060-9499-4e15-ae79-89d8f171d3fa",
+   "result": {
+    "runs": [
+     {
+      "brake_reaction_s": 0.0,
+      "collision": false,
+      "min_gap_m": 4.502,
+      "min_ttc_s": null,
+      "n": 12,
+      "needed_decel_at_in_path_mps2": null
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 12
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 2,
+     "brake_mps2": 0.0,
+     "cut_in_cp": 2,
+     "ego_speed_mps": 12.0,
+     "environment": "hard_rain_night",
+     "initial_gap_m": 10.0,
+     "lane_change_s": 2.5,
+     "lead_speed_mps": 9.0
+    }
+   },
+   "experiments": [
+    13
+   ],
+   "hypothesis": "PDM-Lite fails to detect the cut-in vehicle early enough in low-friction, low-visibility conditions, leading to insufficient braking distance.",
+   "request_id": "73996146-9a13-475f-9381-5fa37a952d7e",
+   "result": {
+    "runs": [
+     {
+      "invalid": "predicted gap at the cut-in start -2.0 m < 3.0 m (the cut-in would start alongside)",
+      "n": 13
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 13
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 2,
+     "brake_mps2": 0.0,
+     "cut_in_cp": 2,
+     "ego_speed_mps": 12.0,
+     "environment": "hard_rain_night",
+     "initial_gap_m": 10.0,
+     "lane_change_s": 2.5,
+     "lead_speed_mps": 9.0
+    }
+   },
+   "experiments": [
+    14
+   ],
+   "hypothesis": "PDM-Lite fails to detect cut-ins early enough in low-friction, low-visibility conditions, leading to insufficient braking distance.",
+   "request_id": "5cea7492-8413-4d5a-92a1-52135a853bcc",
+   "result": {
+    "runs": [
+     {
+      "invalid": "predicted gap at the cut-in start -2.0 m < 3.0 m (the cut-in would start alongside)",
+      "n": 14
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 14
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 2,
+     "brake_mps2": 0.0,
+     "cut_in_cp": 2,
+     "ego_speed_mps": 12.0,
+     "environment": "hard_rain_night",
+     "initial_gap_m": 10.0,
+     "lane_change_s": 2.5,
+     "lead_speed_mps": 9.0
+    }
+   },
+   "experiments": [
+    15
+   ],
+   "hypothesis": "PDM-Lite fails to detect the cut-in vehicle early enough in low-friction, low-visibility conditions, leading to insufficient braking distance.",
+   "request_id": "57262c3e-db9f-401e-9f0d-179fb0c2a6a5",
+   "result": {
+    "runs": [
+     {
+      "invalid": "predicted gap at the cut-in start -2.0 m < 3.0 m (the cut-in would start alongside)",
+      "n": 15
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 15
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 2,
+     "brake_mps2": 0.0,
+     "cut_in_cp": 2,
+     "ego_speed_mps": 12.0,
+     "environment": "hard_rain_night",
+     "initial_gap_m": 10.0,
+     "lane_change_s": 2.5,
+     "lead_speed_mps": 9.0
+    }
+   },
+   "experiments": [
+    16
+   ],
+   "hypothesis": "PDM-Lite fails to detect the cut-in vehicle early enough in low-friction, low-visibility conditions, leading to insufficient braking distance.",
+   "request_id": "4f21f831-923d-43ae-a93c-7577dbd9c6e1",
+   "result": {
+    "runs": [
+     {
+      "invalid": "predicted gap at the cut-in start -2.0 m < 3.0 m (the cut-in would start alongside)",
+      "n": 16
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 16
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 2,
+     "brake_mps2": 0.0,
+     "cut_in_cp": 2,
+     "ego_speed_mps": 10.0,
+     "environment": "hard_rain_night",
+     "initial_gap_m": 10.0,
+     "lane_change_s": 2.5,
+     "lead_speed_mps": 9.0
+    }
+   },
+   "experiments": [
+    17
+   ],
+   "hypothesis": "PDM-Lite fails to detect the cut-in vehicle early enough in low-friction, low-visibility conditions, leading to insufficient braking distance.",
+   "request_id": "84a271bf-7976-4824-be60-38b05da14ed1",
+   "result": {
+    "runs": [
+     {
+      "brake_reaction_s": 0.0,
+      "collision": false,
+      "min_gap_m": 4.502,
+      "min_ttc_s": null,
+      "n": 17,
+      "needed_decel_at_in_path_mps2": null
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 17
+  },
+  {
+   "args": {
+    "experiment": {
+     "brake_after_cp": 2,
+     "brake_mps2": 0.0,
+     "cut_in_cp": 2,
+     "ego_speed_mps": 12.0,
+     "environment": "hard_rain_night",
+     "initial_gap_m": 10.0,
+     "lane_change_s": 2.5,
+     "lead_speed_mps": 9.0
+    }
+   },
+   "experiments": [
+    18
+   ],
+   "hypothesis": "PDM-Lite fails to detect the cut-in vehicle early enough in low-friction, low-visibility conditions, leading to insufficient braking distance.",
+   "request_id": "2410641c-0b3d-44ba-adce-7f0dfaf3b149",
+   "result": {
+    "runs": [
+     {
+      "invalid": "predicted gap at the cut-in start -2.0 m < 3.0 m (the cut-in would start alongside)",
+      "n": 18
+     }
+    ]
+   },
+   "tool": "probe",
+   "turn": 18
+  }
+ ],
+ "wall_s": 162.2
+}

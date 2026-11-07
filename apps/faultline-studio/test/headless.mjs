@@ -86,6 +86,21 @@ try {
   check(fits, 'architecture boxes: no text overflow')
   await shot(page, 'home'); await shot(page, 'home-full', true)
 
+  // Judge mode: 6 steps driving the pages
+  await page.click('#judge-btn'); await page.waitForSelector('#problem.hl', { timeout: 5000 })
+  check(/1 of 6/.test(await text(page, '#j-step')) && await page.locator('#problem.hl').count() === 1, 'judge 1: the problem highlighted')
+  await page.click('#j-next'); await page.waitForSelector('#mc-plan.hl', { timeout: 15000 })
+  check(new URL(page.url()).pathname === '/mission/swarm-carla-010', 'judge 2: swarm plan in Mission Control')
+  await page.click('#j-next'); await page.waitForSelector('#mc-verdict.hl', { timeout: 20000 })
+  check(/avoided collision/.test(await text(page, '#mc-verdict')), 'judge 3: safety result, worst moment')
+  await page.click('#j-next'); await page.waitForSelector('#vf-timeline.hl', { timeout: 20000 })
+  await page.click('#j-next'); await page.waitForSelector('#vf-groups .card.hl', { timeout: 20000 })
+  check(/Hedera x402 payment/.test(await text(page, '#vf-groups .card.hl')), 'judge 4-5: proof timeline, then agentic payment')
+  await page.click('#j-next'); await page.waitForSelector('#claims.hl', { timeout: 15000 })
+  await shot(page, 'judge')
+  await page.click('#j-next')
+  check(await page.locator('#judge').isHidden(), 'judge 6: research vision, then finish')
+
   // Mission Control on the featured recorded run (deep link through the SPA fallback)
   await page.goto(`${base}/mission/${meta.name}`)
   await page.waitForSelector('#mc-timeline [data-di]', { timeout: 30000 })

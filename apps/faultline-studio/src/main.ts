@@ -62,7 +62,6 @@ document.addEventListener('click', (e) => {
   if ((e.target as HTMLElement).closest('[data-back]')) step(cur - 1)
 })
 
-$('judge-btn').addEventListener('click', () => go('/mission/' + FEATURED))
 // ---------- recorded CARLA clips: served by the console at /media/<path>, falling back to the public repo ----------
 const RAW = 'https://raw.githubusercontent.com/Soni-Shivam/Pivot_HTE/main/'
 const clip = (path: string, poster: string, label: string) => `<video class="clip" controls muted playsinline preload="none" poster="stills/${poster}.jpg" data-src="${esc(path)}" aria-label="${esc(label)}"></video>`
@@ -947,4 +946,29 @@ function renderResearch() {
   armClips($('v-research')); drawHunt()
 }
 
+
+// ---------- Judge mode: a 6-step, 3-minute path that drives the pages ----------
+const JUDGE: { title: string, text: string, run: () => Promise<string | null> }[] = [
+  { title: 'The problem', text: 'AV safety results are run by someone with a stake in the answer. Faultline makes the attacker independent and the record public.', run: async () => { go('/'); return '#problem' } },
+  { title: 'A physical AI agent', text: 'The 0G strategist plans a four-car attack before the first tick, then steers all four cars every second in CARLA.', run: async () => { go('/mission/swarm-carla-010'); return '#mc-plan' } },
+  { title: 'The safety result', text: 'Paid test 002: the car avoided collision; the minimum time to collision was 1.03 s. We jump to the closest approach.', run: async () => { go('/mission/' + FEATURED); await waitFor(() => !!mc && mc.ds.length > 0 && mc.state !== 'Ready'); $('mc-worst').click(); return '#mc-verdict' } },
+  { title: 'The Web3 proof', text: 'Committed on 0G Galileo before the first 0G decision, finalized after the last; each decision has a 0G request ID and an archived provider signature.', run: async () => { go('/verify/' + FEATURED); await waitFor(() => !!document.querySelector('#vf-groups .proof')); return '#vf-timeline' } },
+  { title: 'Agentic payment', text: 'The tester signs a request; our agent pays 0.001 HBAR on Hedera through x402 under a spending limit, with no human approval step.', run: async () => { if (!location.pathname.startsWith('/verify')) { go('/verify/' + FEATURED); await waitFor(() => !!document.querySelector('#vf-groups .proof')) } const g = [...document.querySelectorAll<HTMLElement>('#vf-groups .card')].at(-1); g?.querySelector('details')?.setAttribute('open', ''); return g ? '#vf-groups .card:last-child' : null } },
+  { title: 'The research vision', text: '0G plans experiments and states hypotheses; classical tools do search; every claim is audited. Where bisection or random search won, we say so.', run: async () => { go('/research'); return '#claims' } },
+]
+let jstep = 0
+const waitFor = async (f: () => boolean, ms = 15000) => { const t = Date.now(); while (!f() && Date.now() - t < ms) await sleep(200) }
+async function judge(i: number) {
+  jstep = Math.max(0, Math.min(JUDGE.length - 1, i)); const j = JUDGE[jstep]
+  $('judge').classList.remove('hidden'); $('j-step').textContent = `Judge mode · ${jstep + 1} of ${JUDGE.length}`; $('j-title').textContent = j.title; $('j-text').textContent = j.text
+  $<HTMLButtonElement>('j-prev').disabled = jstep === 0; $('j-next').textContent = jstep === JUDGE.length - 1 ? 'Finish' : 'Next →'
+  document.querySelectorAll('.hl').forEach((e) => e.classList.remove('hl'))
+  const sel = await j.run(); await sleep(300)
+  const el = sel ? document.querySelector<HTMLElement>(sel) : null
+  if (el) { el.classList.add('hl'); el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }) }
+}
+$('judge-btn').addEventListener('click', () => judge(0))
+$('j-prev').addEventListener('click', () => judge(jstep - 1))
+$('j-next').addEventListener('click', () => { if (jstep === JUDGE.length - 1) { $('judge').classList.add('hidden'); document.querySelectorAll('.hl').forEach((e) => e.classList.remove('hl')) } else judge(jstep + 1) })
+$('j-close').addEventListener('click', () => { $('judge').classList.add('hidden'); document.querySelectorAll('.hl').forEach((e) => e.classList.remove('hl')) })
 boot()

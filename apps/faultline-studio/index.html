@@ -4,293 +4,306 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' __API_ORIGIN__; media-src 'self' __API_ORIGIN__ https://raw.githubusercontent.com; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <title>Faultline Studio</title>
+  <title>Faultline · AI attackers for self-driving software</title>
+  <meta name="description" content="Faultline stress-tests self-driving software with AI attackers planned on 0G, plays them out in CARLA, and proves every result on-chain.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0a0a0a; --ink: #111111; --paper: #fbfbf6; --muted: #6b6b66; --line: #111111;
+      --bg: #0a0a0a; --ink: #111111; --paper: #fbfbf6; --muted: #55554f; --line: #111111;
       --yellow: #f3f56c; --cyan: #7cecf5; --pink: #f5a3ef; --purple: #7c5cf5; --lime: #c9f36f; --hot: #ff4fc3;
-      --ego: #7c5cf5; --adv: #f5a3ef; --zg: #111111;
       --ease: cubic-bezier(.23, 1, .32, 1);
       --sans: "Space Grotesk", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
     }
     * { box-sizing: border-box }
-    html, body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.4 var(--sans); -webkit-font-smoothing: antialiased }
+    html, body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased }
     button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none }
     a { color: inherit }
-    code, .mono { font-family: var(--mono); font-size: .88em; font-variant-numeric: tabular-nums }
+    :focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; border-radius: 12px }
+    .card :focus-visible { outline-color: var(--purple) }
+    code, .mono { font-family: var(--mono); font-size: .86em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere }
     .hidden { display: none !important }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0) }
 
-    /* pills: the one visual unit */
-    .pill { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); white-space: nowrap; font-weight: 500; font-size: 14px }
+    .pill { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); white-space: nowrap; font-weight: 500; font-size: 14px; text-decoration: none }
     .pill.y { background: var(--yellow) } .pill.c { background: var(--cyan) } .pill.p { background: var(--pink) } .pill.l { background: var(--lime) } .pill.k { background: var(--ink); color: var(--paper) }
-    .pill.sm { height: 24px; padding: 0 10px; font-size: 12px }
-    .pill.big { height: 52px; padding: 0 24px; font-size: 26px; font-weight: 600 }
-    .disc { width: 52px; height: 52px; border-radius: 50%; border: 1.5px solid var(--line); display: inline-grid; place-items: center; font-size: 22px; font-weight: 600; flex: none }
-
-    header { display: flex; align-items: center; gap: 24px; padding: 14px 24px; position: sticky; top: 0; z-index: 10; background: var(--bg) }
-    .brand { color: var(--paper); font-weight: 700; font-size: 20px; letter-spacing: -.02em; white-space: nowrap }
-    .brand i { font-style: normal; color: var(--yellow) }
-    nav.steps { display: flex; gap: 6px; background: #1a1a1a; padding: 4px; border-radius: 999px }
-    nav.steps button { height: 32px; padding: 0 16px; border-radius: 999px; color: #8a8a85; font-weight: 500; white-space: nowrap; transition: background .2s var(--ease), color .2s var(--ease) }
-    nav.steps button.on { background: var(--paper); color: var(--ink) }
-    nav.steps button:disabled { opacity: .35; cursor: default }
-    .net { margin-left: auto; display: flex; gap: 6px }
-    .net .pill { background: #1a1a1a; color: #cfcfca; border-color: #2a2a2a; font-size: 12px; height: 26px }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #555 } .dot.up { background: var(--lime) } .dot.down { background: var(--hot) }
-
-    main { padding: 8px 24px 40px; max-width: 1440px; margin: 0 auto }
-    .card { background: var(--paper); border-radius: 28px; padding: 24px; position: relative }
-    .card.c { background: var(--cyan) } .card.y { background: var(--yellow) } .card.p { background: var(--pink) } .card.l { background: var(--lime) }
-    .card.k { background: #161616; color: var(--paper) } .card.k .muted { color: #8a8a85 }
-    .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px }
-    .head h2 { margin: 0; font-size: 17px; font-weight: 500 }
-    .muted { color: var(--muted) }
-    .grid { display: grid; gap: 16px }
-    .btn { height: 44px; padding: 0 20px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); font-weight: 600; transition: transform .16s var(--ease), background .2s var(--ease) }
+    .pill.sm { min-height: 26px; padding: 0 10px; font-size: 13px }
+    .pill.big { min-height: 48px; padding: 0 22px; font-size: 22px; font-weight: 600 }
+    .btn { min-height: 48px; padding: 0 22px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); font-weight: 600; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: transform .16s var(--ease), background .2s var(--ease) }
     .btn:active:not(:disabled) { transform: scale(.97) }
-    .btn.k { background: var(--ink); color: var(--paper) } .btn.y { background: var(--yellow) }
-    .btn:disabled { opacity: .4; cursor: default }
-    .kv { display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; margin: 0 }
-    .kv dt { color: var(--muted) } .kv dd { margin: 0; text-align: right; overflow-wrap: anywhere }
-    .card.c .kv dt, .card.p .kv dt { color: #111111a8 }
-    .err { color: #b4006f; font-family: var(--mono); font-size: 12px; white-space: pre-wrap; margin: 10px 0 0 }
+    .btn.k { background: var(--ink); color: var(--paper) } .btn.y { background: var(--yellow) } .btn.l { background: var(--lime) }
+    .btn.big { min-height: 56px; font-size: 18px; padding: 0 28px }
+    .btn:disabled { opacity: .45; cursor: not-allowed }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #777; flex: none } .dot.up { background: var(--lime) } .dot.down { background: var(--hot) } .dot.part { background: var(--yellow) }
+
+    header { display: flex; align-items: center; gap: 18px; padding: 14px 24px; position: sticky; top: 0; z-index: 10; background: var(--bg) }
+    .brand { color: var(--paper); font-weight: 700; font-size: 22px; letter-spacing: -.02em; white-space: nowrap; text-decoration: none }
+    .brand i { font-style: normal; color: var(--yellow) }
+    nav.top { display: flex; gap: 4px; background: #1a1a1a; padding: 4px; border-radius: 999px }
+    nav.top button { min-height: 36px; padding: 0 16px; border-radius: 999px; color: #b8b8b2; font-weight: 500; white-space: nowrap; transition: background .2s var(--ease), color .2s var(--ease) }
+    nav.top button.on { background: var(--paper); color: var(--ink) }
+    .hdr-right { margin-left: auto; display: flex; gap: 8px; align-items: center }
+    #console-pill { background: #1a1a1a; color: #e4e4de; border-color: #333 }
+    #wallet-btn { background: var(--yellow) }
+
+    main { padding: 8px 24px 56px; max-width: 1280px; margin: 0 auto }
+    .card { background: var(--paper); border-radius: 28px; padding: 28px; position: relative; border: 1.5px solid var(--line) }
+    .card.c { background: var(--cyan) } .card.y { background: var(--yellow) } .card.p { background: var(--pink) } .card.l { background: var(--lime) }
+    .card.k { background: #161616; color: var(--paper); border-color: #2a2a2a }
+    .grid { display: grid; gap: 16px } .grid > * { min-width: 0 }
+    h1, h2, h3 { letter-spacing: -.02em; margin: 0 }
+    .lede { font-size: 18px; color: var(--muted); margin: 8px 0 0; max-width: 70ch }
+    .card.k .lede { color: #b8b8b2 }
+    .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap }
+    .head h2 { font-size: 22px; font-weight: 600 }
+    .err { color: #9c005d; font-weight: 500; margin: 10px 0 0; white-space: pre-wrap }
+    .err:empty { display: none }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center }
+    video { width: 100%; display: block; border-radius: 20px; background: #000; aspect-ratio: 16 / 9; border: 1.5px solid var(--line) }
     table { width: 100%; border-collapse: collapse }
-    th, td { padding: 10px 6px; text-align: left; border-bottom: 1px solid #1111111a } th { font-weight: 500; color: var(--muted); font-size: 13px }
+    th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #11111120 } th { font-weight: 500; color: var(--muted); font-size: 14px }
     tbody tr:last-child td { border-bottom: 0 }
+    .tscroll { overflow-x: auto }
 
-    /* order */
-    .order { grid-template-columns: 1.35fr 1fr; align-items: start }
-    .suites { grid-template-columns: 1fr 1fr }
-    .suite { text-align: left; border-radius: 28px; padding: 22px; border: 2px solid transparent; transition: transform .2s var(--ease), border-color .2s var(--ease) }
-    .suite:active { transform: scale(.98) } .suite.on { border-color: var(--paper) }
-    .suite.c { background: var(--cyan) } .suite.y { background: var(--yellow) }
-    .suite h3 { margin: 18px 0 0; font-size: 30px; font-weight: 600; letter-spacing: -.02em; line-height: 1 }
-    .suite canvas { width: 100%; height: 96px; display: block; margin-top: 18px }
-    .price { display: flex; align-items: baseline; gap: 10px; margin: 6px 0 18px } .price b { font-size: 64px; font-weight: 600; letter-spacing: -.04em; line-height: 1 }
-    .hold { position: relative; width: 100%; height: 60px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--yellow); font-size: 17px; font-weight: 600; overflow: hidden; user-select: none; touch-action: none; transition: transform .16s var(--ease) }
-    .hold:active:not(:disabled) { transform: scale(.98) }
-    .hold .fill { position: absolute; inset: 0; width: 0; background: var(--lime) } .hold span { position: relative }
-    .hold:disabled { opacity: .4; cursor: default }
+    /* tooltips: hover or keyboard/tap focus */
+    .tip { position: relative; text-decoration: underline dotted 1.5px; text-underline-offset: 3px; cursor: help }
+    [data-tip] { position: relative }
+    [data-tip]:hover::after, [data-tip]:focus-visible::after, [data-tip]:focus::after {
+      content: attr(data-tip); position: absolute; left: 0; top: calc(100% + 8px); z-index: 30; width: max-content; max-width: min(300px, 80vw);
+      padding: 10px 12px; border-radius: 14px; background: var(--ink); color: var(--paper); font: 500 13px/1.4 var(--sans); white-space: normal; text-align: left; pointer-events: none }
 
-    /* pay */
-    .pay { grid-template-columns: 1.45fr 1fr }
-    .stage { height: 400px; padding: 0; overflow: hidden; background: linear-gradient(180deg, var(--cyan), var(--lime)) }
-    .stage svg { position: absolute; inset: 0; width: 100%; height: 100% }
-    .acct { position: absolute; top: 24px; width: 220px; padding: 16px; border-radius: 22px; background: var(--paper); border: 1.5px solid var(--line) }
-    .acct.left { left: 24px } .acct.right { right: 24px }
-    .acct .bal { font-size: 26px; font-weight: 600; letter-spacing: -.02em; margin-top: 2px }
-    .acct .delta { font-family: var(--mono); font-size: 12px; height: 16px }
-    .policy { position: absolute; left: 24px; top: 164px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start }
-    .policy .pill { opacity: 0; transform: translateY(4px); transition: opacity .25s var(--ease), transform .25s var(--ease) } .policy .pill.on { opacity: 1; transform: none }
-    .ledger { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); white-space: nowrap }
-    .ledger.flash .pill { animation: pop .5s var(--ease) } @keyframes pop { 40% { transform: scale(1.06) } }
-    .steps-list { margin: 0; padding: 0; list-style: none }
-    .steps-list li { display: grid; grid-template-columns: 26px 1fr auto; gap: 12px; padding: 10px 0; border-bottom: 1px solid #1111111a; align-items: start }
-    .steps-list li:last-child { border-bottom: 0 }
-    .steps-list .t { font-weight: 500 } .steps-list .d { color: var(--muted); font-size: 12px; font-family: var(--mono); overflow-wrap: anywhere } .steps-list .ms { color: var(--muted); font-family: var(--mono); font-size: 12px }
-    .ic { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #11111140; margin-top: 1px }
-    .ic.run { border-color: var(--ink); border-top-color: transparent; animation: spin .7s linear infinite }
-    .ic.ok { background: var(--lime); border-color: var(--ink); position: relative } .ic.ok::after { content: ''; position: absolute; left: 6px; top: 3px; width: 4px; height: 8px; border: solid var(--ink); border-width: 0 2px 2px 0; transform: rotate(45deg) }
-    .ic.fail { background: var(--hot); border-color: var(--ink) }
-    @keyframes spin { to { transform: rotate(360deg) } }
-    .ticket { background: var(--pink); opacity: 0; transform: translateY(12px); transition: opacity .4s var(--ease), transform .4s var(--ease) }
-    .ticket.show { opacity: 1; transform: none }
-    .ticket .big { font-family: var(--mono); font-size: 20px; font-weight: 600; margin: 10px 0 14px; overflow-wrap: anywhere }
-    .ticket .pattern { position: absolute; right: 24px; top: 24px; width: 56px; height: 56px; image-rendering: pixelated; border-radius: 10px; border: 1.5px solid var(--line) }
+    /* hero */
+    .hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 28px; align-items: center; padding: 36px }
+    .hero h1 { font-size: clamp(32px, 4.4vw, 54px); line-height: 1.04; font-weight: 700 }
+    .hero h1 em { font-style: normal; background: var(--paper); padding: 0 8px; border-radius: 12px; border: 1.5px solid var(--line) }
+    .how { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; counter-reset: s }
+    .how li { list-style: none; background: var(--paper); border: 1.5px solid var(--line); border-radius: 22px; padding: 18px; counter-increment: s }
+    .how li::before { content: counter(s); display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--ink); color: var(--paper); font-weight: 700; margin-bottom: 10px }
+    .how li:nth-child(1) { background: var(--cyan) } .how li:nth-child(2) { background: var(--pink) } .how li:nth-child(3) { background: var(--lime) } .how li:nth-child(4) { background: var(--paper) }
+    .how b { display: block; font-size: 17px; line-height: 1.25 } .how span { display: block; color: var(--muted); font-size: 14px; margin-top: 6px }
+    .how-wrap { margin: 0; padding: 0 }
+    .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px }
+    .facts .card { padding: 20px } .facts b { display: block; font-size: 30px; font-weight: 700; letter-spacing: -.03em }
 
-    /* run */
-    .pit { grid-template-columns: 250px 1fr 320px }
-    .statusbar { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 14px 16px }
-    .stat { display: flex; flex-direction: column; padding: 0 12px } .stat small { color: var(--muted); font-size: 12px } .stat b { font-family: var(--mono); font-size: 20px; font-weight: 600 }
-    .live { animation: blink 1.2s steps(2) infinite } @keyframes blink { 50% { opacity: .5 } }
-    .timeline { margin: 0; padding: 0; list-style: none }
-    .timeline li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; padding: 7px 0; position: relative }
-    .timeline li:not(:last-child)::after { content: ''; position: absolute; left: 9.5px; top: 30px; bottom: -6px; width: 1.5px; background: #1111112a }
-    .timeline .t { font-weight: 500; font-size: 14px } .timeline .d { font-size: 11px; color: var(--muted); font-family: var(--mono); overflow-wrap: anywhere }
-    .scene { padding: 0; overflow: hidden; display: flex } .scene canvas { width: 100%; height: 100%; min-height: 380px; display: block }
-    .tower { font-family: var(--mono); font-size: 12px; max-height: 470px; overflow: auto; display: flex; flex-direction: column; gap: 6px }
-    .tower .row { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 16px; background: #ffffff; border: 1.5px solid transparent }
-    .tower .row.new { animation: rowin .35s var(--ease); border-color: var(--line) }
+    /* stepper */
+    .stepper { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; padding: 0; list-style: none }
+    .stepper button { min-height: 40px; padding: 0 16px 0 6px; border-radius: 999px; background: #1a1a1a; color: #b8b8b2; font-weight: 500; display: inline-flex; gap: 8px; align-items: center }
+    .stepper button i { font-style: normal; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #2a2a2a; font-weight: 700; font-size: 14px }
+    .stepper button.on { background: var(--paper); color: var(--ink) } .stepper button.on i { background: var(--ink); color: var(--paper) }
+    .stepper button.done i { background: var(--lime); color: var(--ink) }
+    .stepper button:disabled { opacity: .5; cursor: not-allowed }
+    .step h2 { font-size: 30px; font-weight: 700 }
+    .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px }
+    .choices.three { grid-template-columns: repeat(3, 1fr) }
+    .choice { text-align: left; border: 1.5px solid var(--line); border-radius: 24px; padding: 20px; background: var(--paper); transition: transform .16s var(--ease), box-shadow .16s var(--ease); display: flex; flex-direction: column; gap: 6px }
+    .choice:active:not(:disabled) { transform: scale(.985) }
+    .choice[aria-checked="true"] { box-shadow: 0 0 0 4px var(--ink); background: var(--lime) }
+    .choice:disabled { opacity: .55; cursor: not-allowed }
+    .choice b { font-size: 20px } .choice span { color: var(--muted) } .choice small { color: var(--muted); font-size: 13px }
+    .note { background: #ffffff90; border: 1.5px dashed var(--line); border-radius: 18px; padding: 14px 16px; margin-top: 18px; font-size: 15px }
+    .nav-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; align-items: center }
+    .wallets { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px }
+    .wallets img { width: 24px; height: 24px; border-radius: 6px }
+    .summary { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 18px 0 0 }
+    .summary dt { color: var(--muted) } .summary dd { margin: 0; font-weight: 600 }
+    pre.msg { background: var(--ink); color: var(--paper); border-radius: 16px; padding: 14px; font: 13px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0 0 }
+
+    /* live */
+    .pit { grid-template-columns: 1fr 360px; align-items: start }
+    .statusbar { display: flex; gap: 8px 20px; align-items: center; flex-wrap: wrap; padding: 16px 20px }
+    .stat small { display: block; color: var(--muted); font-size: 13px } .stat b { font-family: var(--mono); font-size: 20px; font-weight: 600 }
+    .live { animation: blink 1.2s steps(2) infinite } @keyframes blink { 50% { opacity: .55 } }
+    .scene { padding: 0; overflow: hidden } .scene canvas { width: 100%; height: 360px; display: block }
+    .feed { display: flex; flex-direction: column; gap: 8px; max-height: 560px; overflow: auto }
+    .dec { background: #ffffffc0; border: 1.5px solid transparent; border-radius: 16px; padding: 10px 12px }
+    .dec.new { animation: rowin .35s var(--ease); border-color: var(--line) }
     @keyframes rowin { from { opacity: 0; transform: translateY(-6px) } }
-    .tower .row.wait { background: transparent; border: 1.5px dashed #11111155; color: #111111a8 }
-    .tower .sub { grid-column: 2 / 4; color: var(--muted); font-size: 10px }
-    .act { font-family: var(--sans); font-weight: 600; font-size: 12px; padding: 2px 9px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper) }
-    .act.CUT_IN_AGGRESSIVE, .act.BRAKE_HARD, .act.SAFE_HALT { background: var(--pink) }
-    .act.CUT_IN, .act.BRAKE_SOFT, .act.SLOW_DOWN, .act.ACCELERATE { background: var(--yellow) }
-    .act.MAINTAIN, .act.COAST, .act.KEEP_LANE { background: var(--cyan) }
-    .telemetry { grid-column: 1 / 3; display: grid; grid-template-columns: 1fr 190px; gap: 20px; align-items: center }
-    .telemetry canvas { width: 100%; height: 160px; display: block }
-    .gauge canvas { width: 190px; height: 130px; display: block }
-    .log { font-family: var(--mono); font-size: 11px; max-height: 190px; overflow: auto; white-space: pre-wrap }
+    .dec.wait { background: transparent; border: 1.5px dashed #11111170 }
+    .dec .what { font-weight: 600 } .dec .meta { color: var(--muted); font-size: 13px }
+    .dec details summary { cursor: pointer; font-size: 13px; color: var(--muted); margin-top: 4px }
+    .dec pre { font: 11px/1.4 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 0; background: var(--ink); color: var(--paper); padding: 8px; border-radius: 10px }
+    .progress { margin: 0; padding: 0; list-style: none }
+    .progress li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; padding: 6px 0 }
+    .progress .d { font-size: 13px; color: var(--muted); overflow-wrap: anywhere }
+    .ic { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #11111150; margin-top: 2px }
+    .ic.run { border-color: var(--ink); border-top-color: transparent; animation: spin .7s linear infinite }
+    .ic.ok { background: var(--lime); border-color: var(--ink) } .ic.fail { background: var(--hot); border-color: var(--ink) }
+    @keyframes spin { to { transform: rotate(360deg) } }
+    .tele canvas { width: 100%; height: 150px; display: block }
+    .log { font-family: var(--mono); font-size: 11px; max-height: 220px; overflow: auto; white-space: pre-wrap; margin-top: 10px }
+    details.more > summary { cursor: pointer; font-weight: 600; min-height: 36px; display: flex; align-items: center }
 
     /* results */
-    .verdict { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 20px }
-    .results { grid-template-columns: 1.55fr 1fr }
-    .scrub { display: flex; gap: 12px; align-items: center; margin-top: 14px }
-    .scrub input { flex: 1; accent-color: var(--ink) }
-    /* judge guide, trust rail, featured, A/B */
-    .dot.part { background: var(--yellow) }
-    .modal { position: fixed; inset: 0; z-index: 50; background: #000000b0; display: grid; place-items: center; padding: 16px }
-    .sheet { width: min(820px, 100%); max-height: calc(100vh - 32px); overflow: auto; animation: rowin .3s var(--ease) }
-    .gsteps { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px }
-    .gsteps button.on { background: var(--ink); color: var(--paper) }
-    .gbody h3 { font-size: 28px; font-weight: 600; letter-spacing: -.02em; margin: 0 0 14px; line-height: 1.1 }
-    .opt { display: block; width: 100%; text-align: left; border: 1.5px solid var(--line); border-radius: 22px; padding: 16px; margin-bottom: 10px; background: var(--paper); transition: transform .16s var(--ease) }
-    .opt:active { transform: scale(.98) } .opt.on { background: var(--lime) }
-    .opt .mono { font-size: 12px; overflow-wrap: anywhere }
-    .row-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px }
-    .rail { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 14px 16px }
-    .rail .tp { height: auto; min-height: 30px; padding: 5px 12px; white-space: normal; flex-wrap: wrap; text-decoration: none }
-    .rail .tp b { font-weight: 600 } .rail .tp small { font-family: var(--mono); font-size: 11px; color: #111111b0 }
-    .feat { grid-template-columns: 1fr 1fr; align-items: start }
-    .feat .wide { grid-column: 1 / -1 }
-    .split { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) }
-    .grid > * { min-width: 0 } #ab-table, .tscroll { overflow-x: auto }
-    video { width: 100%; display: block; border-radius: 20px; background: #000; aspect-ratio: 16 / 9 }
-    .feed { font-family: var(--mono); font-size: 11px; max-height: 260px; overflow: auto; display: flex; flex-direction: column; gap: 6px; margin-top: 12px }
-    .feed div { background: #ffffffb0; border-radius: 12px; padding: 6px 10px; overflow-wrap: anywhere }
-    .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px }
+    .verdict h2 { font-size: clamp(26px, 3.4vw, 40px); font-weight: 700; line-height: 1.1 }
+    .scrub { display: flex; gap: 12px; align-items: center; margin-top: 14px; flex-wrap: wrap }
+    .scrub input { flex: 1; min-width: 160px; accent-color: var(--ink); min-height: 32px }
+    .rail { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px }
+    .tp { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 18px; border: 1.5px solid var(--line); background: var(--paper); text-decoration: none; min-height: 72px }
+    .tp .n { display: flex; gap: 8px; align-items: center; font-weight: 600 } .tp .s { font-size: 13px; color: var(--muted); overflow-wrap: anywhere }
+    a.tp:hover { background: #fff }
+    .kv { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 10px 0 0 }
+    .kv dt { color: var(--muted) } .kv dd { margin: 0; text-align: right; overflow-wrap: anywhere }
+    .drawer { margin-top: 14px; border-top: 1.5px solid #11111125; padding-top: 10px }
+
+    /* explore */
+    .explore-nav { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px }
+    .split { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 20px; align-items: start; margin-top: 14px }
+    .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px }
     .board .cell { border: 1.5px solid var(--line); border-radius: 18px; padding: 12px; background: var(--paper) }
-    .board .cell b { display: block; font-size: 22px; font-family: var(--mono) }
-    .ab-pick { display: flex; gap: 8px; flex-wrap: wrap; align-items: center }
-    select { font: inherit; height: 44px; border-radius: 999px; border: 1.5px solid var(--line); padding: 0 14px; background: var(--paper) }
+    .board .cell b { display: block; font-size: 20px; font-family: var(--mono) }
+    select { font: inherit; min-height: 48px; border-radius: 999px; border: 1.5px solid var(--line); padding: 0 14px; background: var(--paper) }
     #offline { margin-bottom: 16px }
-    @media (max-width: 1100px) { .feat, .board { grid-template-columns: 1fr 1fr } }
-    @media (max-width: 640px) { header { flex-wrap: wrap; gap: 10px; padding: 12px 16px } nav.steps { overflow-x: auto; max-width: 100% } main { padding: 8px 16px 40px } .split, .feat, .board { grid-template-columns: 1fr } .card { padding: 18px; border-radius: 22px } .pill.big { font-size: 18px; height: 40px } .acct { width: 150px } }
-    @media (max-width: 1100px) { .order, .pay, .pit, .results, .suites, .telemetry { grid-template-columns: 1fr } .telemetry { grid-column: auto } .net { display: none } }
+
+    @media (max-width: 1000px) {
+      .hero, .pit, .split { grid-template-columns: 1fr } .how { grid-template-columns: 1fr 1fr } .choices.three { grid-template-columns: 1fr }
+      .board { grid-template-columns: 1fr 1fr } .hdr-right #console-pill { display: none }
+    }
+    @media (max-width: 640px) {
+      header { flex-wrap: wrap; gap: 10px; padding: 12px 16px } nav.top { order: 3; width: 100% } nav.top button { flex: 1 }
+      main { padding: 8px 16px 40px } .card { padding: 20px; border-radius: 22px } .hero { padding: 22px }
+      .how, .choices, .facts { grid-template-columns: 1fr } .step h2 { font-size: 24px } .scene canvas { height: 260px }
+      .stepper button span { display: none } .stepper button { padding: 0 6px }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important } }
   </style>
 </head>
 <body>
 <header>
-  <div class="brand">faultline<i>.</i></div>
-  <nav class="steps">
-    <button data-view="featured">Featured</button>
-    <button data-view="ab">A/B</button>
-    <button data-view="order" class="on">Order</button>
-    <button data-view="pay" disabled>Pay</button>
-    <button data-view="live" disabled>Run</button>
-    <button data-view="results" disabled>Results</button>
+  <a class="brand" href="#" id="home-link">faultline<i>.</i></a>
+  <nav class="top" aria-label="Main">
+    <button data-view="home" class="on">Home</button>
+    <button data-view="flow">Run a test</button>
+    <button data-view="explore">Explore</button>
   </nav>
-  <div class="net">
-    <span class="pill sm"><i class="dot" id="n-hedera"></i>Hedera</span>
-    <span class="pill sm"><i class="dot" id="n-zg"></i>0G</span>
-    <span class="pill sm"><i class="dot" id="n-carla"></i>CARLA</span>
-    <span class="pill sm" id="n-queue">Queue —</span>
+  <div class="hdr-right">
+    <span class="pill sm" id="console-pill" tabindex="0" data-tip="Checking the test console…"><i class="dot" id="console-dot"></i><span id="console-txt">Connecting…</span></span>
+    <button class="pill" id="wallet-btn">Connect wallet</button>
   </div>
-  <button class="pill sm y" id="guide-btn">Judge guide</button>
 </header>
 <main>
-  <div class="card k hidden" id="offline"><b>Console offline</b> <span class="muted">· recorded evidence only · live runs need the agent console</span></div>
-  <section id="v-featured" class="hidden"><div class="grid feat" id="featured"></div></section>
+  <div class="card k hidden" id="offline" role="status"><b>The live test console is offline right now.</b> You can still watch recorded tests in Explore; live runs come back when it reconnects.</div>
 
-  <section id="v-ab" class="hidden">
+  <!-- HOME -->
+  <section id="v-home">
     <div class="grid">
-      <div class="card y">
-        <div class="head"><h2>A/B arena</h2><span class="pill sm">same adversary script · free</span></div>
-        <div class="ab-pick"><select id="ab-a" aria-label="Policy A"></select><span class="pill k">vs</span><select id="ab-b" aria-label="Policy B"></select>
-          <button class="btn k" id="ab-run">Run arena</button><span class="pill sm" id="ab-status">—</span></div>
-        <p class="err" id="ab-err"></p>
-      </div>
-      <div class="card"><div class="head"><h2>Metrics</h2><span class="pill sm" id="ab-src">—</span></div><div id="ab-table"></div></div>
-      <div class="card k" id="ab-video"></div>
-    </div>
-  </section>
-
-  <section id="v-order" class="hidden">
-    <div class="grid order">
-      <div class="grid">
-        <div class="grid suites" id="suites"></div>
-        <div class="card">
-          <div class="head"><h2>Runs</h2><span class="pill sm">replay is free</span></div>
-          <table><thead><tr><th>Run</th><th>World</th><th>0G</th><th>Peak CCS</th><th>Min TTC</th><th></th><th></th></tr></thead><tbody id="runs"></tbody></table>
+      <div class="card y hero">
+        <div>
+          <h1>We stress-test self-driving software with <em>AI attackers</em> — and prove every result on-chain.</h1>
+          <p class="lede">An AI on 0G plays the other drivers and tries to make your car crash. You watch it happen in the CARLA simulator, then check the receipts yourself.</p>
+          <div class="row" style="margin-top:24px">
+            <button class="btn k big" id="cta-run">Run a test →</button>
+            <button class="btn big" id="cta-watch">▶ Watch a 30-second example</button>
+          </div>
         </div>
+        <div><video id="hero-video" controls muted playsinline preload="metadata" aria-label="Recorded test: four AI-controlled cars try to box in a self-driving car in CARLA"></video></div>
       </div>
       <div class="card">
-        <div class="head"><h2>Order</h2><span class="pill sm c">x402 · Hedera</span></div>
-        <div class="price"><b id="price">0.001</b><span class="pill y">ℏ per run</span></div>
-        <dl class="kv" id="order-kv"></dl>
-        <div style="height:22px"></div>
-        <button class="hold" id="hold" disabled><div class="fill"></div><span>Hold to pay</span></button>
-        <button class="btn" id="quote" style="width:100%;margin-top:8px" disabled>Quote only</button>
-        <p class="err" id="order-err"></p>
+        <div class="head"><h2>How it works</h2></div>
+        <ol class="how how-wrap">
+          <li><b>Pick a driving policy</b><span>The self-driving software under test — ours or yours.</span></li>
+          <li><b>AI attacker plans on 0G</b><span>A model on 0G's private computer decides what the other cars do, every second.</span></li>
+          <li><b>Watch it in CARLA</b><span>The attack plays out in a 3D driving simulator, live.</span></li>
+          <li><b>Verify the proof</b><span>Each decision, payment and result is recorded on 0G, Hedera and Arkiv.</span></li>
+        </ol>
+      </div>
+      <div class="facts">
+        <div class="card c"><b>Real AI decisions</b>Every attacker move comes from a signed 0G answer you can look up.</div>
+        <div class="card p"><b>Agents pay per test</b>Our agent pays 0.001 ℏ on Hedera for each paid run — no human approval step.</div>
+        <div class="card l"><b>No accounts</b>Connect a wallet and sign one message. We never ask for a transaction.</div>
       </div>
     </div>
   </section>
 
-  <section id="v-pay" class="hidden">
-    <div class="grid pay">
+  <!-- GUIDED FLOW -->
+  <section id="v-flow" class="hidden">
+    <ol class="stepper" id="stepper" aria-label="Test steps"></ol>
+
+    <div class="card step" id="s1" data-step="1">
+      <h2>Connect your wallet</h2>
+      <p class="lede">Your wallet signs the test request so we know who asked for it. Our agent pays for the test on Hedera.</p>
+      <div class="wallets" id="wallets"></div>
+      <p class="err" id="wallet-err"></p>
+      <div class="note"><b>We only ask for a signature, never a transaction.</b> The site requests your address and one readable message to sign. It never asks for token approvals, transfers or gas. If your wallet warns that this new site is unknown, that is a reputation check on a fresh domain; the message you sign is shown in full before you sign it.</div>
+      <div class="nav-btns"><button class="btn k" id="s1-next" disabled>Next: choose a policy →</button><button class="btn" data-goto-explore="runs">No wallet? Watch a recorded test</button></div>
+    </div>
+
+    <div class="card step c hidden" id="s2" data-step="2">
+      <h2>Choose the driving policy to test</h2>
+      <p class="lede">This is the self-driving software that has to survive the attack.</p>
+      <div class="choices" role="radiogroup" aria-label="Driving policy" id="policies"></div>
+      <div class="nav-btns"><button class="btn" data-back>← Back</button><button class="btn k" id="s2-next">Next: choose the attack →</button>
+        <a class="btn" id="byo" target="_blank" rel="noopener">Bring your own stack ↗</a></div>
+    </div>
+
+    <div class="card step p hidden" id="s3" data-step="3">
+      <h2>Choose the attack and how to run it</h2>
+      <p class="lede">The AI attacker controls the other car and tries to force a crash.</p>
+      <div class="choices three" role="radiogroup" aria-label="Attack" id="attacks"></div>
+      <h3 style="margin-top:24px;font-size:20px">Run type</h3>
+      <div class="choices" role="radiogroup" aria-label="Run type" id="modes"></div>
+      <dl class="summary" id="summary"></dl>
+      <details class="more" style="margin-top:12px"><summary>Show the exact message your wallet will sign</summary><pre class="msg" id="msg-preview"></pre></details>
+      <p class="err" id="start-err"></p>
+      <div class="nav-btns"><button class="btn" data-back>← Back</button><button class="btn k big" id="start">Sign &amp; start test</button></div>
+    </div>
+
+    <div class="step hidden" id="s4" data-step="4">
       <div class="grid">
-        <div class="card stage">
-          <svg id="flow" viewBox="0 0 1000 400" preserveAspectRatio="none"></svg>
-          <div class="acct left"><small class="muted">Payer</small><div class="mono" id="payer-id">—</div><div class="bal" id="payer-bal">—</div><div class="delta" id="payer-delta"></div></div>
-          <div class="acct right"><small class="muted">Merchant</small><div class="mono" id="merchant-id">—</div><div class="bal" id="merchant-bal">—</div><div class="delta" id="merchant-delta"></div></div>
-          <div class="policy" id="checks"></div>
-          <div class="ledger" id="ledger"><span class="pill" id="ledger-v">—</span></div>
+        <div class="card statusbar">
+          <span class="pill k live" id="live-tag">Starting</span>
+          <span class="pill" id="s-job">—</span>
+          <div class="stat"><small>Time</small><b id="s-t">0.0 s</b></div>
+          <div class="stat"><small>AI decisions</small><b id="s-dec">0</b></div>
+          <div class="stat"><small>Gap to attacker</small><b id="s-gap">—</b></div>
+          <div class="stat"><small><span class="tip" tabindex="0" data-tip="Time to collision: how many seconds until the cars touch if nobody changes speed. Under 1.5 s is dangerous.">Time to collision</span></small><b id="s-ttc">—</b></div>
+          <button class="btn k hidden" id="to-results" style="margin-left:auto">See results →</button>
         </div>
-        <div class="card ticket" id="ticket">
-          <canvas class="pattern" id="pattern" width="8" height="8"></canvas>
-          <span class="pill sm">Run permit · single use</span>
-          <div class="big" id="t-job">—</div>
-          <dl class="kv" id="t-kv"></dl>
-          <div style="margin-top:18px;display:flex;gap:8px"><button class="btn k" id="launch">Launch run</button><a class="btn" id="t-hashscan" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center">HashScan ↗</a></div>
+        <div class="grid pit">
+          <div class="grid">
+            <div class="card scene"><canvas id="scene" aria-label="Top-down view: your car (purple) and the AI attacker (pink)"></canvas></div>
+            <div class="card tele"><canvas id="tele" aria-label="Danger over time"></canvas></div>
+            <div class="card">
+              <div class="head"><h2>Progress</h2></div>
+              <ul class="progress" id="progress"></ul>
+              <details class="more"><summary>Technical log</summary><div class="log" id="log"></div></details>
+            </div>
+          </div>
+          <div class="card c">
+            <div class="head"><h2 style="font-size:20px">What the AI attacker decided</h2></div>
+            <p style="margin:-6px 0 12px;color:var(--muted);font-size:14px">Each line is one answer from the model on 0G's private computer.</p>
+            <div class="feed" id="feed" aria-live="polite"></div>
+          </div>
         </div>
-      </div>
-      <div class="card">
-        <div class="head"><h2>Payment</h2><span class="pill sm" id="pay-mode">x402</span></div>
-        <ul class="steps-list" id="paysteps"></ul>
-        <p class="err" id="pay-err"></p>
       </div>
     </div>
-  </section>
 
-  <section id="v-live" class="hidden">
-    <div class="grid pit">
-      <div class="card statusbar">
-        <span class="pill k live" id="live-tag">Live</span>
-        <span class="pill" id="s-job">—</span>
-        <span class="pill c" id="s-world">—</span>
-        <div class="stat"><small>Time</small><b id="s-t">0.00 s</b></div>
-        <div class="stat"><small>0G decisions</small><b id="s-dec">0</b></div>
-        <div class="stat"><small>Gap</small><b id="s-gap">—</b></div>
-        <div class="stat"><small>TTC</small><b id="s-ttc">—</b></div>
-        <button class="btn k hidden" id="to-results" style="margin-left:auto">Results →</button>
-      </div>
-      <div class="card rail" id="rail-live"></div>
-      <div class="card"><div class="head"><h2>Job</h2></div><ul class="timeline" id="timeline"></ul></div>
-      <div class="card scene"><canvas id="scene"></canvas></div>
-      <div class="card c"><div class="head"><h2>0G decisions</h2><span class="pill sm">private tier</span></div><div class="tower" id="tower"></div></div>
-      <div class="card telemetry"><canvas id="tele"></canvas><div class="gauge"><canvas id="gauge"></canvas></div></div>
-      <div class="card k"><div class="head"><h2>Log</h2></div><div class="log" id="log"></div></div>
-    </div>
-  </section>
-
-  <section id="v-results" class="hidden">
-    <div class="grid">
-      <div class="card verdict" id="verdict"></div>
-      <div class="card rail" id="rail-results"></div>
-      <div class="grid results">
+    <div class="step hidden" id="s5" data-step="5">
+      <div class="grid">
+        <div class="card verdict" id="verdict"></div>
         <div class="card">
-          <canvas id="rscene" style="width:100%;height:330px;display:block;border-radius:20px"></canvas>
-          <div class="scrub"><button class="btn y" id="worst">Worst moment</button><input type="range" id="scrub" min="0" max="0" value="0"><span class="pill sm mono" id="scrub-t">0.00 s</span></div>
-          <canvas id="rtele" style="width:100%;height:150px;display:block;margin-top:14px"></canvas>
+          <canvas id="rscene" style="width:100%;height:320px;display:block;border-radius:20px" aria-label="Replay of the test"></canvas>
+          <div class="scrub"><button class="btn y" id="worst">Jump to the closest call</button><label class="sr" for="scrub">Replay position</label><input type="range" id="scrub" min="0" max="0" value="0"><span class="pill sm mono" id="scrub-t">0.00 s</span></div>
+          <canvas id="rtele" style="width:100%;height:140px;display:block;margin-top:14px"></canvas>
         </div>
-        <div class="grid">
-          <div class="card p"><div class="head"><h2>Payment</h2><span class="pill sm">Hedera</span></div><dl class="kv" id="ev-h"></dl></div>
-          <div class="card c"><div class="head"><h2>Evidence</h2><span class="pill sm">0G</span></div><dl class="kv" id="ev-z"></dl></div>
+        <div class="card">
+          <div class="head"><h2>Proof</h2><span style="color:var(--muted);font-size:14px">A green dot means the data proves it. Tap a card to see what it proves.</span></div>
+          <div class="rail" id="rail-results"></div>
+          <details class="more drawer"><summary>Evidence (IDs, roots and transactions)</summary><dl class="kv" id="evidence"></dl></details>
         </div>
+        <div class="nav-btns"><button class="btn y" id="again">Run another test</button><button class="btn" data-goto-explore="runs">Browse recorded tests</button></div>
       </div>
     </div>
+  </section>
+
+  <!-- EXPLORE -->
+  <section id="v-explore" class="hidden">
+    <div class="card k" style="margin-bottom:16px"><h2 style="font-size:28px">Explore</h2><p class="lede">Deeper material for judges and engineers. Each section is self-contained.</p>
+      <div class="explore-nav" id="explore-nav" style="margin-top:14px">
+        <a class="pill" href="#x-runs">Recorded tests</a><a class="pill" href="#x-swarm">4-car swarm</a><a class="pill" href="#x-ab">A/B arena</a>
+        <a class="pill" href="#x-paid002">Paid test, end to end</a><a class="pill" href="#x-research">Research mission</a><a class="pill" href="#x-memory">Version memory</a></div></div>
+    <div class="grid" id="explore"></div>
   </section>
 </main>
-<div class="modal hidden" id="guide" role="dialog" aria-modal="true" aria-labelledby="g-title">
-  <div class="card sheet">
-    <div class="head"><h2 id="g-title">Judge guide</h2><button class="pill sm" id="g-skip">Skip</button></div>
-    <div class="gsteps" id="g-steps"></div>
-    <div class="gbody" id="g-body"></div>
-  </div>
-</div>
 <script type="module" src="app.js"></script>
 </body>
 </html>

@@ -66,3 +66,22 @@ test('public console: host check, CORS allowlist, console header, POST rate limi
   const pol = await (await fetch(`${base}/api/policies`)).json() as any[]
   assert.deepEqual(pol.map((p) => p.id), ['pdm-lite', 'idm-cautious'])
 })
+
+test('signed run requests: valid once, fresh, matching, and from the signing wallet', async () => {
+  const { privateKeyToAccount, generatePrivateKey } = await import('viem/accounts')
+  const { verifyMessage } = await import('viem')
+  const { requestMessage, verifyRunRequest, WalletCaps } = await import('../src/console-guard.ts')
+  const acct = privateKeyToAccount(generatePrivateKey()), now = Date.parse('2026-11-07T10:00:00Z')
+  const want = { policy: 'pdm-lite', suite: 'cut-in-v1-kinematic', mode: 'free' }
+  const message = requestMessage({ ...want, nonce: 'ab'.repeat(8), issued: new Date(now - 1000).toISOString() })
+  const signature = await acct.signMessage({ message }), seen = new Map<string, number>()
+  const ok = await verifyRunRequest({ address: acct.address, message, signature }, want, seen, verifyMessage, now)
+  assert.deepEqual(ok, { address: acct.address.toLowerCase() })
+  assert.match((await verifyRunRequest({ address: acct.address, message, signature }, want, seen, verifyMessage, now) as any).error, /already used/)
+  assert.match((await verifyRunRequest({}, want, new Map(), verifyMessage, now) as any).error, /unsigned/)
+  assert.match((await verifyRunRequest({ address: acct.address, message, signature }, { ...want, mode: 'paid' }, new Map(), verifyMessage, now) as any).error, /does not match/)
+  assert.match((await verifyRunRequest({ address: acct.address, message, signature }, want, new Map(), verifyMessage, now + 6 * 60_000) as any).error, /expired/)
+  const other = privateKeyToAccount(generatePrivateKey()).address
+  assert.match((await verifyRunRequest({ address: other, message, signature }, want, new Map(), verifyMessage, now) as any).error, /does not match the wallet/)
+  const w = new WalletCaps(2); assert.ok(w.take('a')); assert.ok(w.take('a')); assert.equal(w.take('a'), false); assert.ok(w.take('b'))
+})

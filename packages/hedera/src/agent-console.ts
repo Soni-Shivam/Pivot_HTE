@@ -13,11 +13,12 @@ import 'dotenv/config'
 import express, { type Request, type Response } from 'express'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
-import { appendFileSync, existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { appendFileSync, existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { createConnection } from 'node:net'
 import { join, relative, resolve } from 'node:path'
 import { buy, buyerConfigFromEnv, hashscanTx, MIRROR, type Activation } from './buyer.ts'
-import { clientIp, DailyCaps, mediaPath, parseOrigins, RateLimit } from './console-guard.ts'
+import { verifyMessage } from 'viem'
+import { clientIp, DailyCaps, mediaPath, parseOrigins, RateLimit, verifyRunRequest, WalletCaps } from './console-guard.ts'
 import { SUITES, suiteOf } from './suites.ts'
 
 const PORT = Number(process.env.FAULTLINE_CONSOLE_PORT ?? 8788)
@@ -35,6 +36,9 @@ const bought = new Map<string, Activation>() // jobId -> activation (permit stay
 const procs = new Map<string, { child: ChildProcess, log: string[], exit: number | null, jobId: string }>() // run name -> runner
 const caps = new DailyCaps(join(RUNS, 'backend', 'caps.json'), MAX_BUYS, MAX_RUNS)
 const PAUSED = 'Live runs are paused for today — replay a recorded run'
+// Live runs need a wallet-signed request (EIP-191); nonces are single-use (in memory: a restart within 5 min forgets them).
+const nonces = new Map<string, number>()
+const walletCaps = new WalletCaps(Number(process.env.FAULTLINE_WALLET_MAX_RUNS ?? 3))
 const postLimit = new RateLimit(Number(process.env.FAULTLINE_RATE_POST ?? 12), 60_000)
 const allLimit = new RateLimit(Number(process.env.FAULTLINE_RATE_ALL ?? 600), 60_000)
 const HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`, PUBLIC_HOST, `${PUBLIC_HOST}:443`])
@@ -126,6 +130,12 @@ app.post('/api/buy', async (req: Request, res: Response) => {
   const mode = req.body?.mode === 'pay' ? 'pay' : 'quote'
   try {
     const { suite } = suiteOf(req.body?.suite)
+    if (mode === 'pay') {
+      const v = await verifyRunRequest(req.body, { policy: 'pdm-lite', suite, mode: 'paid' }, nonces, verifyMessage)
+      if ('error' in v) throw new Error(v.error)
+      if (!walletCaps.take(v.address)) throw new Error('This wallet has used its live runs for today — replay a recorded run')
+      appendLive(`buy requested_by ${v.address} ${suite}`)
+    }
     const notReady = mode === 'pay' ? runnerError() : null
     if (notReady) throw new Error(`runner not ready, nothing was paid: ${notReady}`)
     if (mode === 'pay' && !caps.take('buys')) throw new Error(`${PAUSED} (${MAX_BUYS} paid buys per day used)`)
@@ -185,7 +195,7 @@ function runSummary(name: string) {
     chain: a ? { registry: a.registry, commitTx: a.commitTx, commitBlockTimestamp: a.commitBlockTimestamp, finalizeTx: a.finalizeTx ?? null, onchainMatches: a.onchainMatches ?? null } : null,
     storage: p ? { publicRoot: p.publicRoot, sealedRoot: p.sealedRoot, publicTx: p.publicTx, sealedTx: p.sealedTx, signaturesArchived: p.signatures_archived ?? null, signatures0g: p.signatures_0g ?? null, signaturesVerified: sig?.verified ?? null } : null,
     // ERC-8004 adversary identity (docs/submission/CHECKLIST.md) shown only for anchored runs; no per-run Arkiv entity exists
-    agentId: a ? 579 : null, arkivEntity: null, free: name.startsWith('demo-free-'),
+    agentId: a ? 579 : null, arkivEntity: null, free: name.startsWith('demo-free-'), requestedBy: readJson(join(dir, 'requested_by.json'))?.requested_by ?? null,
     payment: job ? { transaction: job.transaction, payer: job.payer, suite: job.suite, hashscan: hashscanTx(job.transaction) } : null,
   }
 }
@@ -316,7 +326,7 @@ function checkPolicies() {
 }
 
 type Job = { id: string, kind: 'demo' | 'arena', lane: 'carla' | 'kin', policy?: PolicyId, policies?: PolicyId[], suite?: string, site: string,
-  seed: number, mode: 'free' | 'paid' | 'script', label: string, status: 'queued' | 'running' | 'done' | 'error', error?: string,
+  seed: number, mode: 'free' | 'paid' | 'script', label: string, requestedBy?: string, status: 'queued' | 'running' | 'done' | 'error', error?: string,
   createdAt: number, startedAt?: number, finishedAt?: number, dirs: string[], events: unknown[], log: string[], result?: unknown }
 const jobs = new Map<string, Job>()
 const lanes = { carla: [] as Job[], kin: [] as Job[] } // index 0 = running
@@ -330,7 +340,7 @@ const arenaRows = (j: Job) => ((j.result as any)?.results ?? []).map((r: any, i:
 const jobVideo = (j: Job) => j.kind === 'arena' ? ((j.result as any)?.sideBySide ?? null) : j.dirs[0] && existsSync(join(j.dirs[0], 'screen.mp4')) ? relative(ROOT, join(j.dirs[0], 'screen.mp4')) : null
 const jobPublic = (j: Job) => ({ id: j.id, kind: j.kind, lane: j.lane, policy: j.policy ?? null, policies: j.policies ?? null, suite: j.suite ?? null,
   site: j.site, seed: j.seed, mode: j.mode, label: j.label, status: j.status, error: j.error ?? null, queuePos: queuePos(j),
-  createdAt: j.createdAt, startedAt: j.startedAt ?? null, finishedAt: j.finishedAt ?? null, runs: j.dirs.map((d) => relative(RUNS, d)), result: j.result ?? null,
+  requested_by: j.requestedBy ?? null, createdAt: j.createdAt, startedAt: j.startedAt ?? null, finishedAt: j.finishedAt ?? null, runs: j.dirs.map((d) => relative(RUNS, d)), result: j.result ?? null,
   etaS: j.status === 'queued' || j.status === 'running' ? Math.round(etaS(j) ?? 0) : null, results: j.kind === 'arena' ? arenaRows(j) : [], video: jobVideo(j) })
 const deny = (res: Response, code: number, error: string) => { res.status(code).json({ error }) }
 
@@ -344,7 +354,7 @@ async function pump(lane: 'carla' | 'kin') {
   j.status = 'running'; j.startedAt = Date.now()
   try { await runJob(j); if ((j.status as Job['status']) !== 'error') j.status = 'done' } catch (e) { j.status = 'error'; j.error = (e as Error).message }
   j.finishedAt = Date.now()
-  appendLive(`job ${j.id} ${j.kind}/${j.mode} ${j.policy ?? j.policies?.join(',')} ${j.suite ?? ''} -> ${j.status}${j.error ? ` (${j.error})` : ''}`)
+  appendLive(`job ${j.id} ${j.kind}/${j.mode}${j.requestedBy ? ` by ${j.requestedBy}` : ''} ${j.policy ?? j.policies?.join(',')} ${j.suite ?? ''} -> ${j.status}${j.error ? ` (${j.error})` : ''}`)
   lanes[lane].shift(); void pump(lane)
 }
 const appendLive = (m: string) => { try { appendFileSync(join(RUNS, 'agent-live.log'), `${new Date().toTimeString().slice(0, 8)} [backend-agent] ${m}\n`) } catch { /* log is best effort */ } }
@@ -391,6 +401,7 @@ async function runJob(j: Job) {
     code = r.entry.exit
     j.result = summaryOf(j.dirs[0])
   }
+  if (j.requestedBy && j.dirs[0] && existsSync(j.dirs[0])) writeFileSync(join(j.dirs[0], 'requested_by.json'), JSON.stringify({ requested_by: j.requestedBy, job: j.id, signed: 'EIP-191 personal_sign' }) + '\n')
   if (code !== 0) { j.status = 'error'; j.error = `runner exited ${code}` }
 }
 
@@ -410,7 +421,7 @@ app.get('/api/policies', (_req, res) => {
   }))
 })
 
-app.post('/api/demo-run', (req, res) => {
+app.post('/api/demo-run', async (req, res) => {
   const { policy, suite, mode } = req.body ?? {}
   if (!isPolicy(policy)) return deny(res, 400, 'policy must be one of: ' + Object.keys(POLICIES).join(', '))
   if (!Object.hasOwn(SUITES, suite)) return deny(res, 400, 'suite must be cut-in-v1-kinematic or cut-in-v1-carla')
@@ -426,9 +437,12 @@ app.post('/api/demo-run', (req, res) => {
   const lane = suite === 'cut-in-v1-carla' ? 'carla' : 'kin'
   if (lanes[lane].length > MAX_WAITING) return deny(res, 429, 'The queue is full — try again in a few minutes or replay a recorded run')
   if (caps.left().runs_left < 1 || (mode === 'paid' && caps.left().buys_left < 1)) return deny(res, 429, PAUSED)
+  const v = await verifyRunRequest(req.body, { policy, suite, mode }, nonces, verifyMessage)
+  if ('error' in v) return deny(res, 401, v.error)
+  if (!walletCaps.take(v.address)) return deny(res, 429, 'This wallet has used its live runs for today — replay a recorded run')
   if (mode === 'paid' && !caps.take('buys')) return deny(res, 429, PAUSED)
   caps.take('runs')
-  const j: Job = { id: randomBytes(8).toString('hex'), kind: 'demo', lane, policy, suite, site: DEFAULT_SITE, seed, mode, status: 'queued',
+  const j: Job = { id: randomBytes(8).toString('hex'), kind: 'demo', lane, policy, suite, site: DEFAULT_SITE, seed, mode, status: 'queued', requestedBy: v.address,
     label: mode === 'free' ? 'demo, unpaid, not anchored' : 'paid: Hedera x402, anchored on 0G Galileo',
     createdAt: Date.now(), dirs: [], events: [], log: [] }
   enqueue(j)

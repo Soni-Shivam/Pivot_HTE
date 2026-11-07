@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' __API_ORIGIN__; media-src 'self' __API_ORIGIN__ https://raw.githubusercontent.com; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Faultline Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -130,6 +130,35 @@
     .results { grid-template-columns: 1.55fr 1fr }
     .scrub { display: flex; gap: 12px; align-items: center; margin-top: 14px }
     .scrub input { flex: 1; accent-color: var(--ink) }
+    /* judge guide, trust rail, featured, A/B */
+    .dot.part { background: var(--yellow) }
+    .modal { position: fixed; inset: 0; z-index: 50; background: #000000b0; display: grid; place-items: center; padding: 16px }
+    .sheet { width: min(820px, 100%); max-height: calc(100vh - 32px); overflow: auto; animation: rowin .3s var(--ease) }
+    .gsteps { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px }
+    .gsteps button.on { background: var(--ink); color: var(--paper) }
+    .gbody h3 { font-size: 28px; font-weight: 600; letter-spacing: -.02em; margin: 0 0 14px; line-height: 1.1 }
+    .opt { display: block; width: 100%; text-align: left; border: 1.5px solid var(--line); border-radius: 22px; padding: 16px; margin-bottom: 10px; background: var(--paper); transition: transform .16s var(--ease) }
+    .opt:active { transform: scale(.98) } .opt.on { background: var(--lime) }
+    .opt .mono { font-size: 12px; overflow-wrap: anywhere }
+    .row-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px }
+    .rail { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 14px 16px }
+    .rail .tp { height: auto; min-height: 30px; padding: 5px 12px; white-space: normal; flex-wrap: wrap; text-decoration: none }
+    .rail .tp b { font-weight: 600 } .rail .tp small { font-family: var(--mono); font-size: 11px; color: #111111b0 }
+    .feat { grid-template-columns: 1fr 1fr; align-items: start }
+    .feat .wide { grid-column: 1 / -1 }
+    .split { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) }
+    .grid > * { min-width: 0 } #ab-table, .tscroll { overflow-x: auto }
+    video { width: 100%; display: block; border-radius: 20px; background: #000; aspect-ratio: 16 / 9 }
+    .feed { font-family: var(--mono); font-size: 11px; max-height: 260px; overflow: auto; display: flex; flex-direction: column; gap: 6px; margin-top: 12px }
+    .feed div { background: #ffffffb0; border-radius: 12px; padding: 6px 10px; overflow-wrap: anywhere }
+    .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px }
+    .board .cell { border: 1.5px solid var(--line); border-radius: 18px; padding: 12px; background: var(--paper) }
+    .board .cell b { display: block; font-size: 22px; font-family: var(--mono) }
+    .ab-pick { display: flex; gap: 8px; flex-wrap: wrap; align-items: center }
+    select { font: inherit; height: 44px; border-radius: 999px; border: 1.5px solid var(--line); padding: 0 14px; background: var(--paper) }
+    #offline { margin-bottom: 16px }
+    @media (max-width: 1100px) { .feat, .board { grid-template-columns: 1fr 1fr } }
+    @media (max-width: 640px) { header { flex-wrap: wrap; gap: 10px; padding: 12px 16px } nav.steps { overflow-x: auto; max-width: 100% } main { padding: 8px 16px 40px } .split, .feat, .board { grid-template-columns: 1fr } .card { padding: 18px; border-radius: 22px } .pill.big { font-size: 18px; height: 40px } .acct { width: 150px } }
     @media (max-width: 1100px) { .order, .pay, .pit, .results, .suites, .telemetry { grid-template-columns: 1fr } .telemetry { grid-column: auto } .net { display: none } }
   </style>
 </head>
@@ -137,6 +166,8 @@
 <header>
   <div class="brand">faultline<i>.</i></div>
   <nav class="steps">
+    <button data-view="featured">Featured</button>
+    <button data-view="ab">A/B</button>
     <button data-view="order" class="on">Order</button>
     <button data-view="pay" disabled>Pay</button>
     <button data-view="live" disabled>Run</button>
@@ -144,13 +175,30 @@
   </nav>
   <div class="net">
     <span class="pill sm"><i class="dot" id="n-hedera"></i>Hedera</span>
-    <span class="pill sm"><i class="dot up"></i>0G Router</span>
-    <span class="pill sm"><i class="dot up"></i>0G Galileo</span>
+    <span class="pill sm"><i class="dot" id="n-zg"></i>0G</span>
     <span class="pill sm"><i class="dot" id="n-carla"></i>CARLA</span>
+    <span class="pill sm" id="n-queue">Queue —</span>
   </div>
+  <button class="pill sm y" id="guide-btn">Judge guide</button>
 </header>
 <main>
-  <section id="v-order">
+  <div class="card k hidden" id="offline"><b>Console offline</b> <span class="muted">· recorded evidence only · live runs need the agent console</span></div>
+  <section id="v-featured" class="hidden"><div class="grid feat" id="featured"></div></section>
+
+  <section id="v-ab" class="hidden">
+    <div class="grid">
+      <div class="card y">
+        <div class="head"><h2>A/B arena</h2><span class="pill sm">same adversary script · free</span></div>
+        <div class="ab-pick"><select id="ab-a" aria-label="Policy A"></select><span class="pill k">vs</span><select id="ab-b" aria-label="Policy B"></select>
+          <button class="btn k" id="ab-run">Run arena</button><span class="pill sm" id="ab-status">—</span></div>
+        <p class="err" id="ab-err"></p>
+      </div>
+      <div class="card"><div class="head"><h2>Metrics</h2><span class="pill sm" id="ab-src">—</span></div><div id="ab-table"></div></div>
+      <div class="card k" id="ab-video"></div>
+    </div>
+  </section>
+
+  <section id="v-order" class="hidden">
     <div class="grid order">
       <div class="grid">
         <div class="grid suites" id="suites"></div>
@@ -209,6 +257,7 @@
         <div class="stat"><small>TTC</small><b id="s-ttc">—</b></div>
         <button class="btn k hidden" id="to-results" style="margin-left:auto">Results →</button>
       </div>
+      <div class="card rail" id="rail-live"></div>
       <div class="card"><div class="head"><h2>Job</h2></div><ul class="timeline" id="timeline"></ul></div>
       <div class="card scene"><canvas id="scene"></canvas></div>
       <div class="card c"><div class="head"><h2>0G decisions</h2><span class="pill sm">private tier</span></div><div class="tower" id="tower"></div></div>
@@ -220,6 +269,7 @@
   <section id="v-results" class="hidden">
     <div class="grid">
       <div class="card verdict" id="verdict"></div>
+      <div class="card rail" id="rail-results"></div>
       <div class="grid results">
         <div class="card">
           <canvas id="rscene" style="width:100%;height:330px;display:block;border-radius:20px"></canvas>
@@ -234,6 +284,13 @@
     </div>
   </section>
 </main>
+<div class="modal hidden" id="guide" role="dialog" aria-modal="true" aria-labelledby="g-title">
+  <div class="card sheet">
+    <div class="head"><h2 id="g-title">Judge guide</h2><button class="pill sm" id="g-skip">Skip</button></div>
+    <div class="gsteps" id="g-steps"></div>
+    <div class="gbody" id="g-body"></div>
+  </div>
+</div>
 <script type="module" src="app.js"></script>
 </body>
 </html>

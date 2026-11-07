@@ -88,6 +88,12 @@ def validate(p) -> str | None:
     gap = p["initial_gap_m"] + (p["lead_speed_mps"] - p["ego_speed_mps"]) * t_cut
     if gap < MIN_CUT_GAP_M:
         return f"predicted gap at the cut-in start {gap:.1f} m < {MIN_CUT_GAP_M} m (the cut-in would start alongside)"
+    # hunt-002: a slow car starting at 3 m ahead was alongside when it crossed the lane line (a sideswipe, not a
+    # cut-in); the adversary must still be >= 3 m ahead at mid lane change if the ego did not brake at all
+    gap_mid = gap + (p["lead_speed_mps"] - p["ego_speed_mps"]) * p["lane_change_s"] / 2
+    if gap_mid < MIN_CUT_GAP_M:
+        return (f"predicted gap when the adversary crosses the lane line (mid lane change, ego not braking) "
+                f"{gap_mid:.1f} m < {MIN_CUT_GAP_M} m: that is a sideswipe from alongside, not a cut-in")
     return None
 
 
@@ -235,6 +241,9 @@ def user_msg(lab: CarlaLab, tool_log: list) -> dict:
             "parameter_space": {k: list(v) for k, v in SPACE.items()}, "integer_parameters": list(INTS),
             "environments": {k: {"mu": v["mu"], "lidar": v["lidar"], "weather": {w: x for w, x in v["weather"].items() if x}}
                              for k, v in cutin.ENVIRONMENTS.items()},
+            "limits_per_environment": {k: {"max_brake_mps2": math.floor(0.8 * G * v["mu"] * 100) / 100,
+                                           "min_lane_change_s": math.ceil(math.sqrt(5.7735 * LANE_W / (0.8 * G * v["mu"])) * 100) / 100}
+                                       for k, v in cutin.ENVIRONMENTS.items()},
             "reference_values": BENIGN,
             "parameters": {"ego_speed_mps": "PDM-Lite target speed (it starts at it)",
                            "lead_speed_mps": "adversary speed, constant until it brakes",
@@ -245,7 +254,9 @@ def user_msg(lab: CarlaLab, tool_log: list) -> dict:
                            "brake_after_cp": "checkpoints between cut-in start and brake start"},
             "validity_rules": ["brake_mps2 <= 0.8*9.81*mu of the environment",
                                "peak lateral accel 5.77*3.5/lane_change_s^2 <= 0.8*9.81*mu",
-                               f"predicted gap at cut-in start (initial_gap + (lead-ego)*(2+cut_in_cp)) >= {MIN_CUT_GAP_M} m",
+                               f"predicted gap at cut-in start g0 = initial_gap + (lead-ego)*(2+cut_in_cp) >= {MIN_CUT_GAP_M} m",
+                               f"predicted gap at mid lane change g0 + (lead-ego)*lane_change_s/2 >= {MIN_CUT_GAP_M} m "
+                               "(no sideswipes from alongside)",
                                "integers for cut_in_cp, brake_after_cp; every value inside its range"],
             "world": "CARLA 0.10 Town10HD_Opt road 7, two 3.5 m lanes, 12 s episode at 20 Hz. The ego sees other cars "
                      "only through its 64-channel LiDAR tracker; it has never collided in earlier runs (stops ~3.5 m short)",
@@ -321,7 +332,7 @@ def cmd_hunt(a):
     url, key = os.environ.get("ZG_ROUTER_URL"), os.environ.get("ZG_API_KEY")
     if not url or not key:
         raise SystemExit("ZG_ROUTER_URL and ZG_API_KEY must be set in .env")
-    agent = Agent(Designer(url, key, model=MODEL), ChainLog(out / "agent.jsonl"), "carla-crash")
+    agent = Agent(Designer(url, key, model=MODEL, thinking=a.thinking), ChainLog(out / "agent.jsonl"), "carla-crash")
     lab = CarlaLab(out, a.budget)
     t0 = time.monotonic()
     try:
@@ -404,6 +415,7 @@ def main(argv=None):
     h = sub.add_parser("hunt")
     h.add_argument("--budget", type=int, default=14)
     h.add_argument("--out")
+    h.add_argument("--thinking", action="store_true", help="thinking mode for the 0G designer (same model, tier)")
     h.set_defaults(fn=cmd_hunt)
     mn = sub.add_parser("minimize")
     mn.add_argument("hunt_dir")

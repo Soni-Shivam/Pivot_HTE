@@ -34,6 +34,9 @@ def test_validate_rejects_physically_impossible_experiments():
     assert "exceeds" in ch.validate({**p, "brake_mps2": 6.0, "environment": "hard_rain_night"})  # 0.8*g*0.5 = 3.9
     assert "lateral" in ch.validate({**p, "lane_change_s": 1.0})
     assert "predicted gap" in ch.validate({**p, "initial_gap_m": 3.0, "lead_speed_mps": 6.0, "cut_in_cp": 2})
+    # hunt-002's sideswipe: 4 m ahead at the start, 8 m/s slower, crosses the line while alongside
+    assert "sideswipe" in ch.validate({**p, "ego_speed_mps": 12.0, "lead_speed_mps": 4.0, "initial_gap_m": 20.0,
+                                       "cut_in_cp": 0, "lane_change_s": 2.27})
     assert "integer" in ch.validate({**p, "cut_in_cp": 1.5})
     assert ch.validate({**p, "environment": "space"}) and ch.validate({**p, "extra": 1})
 

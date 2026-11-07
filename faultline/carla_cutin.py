@@ -35,6 +35,21 @@ class CutInCarlaWorld(CarlaWorld):
     def reset(self, s: CutInScenario) -> None:
         assert s.cut_in_side == "left", "the road 7 layout puts the adversary in the left lane"
         assert check_environment(s) is None, check_environment(s)
+        try:
+            self._reset(s)
+        except BaseException:  # run_episode calls reset before its try/finally: undo sync mode, weather, actors here
+            self.close()
+            raise
+
+    def _spawn_ego(self, bp, t):
+        for _ in range(10):  # a just-destroyed car can still block the spot for a tick or two
+            a = self.world.try_spawn_actor(bp, t)
+            if a is not None:
+                return a
+            self.world.tick()
+        return self.world.spawn_actor(bp, t)
+
+    def _reset(self, s: CutInScenario) -> None:
         self._acquire(s)
         self._weather0 = None
         if s.env_params:  # shared server: the original weather is put back in close()
@@ -64,7 +79,7 @@ class CutInCarlaWorld(CarlaWorld):
         bl = self.world.get_blueprint_library()
         t = self._pose(0.0)
         t.location.z += 0.3
-        self.ego = self.world.spawn_actor(bl.find("vehicle.lincoln.mkz"), t)
+        self.ego = self._spawn_ego(bl.find("vehicle.lincoln.mkz"), t)
         self.actors.append(self.ego)
         if s.env_params:  # road friction: the ego's tyres (CARLA physics); the adversary's brake clamp uses s.friction_mu
             pc = self.ego.get_physics_control()

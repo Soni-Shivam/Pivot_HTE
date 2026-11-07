@@ -163,6 +163,7 @@ def dry_run(factory, n: int = 40):
             ctl.append(c)
     finally:
         st.destroy()
+    dry_run.timeouts = getattr(st, "timeouts", 0)  # ROS adapter: steps with no control within the budget
     return ctl, lat
 
 
@@ -186,7 +187,15 @@ def check(target: str, n: int = 40, blueprints="live") -> dict:
     rows += check_sensors(sensors, blueprints)
     if not any(s.type == "odometry" for s in sensors):
         rows.append(("ok", "proprioception", "EgoState (pose, speed, accel, dimensions) is passed every step anyway"))
-    ctl, lat = dry_run(factory, n)
+    try:
+        ctl, lat = dry_run(factory, n)
+    except Exception as e:  # noqa: BLE001
+        rows.append(("fail", "dry run", repr(e)))
+        return {"name": spec.get("name"), "adapter": spec.get("adapter", "python"), "rows": rows, "ok": False,
+                "digest": digest(spec.get("files", [])) if spec.get("files") else None}
+    if dry_run.timeouts:
+        rows.append(("warn", "stack timeouts", f"{dry_run.timeouts}/{n} steps had no control within the budget "
+                                               "(braked); usually the first step while the stack subscribes"))
     bad = [(i, c.problems() if isinstance(c, Control) else [f"returned {type(c).__name__}, not Control"])
            for i, c in enumerate(ctl)]
     bad = [b for b in bad if b[1]]

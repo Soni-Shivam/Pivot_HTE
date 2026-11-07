@@ -170,7 +170,7 @@
     .statusbar { display: flex; gap: 8px 20px; align-items: center; flex-wrap: wrap; padding: 16px 20px }
     .stat small { display: block; color: var(--muted); font-size: 13px } .stat b { font-family: var(--mono); font-size: 20px; font-weight: 600 }
     .live { animation: blink 1.2s steps(2) infinite } @keyframes blink { 50% { opacity: .55 } }
-    .scene { padding: 0; overflow: hidden } .scene canvas { width: 100%; height: 360px; display: block } #live-cam { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: #000 } video.clip { margin-top: 14px }
+    .scene { padding: 0; overflow: hidden } .scene canvas { width: 100%; height: 360px; display: block } #live-cam, #replay-vid { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: #000 } video.clip { margin-top: 14px }
     .feed { display: flex; flex-direction: column; gap: 8px; max-height: 560px; overflow: auto }
     .dec { background: #ffffffc0; border: 1.5px solid transparent; border-radius: 16px; padding: 10px 12px }
     .dec.new { animation: rowin .35s var(--ease); border-color: var(--line) }
@@ -421,7 +421,7 @@
         </div>
         <div class="grid pit">
           <div class="grid">
-            <div class="card scene"><img id="live-cam" class="hidden" alt="Live CARLA chase camera of your test"><canvas id="scene" aria-label="Top-down view: your car (purple) and the attacker (pink)"></canvas></div>
+            <div class="card scene"><img id="live-cam" class="hidden" alt="Live CARLA chase camera of your test"><video id="replay-vid" class="hidden" controls muted playsinline aria-label="Recorded CARLA camera of this run"></video><p id="no-cam" class="hidden" style="padding:40px 24px;margin:0;color:var(--muted)">This run has no camera recording. The decisions and telemetry below are from its recorded data.</p><canvas id="scene" class="hidden" aria-label="Top-down view"></canvas></div>
             <div class="card tele"><canvas id="tele" aria-label="Danger over time"></canvas></div>
             <div class="card">
               <div class="head"><h2>Progress</h2></div>

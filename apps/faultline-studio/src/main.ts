@@ -287,13 +287,19 @@ async function startStream(run: string, smode: 'live' | 'replay', by: 'run' | 'j
   show('flow'); step(4)
   ticks = []; decisions = []; waiting = null; runMeta = null; runFree = free
   const cam = $<HTMLImageElement>('live-cam'), carla = by === 'job' && attack === 'cut-in-v1-carla'
-  cam.classList.toggle('hidden', !carla); $('scene').classList.toggle('hidden', carla)
+  // no 2-D simulator view: the live CARLA camera for running jobs, the recorded clip for replays
+  cam.classList.toggle('hidden', !carla); $('scene').classList.add('hidden'); $('replay-vid').classList.add('hidden'); $('no-cam').classList.add('hidden')
   if (carla) cam.src = api(`/api/live/${encodeURIComponent(run)}`); else cam.removeAttribute('src')
   $('progress').innerHTML = ''; $('feed').innerHTML = ''; $('log').textContent = ''; $('to-results').classList.add('hidden')
   $('live-tag').textContent = smode === 'live' ? 'Live' : 'Replay'; $('live-tag').classList.add('live')
   $('s-job').textContent = smode === 'live' ? 'Queued' : 'Recorded test'; $('s-dec').textContent = '0'
   try {
     await post('/api/stream', { [by]: run, mode: smode, speed: smode === 'replay' ? 2 : 1 }, (e) => {
+      if (e.t === 'meta' && smode === 'replay') {
+        const v = $<HTMLVideoElement>('replay-vid'), src = e.run?.video
+        v.classList.toggle('hidden', !src); $('no-cam').classList.toggle('hidden', !!src)
+        if (src) { v.src = api('/media/' + src); v.play().catch(() => { /* controls stay */ }) } else v.removeAttribute('src')
+      }
       if (e.t === 'meta') { runMeta = e.run ?? e.job?.result ?? null; if (e.job?.label) $('s-job').textContent = e.job.label }
       if (e.t === 'step') progress(`x-${e.id}`, e.status, e.title ?? e.id, e.status === 'fail' ? esc(e.detail) : '')
       if (e.t === 'phase') {
@@ -436,7 +442,7 @@ function openResults() {
       ${at ? `<span class="pill y">Closest approach at ${num(at.t_s, 1)} s${cause ? `, after the attacker chose to “${esc(say(cause.action).toLowerCase())}”` : ''}</span>` : ''}
     </div>`
   const vid = $<HTMLVideoElement>('rvideo'), rv = (r as any)?.video as string | undefined
-  vid.classList.toggle('hidden', !rv); $('rscene').classList.toggle('hidden', !!rv)
+  vid.classList.toggle('hidden', !rv); $('rscene').classList.add('hidden')
   if (rv) { vid.src = api('/media/' + rv); vid.onloadedmetadata = () => { vid.currentTime = Math.max(0, (at?.t_s ?? 0) - 1) } } else vid.removeAttribute('src')
   const s = $<HTMLInputElement>('scrub'); s.max = String(Math.max(0, ticks.length - 1)); s.value = String(worstIdx)
   drawResults()

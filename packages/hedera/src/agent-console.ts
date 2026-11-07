@@ -99,6 +99,8 @@ app.use((req, res, next) => {
 })
 app.use(express.json({ limit: '4kb' }))
 app.use(express.static(DIST))
+// SPA routes of the studio (same list as the Vercel fallback rewrite)
+app.get(/^\/(lab|mission|verify|research|results|library|stack)(\/[^.]*)?$/, (_req, res) => { res.sendFile(join(DIST, 'index.html')) })
 
 const ndjson = (res: Response) => {
   res.setHeader('content-type', 'application/x-ndjson')

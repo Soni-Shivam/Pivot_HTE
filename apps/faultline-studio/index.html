@@ -285,27 +285,42 @@
       .stepper button span { display: none } .stepper button { padding: 0 6px }
     }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important } }
+    /* rebuild: header CTA, orbs, attack catalogue, featured runs */
+    .orb { display: inline-block; vertical-align: middle; flex: none }
+    .hdr-right .btn { min-height: 38px; padding: 0 16px; font-size: 15px }
+    #run-cta.on { box-shadow: 0 0 0 2px var(--paper) }
+    .chip { display: inline-flex; align-items: center; font: 600 12px var(--mono); padding: 4px 10px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); white-space: nowrap }
+    .chip.live { background: var(--lime) } .chip.dev { background: #e9e9e2; color: #3d3d38 }
+    .atk { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 28px; align-items: center }
+    .atk figure { margin: 0; position: relative } .atk img, .atk video { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 18px; border: 1.5px solid var(--line); display: block }
+    .atk figure .chip { position: absolute; left: 12px; top: 12px }
+    .atk h2 { font-size: 26px; font-weight: 600; margin: 8px 0 6px } .atk p { margin: 0; color: var(--muted); font-size: 17px }
+    .fam figure { position: relative } .fam .chip { margin-top: 6px }
+    .featured { display: grid; grid-template-columns: 1fr 1fr; gap: 16px }
+    .featured .card { display: flex; flex-direction: column; gap: 10px } .featured img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 16px; border: 1px solid var(--line) }
+    .mc-orb-row { display: flex; gap: 16px; align-items: center; margin-bottom: 14px } .mc-orb-row h3 { margin: 0 }
+    .mc-wait { flex: none; display: inline-flex; gap: 8px; align-items: center; font: 12px var(--mono); color: var(--paper); border: 1px dashed #666; border-radius: 10px; padding: 6px 10px; min-height: 44px }
+    .loading { display: flex; gap: 12px; align-items: center; color: var(--muted); padding: 8px 0 } .card.k .loading, .mc-progress .loading { color: #b8b8b2 }
+    .note-start { display: flex; gap: 8px; align-items: center }
+    @media (max-width: 1000px) { .atk, .featured { grid-template-columns: 1fr } }
+    @media (max-width: 640px) { .hdr-right #run-cta { order: -1 } .atk h2 { font-size: 22px } }
   </style>
 </head>
 <body>
 <header>
-  <a class="brand" href="#" id="home-link">faultline<i>.</i></a>
-  <nav class="top" aria-label="Main">
-    <a href="/" data-nav="home">01 Discover</a>
-    <a href="/lab" data-nav="flow">02 Safety Lab</a>
-    <a href="/mission/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051" data-nav="mission">03 Mission Control</a>
-    <a href="/research" data-nav="research">04 Results &amp; Research</a>
-    <a href="/verify/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051" data-nav="verify">05 Proof Explorer</a>
-  </nav>
+  <a class="brand" href="/" id="home-link">faultline<i>.</i></a>
+  <nav class="top" aria-label="Main" id="nav"></nav>
   <div class="hdr-right">
     <span class="pill sm" id="console-pill" tabindex="0" data-tip="Checking the test console…"><i class="dot" id="console-dot"></i><span id="console-txt">Connecting…</span></span>
-    <button class="pill" id="wallet-btn">Sign in with wallet</button>
+    <a class="btn y" href="/lab" id="run-cta">Run a test</a>
+    <button class="pill" id="wallet-btn" data-tip="Connects your browser wallet here. It only ever signs a readable test request.">Connect wallet</button>
   </div>
 </header>
 <main>
-  <div class="card k hidden" id="offline" role="status"><b>The live test console is offline right now.</b> You can still watch recorded tests in Explore; live runs come back when it reconnects.</div>
+  <div class="card k hidden" id="offline" role="status"><b>The live test console is offline right now.</b> Recorded runs still play; live runs come back when it reconnects.</div>
 
-  <!-- HOME -->
+
+  <!-- OVERVIEW -->
   <section id="v-home">
     <div class="grid">
       <div class="card k hero2">
@@ -314,12 +329,12 @@
           <h1>Your autonomous car passed the test. Who tested the tester?</h1>
           <p class="lede">Faultline uses AI-controlled traffic adversaries to challenge autonomous vehicles in CARLA, then publishes independently checkable evidence of every decision and outcome.</p>
           <div class="row" style="margin-top:22px">
-            <a class="btn y big" href="/mission/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051" data-link>Explore real attack</a>
-            <a class="btn big" href="/verify/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051" data-link>Verify evidence</a>
+            <a class="btn y big" href="/run/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051">Watch this run</a>
+            <a class="btn big" href="/lab">Run a test</a>
             <button class="btn" id="judge-btn">Judge mode (3 min)</button>
           </div>
         </div>
-        <figure class="hero-clip"><video src="/hero-loop.mp4" poster="/stills/paid.jpg" autoplay muted loop playsinline aria-label="Recorded CARLA chase camera of paid test 002"></video><figcaption>Recorded · paid test 002 · CARLA Town10</figcaption></figure>
+        <figure class="hero-clip"><video src="/hero-loop.mp4" poster="/stills/paid.jpg" autoplay muted loop playsinline aria-label="CARLA chase camera of paid test 002"></video><figcaption>Paid test 002 · CARLA Town10</figcaption></figure>
       </div>
       <p class="pitch">Faultline doesn’t ask you to trust the AI testing your car. It gives you the experiment, the evidence, and the means to challenge both.</p>
 
@@ -331,7 +346,7 @@
       </div>
 
       <div class="card" id="example">
-        <p class="kicker">swarm-carla-010 · CARLA Town10 · prototype run, not anchored</p>
+        <p class="kicker">Coordinated four-car attack · swarm-carla-010 · CARLA Town10</p>
         <h2 class="sec">One attack, four AI-controlled cars</h2>
         <p class="lede">Before the first tick, the 0G strategist wrote a plan named “Staggered Cut-in”: “B and C sequentially cut into the ego lane ahead, while A progressively brakes. This compresses the ego’s forward space, forcing emergency deceleration.”</p>
         <ul class="roles" data-roles></ul>
@@ -341,7 +356,7 @@
           <li><img src="/stills/squeeze.jpg" alt="Chase camera: blue car left, taxi right, red car braking ahead" loading="lazy" width="960" height="540"><b>7 s</b><span>A and B brake together; the car under test is boxed in.</span></li>
           <li><img src="/stills/box.jpg" alt="Drone view: four attacker cars around the car under test" loading="lazy" width="960" height="540"><b>11 s</b><span>C cuts in; the car under test stops behind B.</span></li>
         </ol>
-        <div class="row" style="margin-top:16px"><a class="btn k" href="/mission/swarm-carla-010" data-link>Open in Mission Control</a></div>
+        <div class="row" style="margin-top:16px"><a class="btn k" href="/run/swarm-carla-010">Watch this run</a><a class="btn y" href="/lab?attack=swarm">Run it live</a></div>
       </div>
 
       <div class="card" id="consequence">
@@ -359,8 +374,8 @@
       </div>
 
       <div class="card" id="families-home">
-        <h2 class="sec">Scenario families</h2>
-        <p class="lede" style="margin-top:-6px">Short CARLA clips of the situations Faultline targets. These clips are scripted illustrations; only the cut-in runs live against a 0G attacker today.</p>
+        <div class="head"><h2 class="sec" style="margin:0">Attacks</h2><a class="btn" href="/attacks">All attacks</a></div>
+        <p class="lede" style="margin-top:-6px">Two attacks run live against your policy today; more are in development.</p>
         <div class="fam" data-families></div>
       </div>
 
@@ -371,7 +386,7 @@
           <div><b>Can the evidence be altered?</b><span>Paid runs commit the scenario on 0G Galileo before the first decision, store the logs on 0G Storage, and finalize the result after the last decision.</span></div>
           <div><b>Who requested and paid?</b><span>The tester’s wallet signs the request; our agent pays 0.001 HBAR on Hedera through x402 and receives a one-run permit.</span></div>
         </div>
-        <div class="row" style="margin-top:16px"><a class="btn y" href="/verify/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051" data-link>Open the Proof Explorer</a></div>
+        <div class="row" style="margin-top:16px"><a class="btn y" href="/proof/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051">Open the Proof Explorer</a></div>
       </div>
 
       <div class="card" id="how">
@@ -382,7 +397,7 @@
             <div class="ar" aria-hidden="true"><span>observations · actions</span><i></i></div>
             <div class="ab l"><b>CARLA + Faultline controller</b><span>Physics, LiDAR, safety limits, safe stop.</span></div>
             <div class="ar" aria-hidden="true"><span>signed decision</span><i></i></div>
-            <div class="ab p"><b>0G Router (inference)</b><span>Attacker model, private tier; request ID and signature per answer.</span></div>
+            <div class="ab p"><b><span data-orb-slot="working"></span> 0G Router (inference)</b><span>Attacker model, private tier; request ID and signature per answer.</span></div>
           </div>
           <div class="adown" aria-hidden="true"><i></i><span>roots + receipts</span></div>
           <div class="arow four">
@@ -402,22 +417,33 @@
           <div><b>Claims are audited</b><span>The agent blamed friction-limited braking; the run shows the car peaked at 5.76 m/s² against a 6.28 m/s² limit. Claim contradicted.</span></div>
         </div>
         <p style="margin:14px 0 0">We don’t force a language model to do what deterministic algorithms do better. 0G handles experiment strategy and hypotheses; classical tools handle search and physical validity; every claim is audited against the results.</p>
-        <div class="row" style="margin-top:14px"><a class="btn" href="/research" data-link>See the research</a></div>
+        <div class="row" style="margin-top:14px"><a class="btn" href="/research">See the research</a></div>
       </div>
 
       <div class="card y cta">
         <h2 class="sec">Test your own stack</h2>
         <p class="lede">Python, CARLA Leaderboard and ROS 2 adapters, a compatibility check, then a free dry run or a paid anchored test.</p>
-        <div class="row" style="margin-top:16px"><a class="btn k big" href="/stack" data-link>Connect your stack</a><a class="btn big" href="/lab" data-link>Open the Safety Lab</a></div>
+        <div class="row" style="margin-top:16px"><a class="btn k big" href="/stack">Connect your stack</a><a class="btn big" href="/lab">Run a test</a></div>
       </div>
     </div>
   </section>
 
-  <!-- MISSION CONTROL -->
-  <section id="v-mission" class="hidden">
+
+  <!-- ATTACKS -->
+  <section id="v-attacks" class="hidden">
+    <div class="grid">
+      <div class="card k"><p class="kicker">Attacks</p><h2 class="sec" style="color:var(--paper)">What Faultline can throw at your car</h2>
+        <p class="lede">Live attacks run in CARLA against the policy you pick, with every move decided by a model on 0G. Attacks in development show a preview of the situation.</p></div>
+      <div class="grid" id="atk-list"></div>
+    </div>
+  </section>
+
+
+  <!-- RUN (live or recorded) -->
+  <section id="v-run" class="hidden">
     <div class="grid">
       <div class="card k mc-head">
-        <div><p class="kicker" id="mc-kind">Mission Control</p><h2 class="sec" id="mc-title" style="color:var(--paper);margin:0">Loading…</h2></div>
+        <div><p class="kicker" id="mc-kind">Run</p><h2 class="sec" id="mc-title" style="color:var(--paper);margin:0">Loading…</h2></div>
         <ol class="states" id="mc-states" aria-label="Run state"></ol>
       </div>
       <div class="card hidden" id="mc-plan"></div>
@@ -443,28 +469,38 @@
     </div>
   </section>
 
-  <!-- RESULTS -->
-  <section id="v-results2" class="hidden">
+  <!-- RUNS -->
+  <section id="v-runs" class="hidden">
     <div class="grid">
-      <div class="card k res-head">
-        <div><p class="kicker" id="rs-kind">Results</p><h2 class="sec" id="rs-verdict" style="color:var(--paper)">Loading…</h2><p class="lede" id="rs-sub"></p>
-          <div class="row" style="margin-top:12px"><a class="btn y" id="rs-mission" href="/">Open in Mission Control</a><a class="btn" id="rs-verify" href="/verify">Check the evidence</a></div></div>
-        <figure class="hero-clip" style="margin:0"><video id="rs-frame" muted playsinline preload="auto" aria-label="Recorded frame at the worst moment"></video><figcaption id="rs-frame-cap">Worst moment</figcaption></figure>
+      <div class="card k"><p class="kicker">Runs</p><h2 class="sec" style="color:var(--paper)">Every recorded test, decision by decision</h2>
+        <p class="lede">Open any run to replay it with its 0G decisions, telemetry and evidence. Free, no wallet needed.</p>
+        <div class="explore-nav" style="margin-top:14px"><a class="pill" href="#x-featured">Featured runs</a><a class="pill" href="#x-ab">A/B policy comparison</a><a class="pill" href="#x-runs">All runs</a></div></div>
+      <div class="featured" id="x-featured">
+        <div class="card c"><img src="/stills/paid.jpg" alt="Chase camera of paid test 002" loading="lazy" width="960" height="540"><p class="kicker" style="margin:0">Cut-in · paid and anchored</p><h2 style="font-size:24px">Paid test 002</h2>
+          <p style="margin:0">Our agent paid 0.001 HBAR on Hedera, the setup was locked on 0G Galileo before the first decision, and the evidence is on 0G Storage. No crash; tightest time to collision 1.0 s.</p>
+          <div class="row"><a class="btn k" href="/run/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051">Open run</a><a class="btn" href="/proof/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051">Check the evidence</a></div></div>
+        <div class="card"><img src="/stills/box.jpg" alt="Drone view of four attacker cars around the car under test" loading="lazy" width="960" height="540"><p class="kicker" style="margin:0">Coordinated four-car attack · free run</p><h2 style="font-size:24px">swarm-carla-010</h2>
+          <p style="margin:0">The 0G strategist planned a “Staggered Cut-in”, then steered four cars for 10 checkpoints. PDM-Lite stopped 3.5 m short; tightest time to collision 1.1 s.</p>
+          <div class="row"><a class="btn k" href="/run/swarm-carla-010">Open run</a><a class="btn y" href="/lab?attack=swarm">Run it live</a></div></div>
       </div>
-      <div class="tabs" role="tablist" id="rs-tabs">
-        <button class="pill on" data-rtab="replay" role="tab">Replay</button><button class="pill" data-rtab="metrics" role="tab">Driving metrics</button>
-        <button class="pill" data-rtab="reasoning" role="tab">Reasoning</button><button class="pill" data-rtab="compare" role="tab">Compare</button><button class="pill" data-rtab="evidence" role="tab">Evidence</button>
-      </div>
-      <div class="card" id="rs-body"></div>
+      <div class="card y" id="x-ab"><div class="head"><h2>A/B policy comparison</h2></div>
+        <p class="lede" style="margin-top:-6px">Both policies face the same recorded attack, replayed with no new 0G calls, so the only difference is the policy. Recorded at 4 sites; the result was the same at all of them.</p>
+        <video class="clip" controls muted playsinline preload="none" poster="/stills/ab.jpg" data-src="videos/arena-live0g-video-001__r7l-2s3__side_by_side.mp4" aria-label="PDM-Lite and cautious IDM side by side"></video>
+        <div class="tscroll" id="ab-table" style="margin-top:12px"></div>
+        <p style="margin:10px 0 0">The cautious model keeps about 3 s to collision; PDM-Lite drops to about 1 s.</p>
+        <div class="row" style="margin-top:14px"><button class="btn k" id="ab-run">Run the comparison live (free)</button><span class="pill sm" id="ab-status" aria-live="polite">recorded result shown</span></div><p class="err" id="ab-err"></p></div>
+      <div class="card" id="x-runs"><div class="head"><h2>All runs</h2></div>
+        <div class="tscroll"><table><thead><tr><th>Run</th><th>Attack</th><th>Moves from 0G</th><th><span class="tip" tabindex="0" data-tip="Criticality score from 0 (calm) to 1 (near-crash), computed from gap, closing speed and time to collision.">Danger</span></th><th><span class="tip" tabindex="0" data-tip="Time to collision: seconds until the cars touch if nobody changes speed. Under 1.5 s is dangerous.">Tightest TTC</span></th><th></th></tr></thead><tbody id="runs"></tbody></table></div></div>
     </div>
   </section>
+
 
   <!-- RESEARCH -->
   <section id="v-research" class="hidden">
     <div class="grid">
       <div class="card k"><p class="kicker">Results &amp; Research</p><h2 class="sec" style="color:var(--paper)">What the agent found, and where it lost</h2>
         <p class="lede">We don’t force a language model to do what deterministic algorithms do better. 0G handles experiment strategy and hypotheses; classical tools handle search and physical validity; every claim is audited against the results.</p>
-        <div class="row" style="margin-top:12px"><a class="btn y" href="/results/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051">Featured result: paid test 002</a><a class="btn" href="/library">All recorded tests</a></div></div>
+        <div class="row" style="margin-top:12px"><a class="btn y" href="/run/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051">Featured run: paid test 002</a><a class="btn" href="/runs">All runs</a></div></div>
       <div class="card">
         <h2 class="sec">Finding the safety boundary</h2>
         <p class="lede" style="margin-top:-6px">hunt-bench-002: where does a car-following policy go from safe to unsafe as reaction delay grows? Each dot is one experiment the 0G designer chose; the dashed line is the true boundary.</p>
@@ -492,7 +528,7 @@
         <p class="lede" style="margin-top:-6px">Open a claim the agent made to see the experiment that checks it.</p>
         <div class="claims" id="claims"></div>
       </div>
-      <div class="card">
+      <div class="card" id="counterfactual">
         <h2 class="sec">Counterfactual: the failure and the fix</h2>
         <p class="lede" style="margin-top:-6px">research-mission-001: the smallest failing case (18.75 m/s, gap 25 m, reaction delay 0.6 s) crashes; the model’s suggested fix did not help, a grid-searched fix did (unsafe cases 19 → 0).</p>
         <div class="split2" style="margin-top:12px">
@@ -504,7 +540,7 @@
   </section>
 
   <!-- PROOF EXPLORER -->
-  <section id="v-verify" class="hidden">
+  <section id="v-proof" class="hidden">
     <div class="grid">
       <div class="card k">
         <p class="kicker">Proof Explorer</p>
@@ -518,29 +554,29 @@
     </div>
   </section>
 
-  <!-- GUIDED FLOW -->
-  <section id="v-flow" class="hidden">
+  <!-- LAB -->
+  <section id="v-lab" class="hidden">
     <ol class="stepper" id="stepper" aria-label="Test steps"></ol>
 
     <div class="card step" id="s1" data-step="1">
       <h2>What are you testing?</h2>
       <p class="lede">The self-driving software that has to survive the attack.</p>
       <div class="choices" role="radiogroup" aria-label="Driving policy" id="policies"></div>
-      <div class="nav-btns"><button class="btn k" id="s1-next">Next: how to challenge it</button><button class="btn" id="byo">Connect your own stack</button></div>
+      <div class="nav-btns"><button class="btn k" id="s1-next">Next: how to challenge it</button><a class="btn" href="/stack">Connect your own stack</a></div>
     </div>
 
     <div class="card step hidden" id="s2" data-step="2">
       <h2>How to challenge it</h2>
-      <p class="lede">The attacker model controls the other traffic and tries to force a crash.</p>
-      <div class="choices three" role="radiogroup" aria-label="Attack" id="attacks"></div>
-      <div class="fam compact" data-families></div>
+      <p class="lede">A model on 0G controls the other traffic and tries to force a crash.</p>
+      <div class="choices" role="radiogroup" aria-label="Attack" id="attacks"></div>
+      <p class="note" id="atk-note" style="margin-top:14px">More attacks are in development. <a href="/attacks">See all attacks</a>.</p>
       <div class="nav-btns"><button class="btn" data-back>← Back</button><button class="btn k" id="s2-next">Next: how to run it</button></div>
     </div>
 
     <div class="card step hidden" id="s3" data-step="3">
       <h2>How to run it</h2>
       <p class="lede" id="exec-lede">Live runs need the CARLA server; its status is checked before you can launch.</p>
-      <div class="choices three" role="radiogroup" aria-label="Execution" id="modes"></div>
+      <div class="choices" role="radiogroup" aria-label="Run type" id="modes"></div>
       <div class="nav-btns"><button class="btn" data-back>← Back</button><button class="btn k" id="s3-next">Next: authorize</button></div>
     </div>
 
@@ -554,60 +590,12 @@
       <div class="note" style="margin-top:14px"><b>Coinbase Wallet may warn about this new domain. Choose “Continue to site”.</b> We only ask for a signature, never a transaction.</div>
       <div class="wallets" id="wallets"></div>
       <div class="err" id="wallet-err" role="alert"></div>
-      <div class="nav-btns"><button class="btn" id="guest">Continue without a wallet</button><button class="btn" data-goto-explore="runs">Watch a recorded test</button></div>
+      <div class="nav-btns"><button class="btn" id="guest">Continue without a wallet</button><a class="btn" href="/runs">Watch a recorded run instead</a></div>
       <p style="color:var(--muted);font-size:14px;margin:10px 0 0">Without a wallet you can start up to 3 free demo runs per hour from your network, with a daily limit. Paid runs need a wallet signature.</p>
       <details class="more" style="margin-top:12px"><summary>Show the exact message your wallet will sign</summary><pre class="msg" id="msg-preview"></pre></details>
       <div id="pending-box"></div>
       <p class="err" id="start-err"></p>
-      <div class="nav-btns"><button class="btn" data-back>← Back</button><button class="btn k big" id="start">Sign and launch</button><button class="hidden" id="s1-wallet-next" disabled></button></div>
-    </div>
-
-    <div class="step hidden" id="oldlive">
-      <div class="grid">
-        <div class="card statusbar">
-          <span class="pill k live" id="live-tag">Starting</span>
-          <span class="pill" id="s-job">-</span>
-          <div class="stat"><small>Time</small><b id="s-t">0.0 s</b></div>
-          <div class="stat"><small>AI decisions</small><b id="s-dec">0</b></div>
-          <div class="stat"><small>Gap to attacker</small><b id="s-gap">-</b></div>
-          <div class="stat"><small><span class="tip" tabindex="0" data-tip="Time to collision: how many seconds until the cars touch if nobody changes speed. Under 1.5 s is dangerous.">Time to collision</span></small><b id="s-ttc">-</b></div>
-          <button class="btn k hidden" id="to-results" style="margin-left:auto">See results →</button>
-        </div>
-        <div class="grid pit">
-          <div class="grid">
-            <div class="card scene"><img id="live-cam" class="hidden" alt="Live CARLA chase camera of your test"><video id="replay-vid" class="hidden" controls muted playsinline aria-label="Recorded CARLA camera of this run"></video><p id="no-cam" class="hidden" style="padding:40px 24px;margin:0;color:var(--muted)">This run has no camera recording. The decisions and telemetry below are from its recorded data.</p><canvas id="scene" class="hidden" aria-label="Top-down view"></canvas></div>
-            <div class="card tele"><canvas id="tele" aria-label="Danger over time"></canvas></div>
-            <div class="card">
-              <div class="head"><h2>Progress</h2></div>
-              <ul class="progress" id="progress"></ul>
-              <details class="more"><summary>Technical log</summary><div class="log" id="log"></div></details>
-            </div>
-          </div>
-          <div class="card c">
-            <div class="head"><h2 style="font-size:20px">Attacker decisions</h2></div>
-            <p style="margin:-6px 0 12px;color:var(--muted);font-size:14px">Each line is one answer from the model on 0G's private computer.</p>
-            <div class="feed" id="feed" aria-live="polite"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="step hidden" id="oldres">
-      <div class="grid">
-        <div class="card verdict" id="verdict"></div>
-        <div class="card">
-          <video id="rvideo" class="hidden" controls muted playsinline preload="metadata" aria-label="Recorded CARLA camera of this test" style="aspect-ratio:16/9"></video>
-          <canvas id="rscene" style="width:100%;height:320px;display:block;border-radius:20px" aria-label="Top-down map of the test"></canvas>
-          <div class="scrub"><button class="btn y" id="worst">Jump to the closest call</button><label class="sr" for="scrub">Replay position</label><input type="range" id="scrub" min="0" max="0" value="0"><span class="pill sm mono" id="scrub-t">0.00 s</span></div>
-          <canvas id="rtele" style="width:100%;height:140px;display:block;margin-top:14px"></canvas>
-        </div>
-        <div class="card">
-          <div class="head"><h2>Proof</h2><span style="color:var(--muted);font-size:14px">A green dot means the data proves it. Tap a card to see what it proves.</span></div>
-          <div class="rail" id="rail-results"></div>
-          <details class="more drawer"><summary>Evidence (IDs, roots and transactions)</summary><dl class="kv" id="evidence"></dl></details>
-        </div>
-        <div class="nav-btns"><button class="btn y" id="again">Run another test</button><button class="btn" data-goto-explore="runs">Browse recorded tests</button></div>
-      </div>
+      <div class="nav-btns"><button class="btn" data-back>← Back</button><button class="btn k big" id="start">Sign and launch</button></div>
     </div>
   </section>
 
@@ -695,18 +683,9 @@ your stack answers on
       <div class="card y">
         <h2 class="sec">Onboard your stack</h2>
         <p class="lede">Copy a ready-made onboarding request with your stack details and send it to the Faultline team.</p>
-        <div class="row" style="margin-top:14px"><button class="btn k big" id="onboard">Copy onboarding request</button><span id="onboard-msg" role="status"></span></div>
+        <div class="row" style="margin-top:14px"><button class="btn k big" id="onboard">Copy onboarding request</button><a class="btn big" href="/lab">Run a test with an example policy</a><span id="onboard-msg" role="status"></span></div>
       </div>
     </div>
-  </section>
-
-  <!-- EXPLORE -->
-  <section id="v-explore" class="hidden">
-    <div class="card k" style="margin-bottom:16px"><h2 style="font-size:28px">Test library</h2><p class="lede">Recorded tests and deeper results for judges and engineers.</p>
-      <div class="explore-nav" id="explore-nav" style="margin-top:14px">
-        <a class="pill" href="#x-runs">Recorded tests</a><a class="pill" href="#x-swarm">Coordinated multi-vehicle attack</a><a class="pill" href="#x-ab">A/B policy comparison</a>
-        <a class="pill" href="#x-paid002">Paid test run</a><a class="pill" href="/research">Research</a></div></div>
-    <div class="grid" id="explore"></div>
   </section>
 </main>
 <div class="judge hidden" id="judge" role="dialog" aria-label="Judge mode" aria-live="polite">

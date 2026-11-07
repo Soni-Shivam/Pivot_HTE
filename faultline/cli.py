@@ -12,7 +12,7 @@ from pathlib import Path
 
 from faultline.chaos import MODES, TIMEOUT_S as CHAOS_TIMEOUT_S, FakeRouter
 from faultline import cutin
-from faultline.config import Scenario, canonical, scenario_hash
+from faultline.config import IdmParams, Scenario, canonical, scenario_hash
 from faultline.episode import _iso, run_episode
 from faultline.log import verify_chain
 from faultline.router import DEFAULT_MODEL, Decision, ZgRouter
@@ -44,8 +44,8 @@ class MaintainBaseline:
 
 
 def make_world(name: str, out: Path, view: bool, display: str = ":2", family: str = "lead_brake", degrade=None,
-               record: bool = True, ros: bool = False):
-    w = _make_world(name, out, view, display, family, degrade, record)
+               record: bool = True, ros: bool = False, ego: str = "default"):
+    w = _make_world(name, out, view, display, family, degrade, record, ego)
     if ros:  # publish to ROS 2 (source viz/env.sh first): attach after reset, close with the world
         from faultline.rosbridge import RosBridge
         bridge, reset, close = RosBridge(), w.reset, w.close
@@ -54,9 +54,19 @@ def make_world(name: str, out: Path, view: bool, display: str = ":2", family: st
     return w
 
 
-def _make_world(name, out, view, display, family, degrade, record):
+# Kinematic stand-in for stacks/idm_lidar.yaml (IdmLidarStack): its IDM numbers on the exact-sensor kinematic ego.
+CAUTIOUS_IDM = IdmParams(desired_speed_mps=8.0, time_headway_s=1.6, min_gap_m=3.0, reaction_delay_s=0.0)
+
+
+def _make_world(name, out, view, display, family, degrade, record, ego="default"):
+    if ego != "default" and not (name == "kinematic" and family == "cut_in"):
+        sys.exit("--ego cautious is only for the kinematic cut-in world (CARLA runs pick a stack via faultline.stack.arena)")
     if name == "kinematic":
         if family == "cut_in":
+            if ego == "cautious":
+                w = cutin.KinematicCutInWorld(idm=CAUTIOUS_IDM)
+                w.ego_name = "idm-exact-cautious-1.6s"
+                return w
             return cutin.KinematicCutInWorld()
         from faultline.world import KinematicWorld
         return KinematicWorld()
@@ -124,7 +134,7 @@ def cmd_run(a) -> int:
         decider = ZgRouter(url, key, model=a.model, system_prompt=prompt)
         extra["router_host"] = urlparse(url).hostname  # provenance (audit A4); host only, never the key
     s = cutin.CutInScenario(seed=a.seed) if a.family == "cut_in" else Scenario(seed=a.seed)
-    mk = lambda: make_world(a.world, out, a.view, a.display, a.family, ros=a.ros)
+    mk = lambda: make_world(a.world, out, a.view, a.display, a.family, ros=a.ros, ego=a.ego)
     if not a.anchor:
         try:
             m = run_episode(mk(), decider, s, out, extra=extra)
@@ -219,6 +229,8 @@ def main(argv=None) -> int:
     r.add_argument("--ros", action="store_true", help="publish LiDAR, boxes, map and HMI topics to ROS 2 (source viz/env.sh)")
     r.add_argument("--anchor", action="store_true", help="Galileo commit before the loop, publish + finalize after")
     r.add_argument("--display", default=":2", help="X display for --view (the VNC desktop)")
+    r.add_argument("--ego", choices=["default", "cautious"], default="default",
+                   help="kinematic cut-in ego: default IDM (1.2 s headway, 0.6 s delay) or cautious (idm_lidar numbers)")
     r.set_defaults(fn=cmd_run)
     rp = sub.add_parser("replay")
     rp.add_argument("run_dir")

@@ -181,6 +181,9 @@
     .judge { position: fixed; right: 16px; bottom: 16px; z-index: 60; width: min(420px, calc(100vw - 32px)); background: var(--paper); border: 1px solid var(--line); border-radius: 20px; padding: 18px; box-shadow: 0 10px 40px #0008 }
     .judge h3 { margin: 6px 0 6px; font-size: 20px } .judge p { margin: 0 0 12px; font-size: 15px } .jtop { display: flex; justify-content: space-between; align-items: center }
     .hl { outline: 3px solid var(--yellow) !important; outline-offset: 4px; border-radius: 14px }
+    .split .stats { grid-template-columns: 1fr 1fr }
+    .fam { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 12px; margin-top: 12px } .fam.compact { margin-top: 18px }
+    .fam figure { margin: 0 } .fam video { border-radius: 12px; border: 1px solid var(--line) } .fam b { display: block; font-size: 15px; margin-top: 6px } .fam small { font: 12px var(--mono); color: var(--muted) }
     .why-line { font-size: 14px; margin-top: 2px } 
     .plan b { display: block; margin-bottom: 8px } .plan ul { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px }
     .plan li { display: flex; gap: 8px; align-items: center; font-size: 14px } .plan li i { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--ink); flex: none }
@@ -263,6 +266,7 @@
     #offline { margin-bottom: 16px }
 
     @media (max-width: 1000px) {
+      .fam { grid-template-columns: 1fr 1fr }
       .res-head { grid-template-columns: 1fr }
       .hero2, .mc-grid, .groups3 { grid-template-columns: 1fr } .vtl { grid-template-columns: 1fr 1fr }
       .pit, .split { grid-template-columns: minmax(0, 1fr) } .how { grid-template-columns: 1fr 1fr } .choices.three { grid-template-columns: 1fr }
@@ -352,6 +356,12 @@
             <p style="margin:14px 0 0">PDM-Lite drove on its own LiDAR and braked to a stop behind B. Every number comes from the run’s recorded metrics.</p>
           </div>
         </div>
+      </div>
+
+      <div class="card" id="families-home">
+        <h2 class="sec">Scenario families</h2>
+        <p class="lede" style="margin-top:-6px">Short CARLA clips of the situations Faultline targets. These clips are scripted illustrations; only the cut-in runs live against a 0G attacker today.</p>
+        <div class="fam" data-families></div>
       </div>
 
       <div class="card k" id="trail">
@@ -523,7 +533,7 @@
       <h2>How to challenge it</h2>
       <p class="lede">The attacker model controls the other traffic and tries to force a crash.</p>
       <div class="choices three" role="radiogroup" aria-label="Attack" id="attacks"></div>
-      <div id="families"></div>
+      <div class="fam compact" data-families></div>
       <div class="nav-btns"><button class="btn" data-back>← Back</button><button class="btn k" id="s2-next">Next: how to run it</button></div>
     </div>
 

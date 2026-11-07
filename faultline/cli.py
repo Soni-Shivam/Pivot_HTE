@@ -136,9 +136,23 @@ def cmd_run(a) -> int:
     episode_id = hashlib.sha256(f"{scenario_hash(s)}:{s.seed}:{started_at}".encode()).hexdigest()
     git = lambda *c: subprocess.run(["git", *c], cwd=ROOT, capture_output=True, text=True).stdout.strip()
     # configHash = keccak256(abi.encode(bytes32 prompt_hash, string model, string git_commit)), public on chain
+    paid_binding = None
+    if os.environ.get("FAULTLINE_PAID_JOB"):
+        paid_binding = json.loads(os.environ["FAULTLINE_PAID_JOB"])
+        import re
+        if (a.family != "cut_in" or not isinstance(paid_binding, dict) or
+                set(paid_binding) != {"jobId", "requestHash", "policyCommitment", "suite", "suiteVersion"} or
+                paid_binding["suite"] != "cut-in-v1" or type(paid_binding["suiteVersion"]) is not int or
+                paid_binding["suiteVersion"] != 1 or
+                not re.fullmatch(r"[0-9a-f]{32}", paid_binding["jobId"]) or
+                not re.fullmatch(r"[0-9a-f]{64}", paid_binding["requestHash"]) or
+                not re.fullmatch(r"0x[0-9a-f]{64}", paid_binding["policyCommitment"])):
+            sys.exit("invalid paid job binding")
     config = {"prompt_hash": cutin.prompt_hash() if a.family == "cut_in" else prompt_hash(),
               "model": getattr(decider, "model", None) or "", "git_commit": git("rev-parse", "HEAD"),
               "git_dirty": bool(git("status", "--porcelain", "--untracked-files=no"))}
+    if paid_binding:
+        config["paid_binding_hash"] = "0x" + hashlib.sha256(canonical(paid_binding).encode()).hexdigest()
     (out / "manifest.json").write_text(json.dumps({"episode_id": episode_id, "scenario_hash": scenario_hash(s),
                                                     "started_at": started_at, "preliminary": True, "config": config}) + "\n")
     npm("commit", out)
@@ -149,7 +163,8 @@ def cmd_run(a) -> int:
     if isinstance(decider, ZgRouter):
         decider.binding = binding
     m = run_episode(mk(), decider, s, out, started_at=started_at,
-                    extra={**extra, "registry": anc["registry"], "commit_tx": anc["commitTx"], "evaluator": anc["evaluator"],
+                    extra={**extra, **({"paid_binding": paid_binding} if paid_binding else {}),
+                           "registry": anc["registry"], "commit_tx": anc["commitTx"], "evaluator": anc["evaluator"],
                            "config": config, "config_hash": anc["configHash"], "seq": anc["seq"], "binding": binding})
     print_summary(out, m)
     npm("publish", out)
@@ -160,7 +175,7 @@ def cmd_run(a) -> int:
              sealed_tx=pub["sealedTx"], finalize_tx=anc["finalizeTx"])
     (out / "manifest.json").write_text(json.dumps(m, sort_keys=True, indent=2) + "\n")
     print(f"anchored: commit {anc['commitTx']}  finalize {anc['finalizeTx']}  onchain_matches {anc['onchainMatches']}")
-    return 0
+    return 0 if anc["onchainMatches"] else 1
 
 
 def cmd_replay(a) -> int:

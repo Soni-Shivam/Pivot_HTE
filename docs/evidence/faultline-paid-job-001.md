@@ -1,6 +1,6 @@
 # Faultline paid job 001 — Hedera x402 to 0G report
 
-Date: 2026-11-07 IST. Suite: `cut-in-v1`, one kinematic cut-in episode using PDM-Lite and ten private-tier 0G decisions. Policy commitment: SHA-256 of `faultline/ego/pdm_lite.py`, `0x8edf01447b050b384dc02eaf2284d991276c58dcd67ab8c6ab8c6b0aa6ffd168`.
+Date: 2026-11-07 IST. Suite: `cut-in-v1`, one kinematic cut-in episode using the built-in IDM ego and ten private-tier 0G decisions. The historical paid request committed to SHA-256 of `faultline/ego/pdm_lite.py`, `0x8edf01447b050b384dc02eaf2284d991276c58dcd67ab8c6ab8c6b0aa6ffd168`; that file was **not** the ego executed in this kinematic run. The runner now checks a commitment to the actual kinematic IDM source files. This historical run predates the paid-evidence binding and HCS receipt changes.
 
 | Stage | Evidence |
 | --- | --- |

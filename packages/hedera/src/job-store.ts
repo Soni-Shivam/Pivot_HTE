@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import type { DeliveryReceipt } from './delivery-receipt.ts'
 
 export type Job = {
   jobId: string
@@ -14,6 +15,8 @@ export type Job = {
   expiresAt: string
   status: 'accepted' | 'running' | 'completed' | 'interrupted' | 'failed'
   report?: Record<string, unknown>
+  deliveryReceipt?: DeliveryReceipt
+  hcs?: { state: 'pending' | 'confirmed' | 'uncertain'; topicId?: string; sequenceNumber?: string | null; transactionId?: string; digest: string }
 }
 
 const stateDir = process.env.HEDERA_JOB_STATE_DIR ?? join(process.cwd(), '.faultline-hedera-state')

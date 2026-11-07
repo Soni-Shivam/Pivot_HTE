@@ -158,6 +158,7 @@ def evaluate(world, last, s, available: dict, model: dict, used=(), horizon_s: f
         escapable = not e["collision"] or lane_free
         cands.append({"actions": dict(zip(cars, combo)), "min_ttc_s": _r(b["min_ttc"]),
                       "min_gap_in_path_m": _r(b["min_gap"]), "collision": b["collision"],
+                      "ego_decel_mps2": _r(b["decel"]),
                       "adversaries_touch": b["contact"] or e["contact"], "escapable": escapable,
                       "escape": "brake" if not e["collision"] else "left_lane" if lane_free else None,
                       "fair": escapable and not (b["contact"] or e["contact"]),
@@ -205,6 +206,7 @@ def criticality(c: dict) -> float:
 def menu_rows(cands: list, k: int = 24) -> list:
     """What the model sees: the top-k fair candidates with numbers, in the shape of swarm.forecast rows."""
     return [{**x["actions"], "min_gap_in_path_m": x["min_gap_in_path_m"], "min_ttc_s": x["min_ttc_s"],
+             "nominal_ego_decel_mps2": x["ego_decel_mps2"],  # key name shared with swarm.forecast (director reads it)
              "collision": x["collision"], "adversaries_touch": x["adversaries_touch"], "escape": x["escape"],
              "novel": x["novel"], "criticality": x["criticality"]} for x in cands if x["fair"]][:k]
 

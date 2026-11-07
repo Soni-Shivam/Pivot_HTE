@@ -79,3 +79,14 @@ joints in tailgate layouts (full braking got the ego rear-ended); both fixed and
 - The identified model is a delayed IDM fitted to a few seconds of data; the escape check is longitudinal plus a
   coarse free-lane test (marked `shortcut:` in code). In CARLA the ego is PDM-Lite on LiDAR, which the fit only
   approximates. Kinematic results are prototype runs: not anchored, not published, signatures not checked.
+
+## CARLA (PDM-Lite on LiDAR), one episode with tactics — `runs/smart-carla-004`
+
+Plan "rolling roadblock" (thinking 0GM, req `45e6a077-9851-41d0-8ea8-7749ccb66bb4`), 5 executor decisions, 0 halts,
+**5/5 TEE signatures verified** (`decisions.jsonl.sigs.json`); video `director.mp4` / `stitched.mp4`. GT CCS 0.71,
+min in-path gap 3.72 m, and a **collision that is not a valid finding**: the tailgating car D rear-ended the
+PDM-Lite ego after it stopped at 7.08 m/s² (above the adversary's 6.0 m/s² limit, W9). The tactics layer saw it
+coming: the identified ego (delay 1.8 s, `fit`) had **0 fair joint actions at cp3 (0/336) and cp4 (0/72)**, so
+nothing could be filtered and the audit logged the model's choices as unfair. Lesson: with a tailgater present the
+filter must act one checkpoint earlier (it removed only BRAKE_HARD/BRAKE_PULSE at cp0–2); a fail-closed halt when
+no fair option exists would be the next rule.

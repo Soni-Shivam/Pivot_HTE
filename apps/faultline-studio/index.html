@@ -176,6 +176,8 @@
     .reason { padding-left: 20px; display: grid; gap: 10px } .reason li span { display: block } .reason small { display: block; font: 12px var(--mono); color: var(--muted) }
     .claims { display: grid; gap: 8px } .claim { border: 1px solid #ddd; border-radius: 14px; background: #fff } .claim summary { cursor: pointer; padding: 12px 14px; display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap }
     .claim .body { padding: 0 14px 14px; font-size: 14px } tr.win td { background: #eefbe6 }
+    .auth2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px } .auth-box { border: 1px solid var(--line); border-radius: 16px; padding: 14px; background: #fff; display: flex; flex-direction: column; gap: 4px }
+    .auth-box span { font-size: 14px; color: #333 } .choice .iface { font: 12px var(--mono); color: var(--muted) }
     .why-line { font-size: 14px; margin-top: 2px } 
     .plan b { display: block; margin-bottom: 8px } .plan ul { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px }
     .plan li { display: flex; gap: 8px; align-items: center; font-size: 14px } .plan li i { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--ink); flex: none }
@@ -264,6 +266,7 @@
       .board { grid-template-columns: 1fr 1fr } .hdr-right #console-pill { display: none }
     }
     @media (max-width: 640px) {
+      .auth2 { grid-template-columns: 1fr }
       .lidar-label { display: none } .split2 { grid-template-columns: 1fr } .hdr-right #console-pill { display: inline-flex } #console-txt { display: none }
       .arow, .arow.four, .arow.two { grid-template-columns: 1fr; width: 100%; gap: 0 } .arow.four .ab + .ab, .arow.two .ab + .ab { margin-top: 8px }
       .ar { flex-direction: row-reverse; justify-content: center; height: 34px; gap: 8px; padding: 0 } .ar i { width: 1.5px; height: 100%; flex: none }
@@ -507,36 +510,46 @@
     <ol class="stepper" id="stepper" aria-label="Test steps"></ol>
 
     <div class="card step" id="s1" data-step="1">
-      <h2>Connect wallet</h2>
-      <p class="lede">Your wallet signs the test request so we know who asked for it. Our agent pays for paid tests on Hedera.</p>
-      <div class="note" style="margin-top:14px"><b>Coinbase Wallet may warn about this new domain. Choose “Continue to site”.</b> We only ask for a signature, never a transaction: no token approvals, transfers or gas. Your progress is saved if the page reloads.</div>
+      <h2>What are you testing?</h2>
+      <p class="lede">The self-driving software that has to survive the attack.</p>
+      <div class="choices" role="radiogroup" aria-label="Driving policy" id="policies"></div>
+      <div class="nav-btns"><button class="btn k" id="s1-next">Next: how to challenge it</button><button class="btn" id="byo">Connect your own stack</button></div>
+    </div>
+
+    <div class="card step hidden" id="s2" data-step="2">
+      <h2>How to challenge it</h2>
+      <p class="lede">The attacker model controls the other traffic and tries to force a crash.</p>
+      <div class="choices three" role="radiogroup" aria-label="Attack" id="attacks"></div>
+      <div id="families"></div>
+      <div class="nav-btns"><button class="btn" data-back>← Back</button><button class="btn k" id="s2-next">Next: how to run it</button></div>
+    </div>
+
+    <div class="card step hidden" id="s3" data-step="3">
+      <h2>How to run it</h2>
+      <p class="lede" id="exec-lede">Live runs need the CARLA server; its status is checked before you can launch.</p>
+      <div class="choices three" role="radiogroup" aria-label="Execution" id="modes"></div>
+      <div class="nav-btns"><button class="btn" data-back>← Back</button><button class="btn k" id="s3-next">Next: authorize</button></div>
+    </div>
+
+    <div class="card step hidden" id="s4" data-step="4">
+      <h2>Authorize</h2>
+      <div class="auth2">
+        <div class="auth-box"><b>You sign a test request</b><span>Your wallet signs one readable message (policy, attack, run type, nonce, time). No transaction, no token approval, no gas.</span></div>
+        <div class="auth-box"><b>Our agent pays for the test on Hedera</b><span id="pay-line">Free demo runs are not paid. Paid runs: our agent pays 0.001 HBAR through x402 under its spending limit and receives a one-run permit.</span></div>
+      </div>
+      <dl class="summary" id="summary"></dl>
+      <div class="note" style="margin-top:14px"><b>Coinbase Wallet may warn about this new domain. Choose “Continue to site”.</b> We only ask for a signature, never a transaction.</div>
       <div class="wallets" id="wallets"></div>
       <div class="err" id="wallet-err" role="alert"></div>
-      <div class="nav-btns"><button class="btn k" id="s1-next" disabled>Next: driving policy</button><button class="btn" id="guest">Continue without a wallet</button><button class="btn" data-goto-explore="runs">Watch a recorded test</button></div>
+      <div class="nav-btns"><button class="btn" id="guest">Continue without a wallet</button><button class="btn" data-goto-explore="runs">Watch a recorded test</button></div>
       <p style="color:var(--muted);font-size:14px;margin:10px 0 0">Without a wallet you can start up to 3 free demo runs per hour from your network, with a daily limit. Paid runs need a wallet signature.</p>
-    </div>
-
-    <div class="card step c hidden" id="s2" data-step="2">
-      <h2>Driving policy</h2>
-      <p class="lede">This is the self-driving software that has to survive the attack.</p>
-      <div class="choices" role="radiogroup" aria-label="Driving policy" id="policies"></div>
-      <div class="nav-btns"><button class="btn" data-back>← Back</button><button class="btn k" id="s2-next">Next: attack and run type</button>
-        <button class="btn" id="byo">Bring your own stack</button></div>
-    </div>
-
-    <div class="card step p hidden" id="s3" data-step="3">
-      <h2>Attack and run type</h2>
-      <p class="lede">The attacker model controls the other car and tries to force a crash.</p>
-      <div class="choices three" role="radiogroup" aria-label="Attack" id="attacks"></div>
-      <h3 style="margin-top:24px;font-size:20px">Run type</h3>
-      <div class="choices" role="radiogroup" aria-label="Run type" id="modes"></div>
-      <dl class="summary" id="summary"></dl>
       <details class="more" style="margin-top:12px"><summary>Show the exact message your wallet will sign</summary><pre class="msg" id="msg-preview"></pre></details>
+      <div id="pending-box"></div>
       <p class="err" id="start-err"></p>
-      <div class="nav-btns"><button class="btn" data-back>← Back</button><button class="btn k big" id="start">Sign &amp; start test</button></div>
+      <div class="nav-btns"><button class="btn" data-back>← Back</button><button class="btn k big" id="start">Sign and launch</button><button class="hidden" id="s1-wallet-next" disabled></button></div>
     </div>
 
-    <div class="step hidden" id="s4" data-step="4">
+    <div class="step hidden" id="oldlive">
       <div class="grid">
         <div class="card statusbar">
           <span class="pill k live" id="live-tag">Starting</span>
@@ -566,7 +579,7 @@
       </div>
     </div>
 
-    <div class="step hidden" id="s5" data-step="5">
+    <div class="step hidden" id="oldres">
       <div class="grid">
         <div class="card verdict" id="verdict"></div>
         <div class="card">

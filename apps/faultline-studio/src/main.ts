@@ -136,12 +136,11 @@ async function connect(w: { info: WalletInfo, provider: Eip1193 }) {
 }
 function paintWallet() {
   $('wallet-btn').textContent = wallet ? `● ${short(wallet.address, 6, 4)}` : 'Connect wallet'
-  $<HTMLButtonElement>('s1-next').disabled = !wallet && !guest
   $('guest').textContent = guest ? '✓ Continuing without a wallet' : 'Continue without a wallet'
   renderStepper(); renderSummary()
 }
 $('wallet-btn').addEventListener('click', () => {
-  go('/lab'); step(1)
+  go('/lab'); step(4)
   const c = candidates()
   if (!wallet && c.length === 1) connect(c[0]) // still inside the click: the wallet popup needs a user gesture
 })
@@ -150,10 +149,10 @@ const message = (nonce: string, issued: string) => `Faultline test request\npoli
 
 // ---------- guided flow ----------
 let cur = 1, maxStep = 1
-const STEPS = ['Connect wallet', 'Driving policy', 'Attack and run type', 'Live view', 'Results and proof']
+const STEPS = ['What you test', 'How to challenge it', 'How to run it', 'Authorize', 'Launch']
 function renderStepper() {
   $('stepper').innerHTML = STEPS.map((t, i) => {
-    const n = i + 1, can = n <= maxStep && (n < 2 || !!wallet || guest || n >= 4)
+    const n = i + 1, can = n <= maxStep && n <= 4
     return `<li><button class="${n === cur ? 'on' : ''} ${n < maxStep && n !== cur ? 'done' : ''}" data-s="${n}" ${can ? '' : 'disabled'} ${n === cur ? 'aria-current="step"' : ''}><i>${n < maxStep && n !== cur ? '✓' : n}</i><span>${t}</span></button></li>`
   }).join('')
   $('stepper').querySelectorAll<HTMLButtonElement>('[data-s]').forEach((b) => b.addEventListener('click', () => step(Number(b.dataset.s))))
@@ -162,13 +161,13 @@ function step(n: number) {
   if (n < 1) { go('/'); return }
   cur = n; maxStep = Math.max(maxStep, n); save()
   if (location.pathname !== '/lab') history.replaceState(null, '', '/lab')
-  for (let i = 1; i <= 5; i++) $(`s${i}`).classList.toggle('hidden', i !== n)
-  renderStepper(); if (n === 3) renderSummary()
+  for (let i = 1; i <= 4; i++) $(`s${i}`).classList.toggle('hidden', i !== n)
+  renderStepper(); if (n === 4) { renderSummary(); loadPending() }
   window.scrollTo({ top: 0 }); requestAnimationFrame(resizeAll)
 }
 $('s1-next').addEventListener('click', () => step(2))
 $('s2-next').addEventListener('click', () => step(3))
-$('again').addEventListener('click', () => step(2))
+$('s3-next').addEventListener('click', () => { if (mode === 'replay') { go('/library'); return } step(4) })
 
 // Swarm roles: one source, the run's plan.json via /api/showcase (fallback = the same plan text)
 let ROLES: Record<string, string> = { A: 'Lead vehicle, progressive braking', B: 'Front cut-in, block right lane', C: 'Rear cut-in, compress gap', D: 'Rear guard, maintain safe distance' }
@@ -186,12 +185,12 @@ let policies: Policy[] = [
   { id: 'pdm-lite', name: 'PDM-Lite', description: '', digest: '0x537db480f1840d95832fa2b2bd855075ad45b5f4cafb7b64f9eed6c2dd266bba', compatible: true, paid: true },
   { id: 'idm-cautious', name: 'Cautious IDM', description: '', digest: null, compatible: true, paid: false },
 ]
-let policy = 'pdm-lite', attack = 'cut-in-v1-carla', mode: 'free' | 'paid' = 'free', guest = false
+let policy = 'pdm-lite', attack = 'cut-in-v1-carla', mode: 'free' | 'paid' | 'replay' = 'free', guest = false
 // The flow survives a reload or a wallet warning page: state is saved on every change and restored on load.
 const FKEY = 'faultline.flow'
-function save() { try { localStorage.setItem(FKEY, JSON.stringify({ step: Math.min(cur, 3), policy, attack, mode, guest, wallet: lastTried?.info.rdns ?? null })) } catch { /* private mode */ } }
+function save() { try { localStorage.setItem(FKEY, JSON.stringify({ step: Math.min(cur, 4), policy, attack, mode, guest, wallet: lastTried?.info.rdns ?? null })) } catch { /* private mode */ } }
 function restore(): any { try { return JSON.parse(localStorage.getItem(FKEY) ?? 'null') } catch { return null } }
-$('guest').addEventListener('click', () => { guest = true; wallet = null; mode = 'free'; save(); renderWallets(); paintWallet(); renderChoices(); step(2) })
+$('guest').addEventListener('click', () => { guest = true; wallet = null; mode = 'free'; save(); renderWallets(); paintWallet(); renderChoices(); renderSummary() })
 $('byo').addEventListener('click', () => show('stack'))
 // ---------- your stack: tabs, copy buttons, onboarding request (copied to the clipboard; nothing is sent or stored) ----------
 document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) => b.addEventListener('click', () => {
@@ -212,7 +211,8 @@ async function loadPolicies() {
 }
 const ATTACKS = [
   { id: 'cut-in-v1-carla', name: 'Cut-in (CARLA 3D)', line: 'The same attack in the CARLA 3D simulator with real sensors. About 90 seconds.', live: true },
-  { id: 'swarm', name: 'Coordinated multi-vehicle attack', line: 'Four attacker cars coordinate to box the car in. Recorded run, opens in the test library.', live: false },
+  { id: 'swarm', name: 'Coordinated multi-vehicle attack', line: 'Four attacker cars coordinate to box the car in. Recorded only, opens in the test library.', live: false },
+  { id: 'lead-brake', name: 'Lead vehicle brakes', line: 'The car ahead brakes hard at a chosen moment. Recorded only (research runs).', live: false },
 ]
 let health: any = null
 function radio(group: string, items: { id: string, html: string, disabled?: boolean }[], sel: string) {
@@ -220,23 +220,27 @@ function radio(group: string, items: { id: string, html: string, disabled?: bool
 }
 function renderChoices() {
   $('policies').innerHTML = radio('pol', policies.map((p) => ({ id: p.id,
-    html: `<b>${esc(p.name.replace(/\s*\(.*\)$/, ''))}</b><span>${esc(PLAIN[p.id] ?? p.description)}</span><small>${p.compatible ? '✓ Passed our compatibility check' : 'Compatibility not checked'}</small>` })), policy)
+    html: `<b>${esc(p.name.replace(/\s*\(.*\)$/, ''))}</b><span>${esc(PLAIN[p.id] ?? p.description)}</span><small>${p.compatible ? '✓ Passed our compatibility check' : 'Compatibility not checked'}</small><span class="iface">interface: Python AVStack · LiDAR + speed · modes: replay, live demo${p.paid !== false ? ', paid anchored test' : ''}</span>` })), policy)
   const carlaDown = health && !health.carla
   $('attacks').innerHTML = radio('atk', ATTACKS.map((a) => ({ id: a.id, disabled: a.id === 'cut-in-v1-carla' && carlaDown,
-    html: `<b>${esc(a.name)}</b><span>${esc(a.line)}</span>${a.id === 'cut-in-v1-carla' && carlaDown ? '<small>CARLA is offline right now</small>' : a.live ? '' : '<small>Opens the recording →</small>'}` })), attack)
+    html: `<b>${esc(a.name)}</b><span>${esc(a.line)}</span>${a.id === 'cut-in-v1-carla' && carlaDown ? '<small>CARLA is offline right now</small>' : a.live ? '' : '<small>Recorded only →</small>'}` })), attack)
   const paidOk = policies.find((p) => p.id === policy)?.paid !== false && !guest
+  const carlaOk = !!health?.carla
+  $('exec-lede').textContent = health ? (carlaOk ? 'CARLA is online: live runs are available.' : 'CARLA is offline right now: live runs are disabled, recorded replays still work.') : 'Checking CARLA availability…'
   $('modes').innerHTML = radio('mode', [
-    { id: 'free', html: '<b>Free demo run</b><span>Real 0G decisions. Not paid and not anchored on-chain.</span>' },
-    { id: 'paid', disabled: !paidOk, html: `<b>Paid run (0.001 ℏ)</b><span>Our agent pays on Hedera (x402); the result is anchored on 0G Galileo and stored on 0G Storage.</span>${paidOk ? '' : guest ? '<small>Paid runs need a wallet signature</small>' : '<small>Paid runs are bound to PDM-Lite</small>'}` },
+    { id: 'replay', html: '<b>Replay a recorded test</b><span>Free, instant. Real recorded runs with every 0G decision.</span>' },
+    { id: 'free', disabled: !carlaOk, html: '<b>Live demo run</b><span>Real 0G decisions in CARLA now. Not paid and not anchored on-chain.</span>' },
+    { id: 'paid', disabled: !paidOk || !carlaOk, html: `<b>Purchase an anchored test (0.001 HBAR)</b><span>Our agent pays on Hedera (x402); the result is anchored on 0G Galileo and stored on 0G Storage.</span>${!paidOk ? (guest ? '<small>Paid runs need a wallet signature</small>' : '<small>Paid runs are bound to PDM-Lite</small>') : ''}` },
   ], mode)
   document.querySelectorAll<HTMLButtonElement>('[data-pol]').forEach((b) => b.addEventListener('click', () => { policy = b.dataset.pol!; if (policies.find((p) => p.id === policy)?.paid === false) mode = 'free'; save(); renderChoices() }))
-  document.querySelectorAll<HTMLButtonElement>('[data-atk]').forEach((b) => b.addEventListener('click', () => { if (b.dataset.atk === 'swarm') { gotoExplore('swarm'); return } attack = b.dataset.atk!; save(); renderChoices() }))
-  document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => b.addEventListener('click', () => { mode = b.dataset.mode as 'free' | 'paid'; save(); renderChoices() }))
+  document.querySelectorAll<HTMLButtonElement>('[data-atk]').forEach((b) => b.addEventListener('click', () => { if (b.dataset.atk === 'swarm') { gotoExplore('swarm'); return } if (b.dataset.atk === 'lead-brake') { go('/research'); return } attack = b.dataset.atk!; save(); renderChoices() }))
+  document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => b.addEventListener('click', () => { mode = b.dataset.mode as 'free' | 'paid' | 'replay'; save(); renderChoices() }))
   renderSummary()
 }
 function renderSummary() {
   const p = policies.find((x) => x.id === policy), a = ATTACKS.find((x) => x.id === attack)
-  $('summary').innerHTML = kv([['Policy', esc(p?.name ?? policy)], ['Attack', esc(a?.name ?? attack)], ['Run type', mode === 'paid' ? 'Paid · our agent pays 0.001 ℏ on Hedera' : 'Free demo · not paid, not anchored'],
+  $('pay-line').textContent = mode === 'paid' ? 'Our agent pays 0.001 HBAR through x402 under its spending limit and receives a one-run permit. You never pay.' : 'This live demo run is free: nothing is paid and nothing is anchored.'
+  $('summary').innerHTML = kv([['Policy', esc(p?.name ?? policy)], ['Attack', esc(a?.name ?? attack)], ['Run type', mode === 'paid' ? 'Anchored test · our agent pays 0.001 HBAR on Hedera testnet' : 'Live demo · not paid, not anchored'], ...(mode === 'paid' ? [['Spending limit', catalogCap ? `${catalogCap} HBAR per day (agent policy)` : 'agent spending policy'] as [string, string], ['Payment chain', 'Hedera testnet (x402)'] as [string, string]] : []),
     ['Requested by', wallet ? `<code>${esc(wallet.address)}</code>` : guest ? 'Guest (no wallet) · free demo run' : 'connect a wallet first']])
   $('msg-preview').textContent = message('<random nonce>', '<time you click>')
   $<HTMLButtonElement>('start').disabled = (!wallet && !guest) || !online
@@ -262,6 +266,21 @@ $('start').addEventListener('click', async () => {
     go('/mission/' + r.jobId)
   } catch (e) { const m = (e as any)?.code != null ? walletErr(e, 'signature') : `Not started: ${(e as any)?.message ?? e}`; $('start-err').textContent = m } finally { btn.disabled = false }
 })
+
+// ---------- never pay twice: paid jobs whose run never started stay launchable ----------
+let catalogCap: string | null = null
+async function loadPending() {
+  try {
+    const c = await getJson('/api/catalog'); catalogCap = c.cap ? (Number(c.cap) / 1e8).toString() : null
+    const list: any[] = c.pending ?? []
+    $('pending-box').innerHTML = list.length ? `<div class="note"><b>Paid but not started.</b> These tests were paid and not run yet; launch one instead of paying again.${list.map((j) => `<div class="row" style="margin-top:8px"><code>${short(j.jobId, 8, 4)}</code> ${link(j.hashscan, 'payment')} <button class="btn" data-launch="${esc(j.jobId)}">Launch</button></div>`).join('')}</div>` : ''
+    $('pending-box').querySelectorAll<HTMLButtonElement>('[data-launch]').forEach((b) => b.addEventListener('click', async () => {
+      b.disabled = true
+      try { const r = await postJson('/api/launch', { jobId: b.dataset.launch }); go('/mission/' + String(r.run).split('/').map(encodeURIComponent).join('/')) } catch (e) { $('start-err').textContent = (e as Error).message; b.disabled = false }
+    }))
+    renderSummary()
+  } catch { /* console offline */ }
+}
 
 // ---------- live ----------
 let ticks: Tick[] = [], decisions: Decision[] = [], runMeta: Run | null = null, allRuns: Run[] = [], runFree = false
@@ -602,7 +621,7 @@ async function pollHealth() {
 
 // ---------- loop ----------
 function frame() {
-  if (!$('s4').classList.contains('hidden') && !$('v-flow').classList.contains('hidden')) {
+  if (!$('oldlive').classList.contains('hidden') && !$('v-flow').classList.contains('hidden')) {
     const r = ticks.at(-1), now = performance.now()
     drawScene($<HTMLCanvasElement>('scene'), r, ticks.slice(-160), flashAction ? say(flashAction) : '', Math.max(0, (flashUntil - now) / 1200))
     drawTele($<HTMLCanvasElement>('tele'), ticks, decisions)
@@ -610,7 +629,7 @@ function frame() {
   }
   requestAnimationFrame(frame)
 }
-function resizeAll() { if (!$('s5').classList.contains('hidden') && ticks.length) drawResults() }
+function resizeAll() { if (!$('oldres').classList.contains('hidden') && ticks.length) drawResults() }
 window.addEventListener('resize', resizeAll)
 
 async function boot() {
@@ -618,7 +637,7 @@ async function boot() {
   if (st) { policy = st.policy ?? policy; attack = st.attack === 'cut-in-v1-carla' ? st.attack : attack; mode = st.mode === 'paid' ? 'paid' : 'free'; guest = !!st.guest }
   renderWallets(); paintWallet(); renderChoices(); renderStepper()
   if (location.hash === '#run') history.replaceState(null, '', '/lab')
-  cur = Math.max(1, Math.min(3, st?.step ?? 1))
+  cur = Math.max(1, Math.min(4, st?.step ?? 1))
   route()
   // Resume a wallet the user already approved (eth_accounts opens no popup)
   if (st?.wallet != null) setTimeout(async () => {
@@ -668,7 +687,7 @@ function route() {
   const [, a = '', ...rest] = location.pathname.split('/'), b = rest.join('/') // run names can contain '/' (CARLA demo runs)
   const navKey = a === '' ? 'home' : a === 'lab' ? 'flow' : a
   document.querySelectorAll<HTMLAnchorElement>('nav.top a').forEach((x) => x.classList.toggle('on', x.dataset.nav === navKey || ((navKey === 'library' || navKey === 'results') && x.dataset.nav === 'research')))
-  if (a === 'lab') { show('flow'); step(Math.max(1, Math.min(3, cur))) }
+  if (a === 'lab') { show('flow'); step(Math.max(1, Math.min(4, cur))) }
   else if (a === 'mission') { show('mission'); openMission(decodeURIComponent(b || FEATURED)) }
   else if (a === 'verify') { show('verify'); openVerify(decodeURIComponent(b || FEATURED)) }
   else if (a === 'stack') show('stack')

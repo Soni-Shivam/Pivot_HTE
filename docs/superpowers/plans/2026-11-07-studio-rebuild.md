@@ -1,110 +1,196 @@
-# Studio Rebuild Implementation Plan
+# Faultline Studio v7 rebuild Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rebuild the Faultline studio's flow so every button goes where its label says, merge duplicate pages, run the four-car coordinated attack live, and add thinking orbs.
+**Goal:** Rebuild `apps/faultline-studio/` as one connected product: Discover → scenario → its Mission Control → its Results → its Proof. Every label leads where it promises, and no footnote clutter remains.
 
-**Architecture:** One route table (`src/routes.ts`) owns every path, alias and nav item; pages link only through it. Mission Control and Results merge into `/run/:id`. The console gains a free-only `swarm-v1-carla` demo suite that spawns the existing `faultline.carla_swarm` runner. Orbs are the vendored MIT thinking-orbs engine drawn by a small vanilla mount.
+**Architecture:** The site stays a static single-page app: `index.html` plus one esbuild bundle, deployed on Vercel. Vercel proxies `/api/*` and `/media/*` to the agent console. A new pure module `src/model.ts` holds the scenario catalog, route parsing, run labels and every link destination. It is unit-tested. `main.ts` renders views from it. The headless test asserts every link in the IA table below.
 
-**Tech Stack:** TypeScript, esbuild (`apps/faultline-studio/build.mjs`), Express console (`packages/hedera/src/agent-console.ts`), `tsx --test`, Playwright (headless test).
+**Tech Stack:** TypeScript, esbuild (existing), Playwright core 1.64.1 (existing, for the headless test), `node --test` through `tsx` (already a devDependency). No new dependencies.
 
-**Spec:** `docs/superpowers/specs/2026-11-07-studio-rebuild-design.md`
+**Spec:** the coordinator brief of 2026-11-07, "Plan and then rebuild the Faultline Studio website". Its hard requirements are copied into Global Constraints.
 
 ## Global Constraints
-- Node via `. ~/.nvm/nvm.sh` (Node 22). No new npm dependencies; orbs are vendored source with the MIT licence.
-- No mock mode, no claims without evidence: free runs are "not paid, not anchored"; preview clips only on "In development" cards (SECURITY.md I12).
-- Swarm runs are free only, `policy: "pdm-lite"` only; `SUITES` (payment-bound) is unchanged.
-- The word "scripted" does not appear in user-visible studio copy.
-- Never print or commit `.env` values. No push or deploy without asking.
-- Playwright: `PLAYWRIGHT_MODULE=<scratchpad>/pw/node_modules/playwright` (the repo has none installed); browsers are in `~/.cache/ms-playwright`.
+
+- Labels match destinations. Every scenario card, including "Coordinated multi-vehicle attack", opens `/scenario/<id>`.
+- Only the CARLA cut-in runs live. Say so in the main layout: "Only the CARLA cut-in can run live today."
+- No footnotes. Remove the word "scripted", "source: …" and small grey provenance lines from the main layout. Provenance lives only in the Proof Explorer and each run's Evidence tab.
+- A scenario without a live 0G loop shows a visible "Recorded example" badge.
+- No 2-D cartoon simulator anywhere. Delete `drawScene`, `#scene` and `#rscene`. Use recorded CARLA video or the live MJPEG stream, with "run, then reveal".
+- The five destinations plus Judge mode stay. A persistent run context ("which run am I looking at") has a Switch run control.
+- The wallet flow stays as is: EIP-6963 plus legacy injection, guest path, signed EIP-191 request, caps. The browser never holds keys.
+- No em dashes. Plain headings. Every number comes from the API or from `docs/evidence/*.md`, cited in a code comment.
+- No new dependencies. Never print or commit `.env` values or the Vercel token.
 
 ## Review Focus
-- Deep link straight to `/run/<id>`, `/proof/<id>`, `/lab?attack=swarm` on a cold load: the right view and state render (headless: `goto` each).
-- Old bookmarked paths (`/mission/:id`, `/results/:id`, `/verify/:id`, `/library`) land on the new page with the new URL (headless asserts URL after load).
-- Console offline: Attacks, Runs, Run pages show recorded data or a plain message, never a spinner forever (headless offline pass checks no orb stays visible on `/runs` after load and the offline banner shows).
-- Cautious IDM selected then "?attack=swarm": swarm card is disabled with its reason and the summary does not say swarm (headless).
-- Browser back after a Lab step change: stays on `/lab` (steps use `replaceState`), back from `/run/:id` returns to the previous page (headless `goBack`).
+
+1. Run names that contain `/` (for example `demo-free-carla-…/r7l-2s3__pdm_lite`) must round-trip through `/mission/…`, `/results/…` and `/verify/…`. Test: `model.test.ts` `runPath` round-trip.
+2. A live job id (16 hex) as the context run must keep working after the run ends, for Results and Proof. Test: the headless guest flow lands on `/results/<job>`.
+3. If the console is offline, scenario pages still show their clip, title and badge, and their links stay correct. Test: the headless offline pass.
+4. A stale run context in localStorage that points to a run that no longer exists falls back to paid test 002, never to an error page. Test: `model.test.ts` `contextRun`.
+5. An unknown route (`/library`, `/foo`) renders Discover. It never shows a blank page or a generic list. Test: headless.
 
 ---
 
-### Task 1: Backend: live four-car attack (free)
+## Live link and flow audit (v6, https://faultline-av-ethmumbai.vercel.app, 2026-11-07)
+
+Method: a Playwright crawl of every route at 1440×900, which clicks every in-page button that has no side effects. Start, wallet, copy and arena buttons were not clicked. Script: `scratchpad/audit/audit.mjs`.
+
+`:F` = `paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051` (paid test 002). ✗ = mismatch, which is a bug.
+
+| route | element | goes to today | should go to | |
+|---|---|---|---|---|
+| header | faultline. | / | / | |
+| header | 01 Discover | / | / | |
+| header | 02 Safety Lab | /lab | /lab | |
+| header | 03 Mission Control | /mission/:F always | /mission/<context run> | ✗ loses run context |
+| header | 04 Results & Research | /research | /results/<context run> (Research is linked from there) | ✗ label says Results |
+| header | 05 Proof Explorer | /verify/:F always | /verify/<context run> | ✗ loses run context |
+| header | Sign in with wallet | /lab step 4 | /lab step 4 (unchanged) | |
+| / | Explore real attack | /mission/:F | "Watch the paid cut-in test" → /scenario/cut-in | ✗ vague label, skips the scenario |
+| / | Verify evidence | /verify/:F | /verify/:F, labelled "Check the proof" | |
+| / | Judge mode (3 min) | overlay | overlay | |
+| / | Open in Mission Control (swarm section) | /mission/swarm-carla-010 | section removed; swarm card → /scenario/swarm | |
+| / | Scenario families clips (5) | not clickable | each card → /scenario/<id> | ✗ dead cards, "scripted clip" footnote |
+| / | Open the Proof Explorer | /verify/:F | /verify/:F | |
+| / | See the research | /research | /research | |
+| / | Connect your stack | /stack | /stack | |
+| / | Open the Safety Lab | /lab | /lab | |
+| /lab s2 | Coordinated multi-vehicle attack | /library#x-swarm (generic test library) | /scenario/swarm | ✗ the user's reported bug |
+| /lab s2 | Lead vehicle brakes | /research | /scenario/lead-brake | ✗ unrelated page |
+| /lab s3 | Replay a recorded test → Next | /library | mode removed; recorded runs are reached through scenarios | ✗ generic list |
+| /lab s4 | Watch a recorded test | /library#x-runs | "Watch the recorded cut-in" → /scenario/cut-in | ✗ generic list |
+| /lab s1 | Connect your own stack | /stack view, but the URL stays /lab | /stack (URL changes) | ✗ URL does not match the view |
+| /mission/:F | decision chips, Jump to worst moment | in-page | in-page | |
+| /mission/:F | Check the evidence for this run | /verify/:F | /verify/<run>, labelled "Check the proof" | |
+| /mission/:F | See the results | /results/:F | /results/<run> | |
+| /mission/:F | Run your own test | /lab | /lab | |
+| /results/:F | Open in Mission Control | /mission/:F | /mission/<run> | |
+| /results/:F | Check the evidence | /verify/:F | /verify/<run> | |
+| /results/:F | tabs (5) | in-page | in-page | |
+| /results/:F | Replay with the decision timeline | /mission/:F | /mission/<run> | |
+| /research | Featured result: paid test 002 | /results/:F | "Back to results" → /results/<context run> | |
+| /research | All recorded tests | /library | removed | ✗ generic list |
+| /verify/:F | Check, Check again | in-page | in-page | |
+| /verify/:F | explorer links | chainscan, hashscan | unchanged | |
+| /stack | tabs, Copy, onboarding | in-page | in-page | |
+| /library | whole page | a generic list of 25 runs, swarm, A/B, paid 002 | route removed; /library → Discover | ✗ |
+| any | 2-D top-down canvas (`#scene`, `#rscene`) | hidden but still in the bundle | deleted | ✗ |
+| / , mission | "Recorded · paid test 002 · CARLA Town10", "prototype run, not anchored", telemetry source line, video notes | main layout | Evidence tab or Proof Explorer only | ✗ footnotes |
+
+## Information architecture (v7)
+
+State model, owned by `src/model.ts` and stored in localStorage:
+
+- `ctxRun`: the run in view. It is set when any of `/scenario/<id>` (its featured run), `/mission/<run>`, `/results/<run>` or `/verify/<run>` opens. Key `faultline.run`. Default: paid test 002. The three run nav items use it.
+- `myRuns`: job ids this browser launched, newest first, at most 10. Key `faultline.myruns`. Shown in Switch run.
+- Lab state (`faultline.flow`, unchanged): `policy`, `attack` (always `cut-in-v1-carla`), `mode` (`free` | `paid`), `guest`, wallet rdns.
+- Scenario: derived from a run (`scenarioForRun(name, family)`), never stored.
+
+Scenario catalog (`SCENARIOS`, in display order). Each row lists its featured run and its source.
+
+| id | title | badge | featured run | data |
+|---|---|---|---|---|
+| cut-in | Cut-in | Runs live | `:F` paid test 002 (anchored, 7 of 7 signatures; `docs/evidence/faultline-paid-job-002-carla.md`) | live suite `cut-in-v1-carla` |
+| swarm | Coordinated multi-vehicle attack | Recorded example | `swarm-carla-010` (10 of 10 from 0G; `faultline-swarm.md`) | plan from `/api/showcase` |
+| lead-brake | Lead vehicle brakes | Recorded example | `demo-003` (8 of 8 from 0G, anchored; `/api/run?name=demo-003`) | |
+| lidar-dropout | LiDAR dropout | Recorded example | `cutin-001`, whose decisions are replayed under dropout (`faultline-occlusion.md`) | occlusion table |
+| pedestrian | Pedestrian crossing | Recorded example | none: the main layout says "No 0G attacker in this scenario yet." | clip only |
+| intersection | Intersection conflict | Recorded example | none: same line | clip only |
+
+Pages: each has one purpose, its entry points, its data, and every link with its exact destination.
+
+| route | purpose | entry points | reads | links and buttons → destination |
+|---|---|---|---|---|
+| `/` Discover | Understand Faultline and pick a scenario | brand, nav 01, unknown routes, `/library` | `/api/runs` (card metrics), `/api/health` | "Watch the paid cut-in test" → `/scenario/cut-in`; "Run the cut-in live" → `/lab`; "Judge mode" → overlay; each of 6 scenario cards → `/scenario/<id>`; "Open the Proof Explorer" → `/verify/:F`; "See the research" → `/research`; "Connect your stack" → `/stack`; "Open the Safety Lab" → `/lab` |
+| `/scenario/<id>` | What the scenario is, its real recorded run, its proof, and whether it can run | Discover cards, Lab scenario cards, run bar | `/api/run?name=`, `/api/stream` replay (decisions), `/api/showcase` (swarm plan) | with a run: "Open in Mission Control" → `/mission/<run>`, "See the results" → `/results/<run>`, "Check the proof" → `/verify/<run>`; cut-in only: "Run this scenario" → `/lab`; no run: "Run the live cut-in instead" → `/lab`; "All scenarios" → `/#scenarios` |
+| `/lab` Safety Lab | Configure and launch a live cut-in run | nav 02, scenario CTA, wallet button | `/api/policies`, `/api/health`, `/api/catalog` | steps 1–4 in-page; step 1 "Connect your own stack" → `/stack`; step 2 non-live cards → `/scenario/<id>`; step 4 "Watch the recorded cut-in" → `/scenario/cut-in`; Start → `/mission/<jobId>` |
+| `/mission/<run>` | Watch the run: live progress, then the recorded CARLA video and decision timeline | nav 03, scenario page, Lab start, run bar | `/api/stream`, `/api/live/<job>` MJPEG, `/media/…` | run bar: "Mission Control" `/mission/<run>`, "Results" `/results/<run>`, "Proof" `/verify/<run>`, "Switch run" dialog, scenario name → `/scenario/<sid>`; verdict: "See the results" → `/results/<run>`, "Check the proof" → `/verify/<run>` |
+| `/results/<run>` | Verdict, worst moment, metrics, reasoning, comparison, evidence | nav 04, mission verdict, run bar | `/api/stream` replay or job, `/api/run` | "Open in Mission Control" → `/mission/<run>`; "Check the proof" → `/verify/<run>`; "Research: where the agent lost" → `/research`; Evidence tab "Open the Proof Explorer" → `/verify/<run>` |
+| `/research` | Boundary hunt, benchmark, claim audit, counterfactual | Results link, Discover, Judge step 6 | `/hunt.json`, evidence constants | "Back to results" → `/results/<ctxRun>` |
+| `/verify/<run>` | Proof Explorer: every claim with its status and artifact | nav 05, results, mission, Discover | `/api/runs`, `/api/run`, `/api/jobs/<id>`, `/api/stream` | Check → `/verify/<input>`; explorer links (external) |
+| `/stack` | Bring your own AV stack | Lab step 1, Discover CTA | static | tabs and copy in-page |
+
+The run bar appears on mission, results and verify. It reads "Run: <label> · <scenario title>" with the three page tabs and a Switch run button. The dialog lists the featured run of each scenario, then "Your runs" (`myRuns`), then the 5 newest completed guest CARLA runs from `/api/runs` (`demo-free-carla-*`). Choosing one goes to the same page type for that run.
+
+Judge mode steps: 1 `/` #problem · 2 `/scenario/swarm` (plan) · 3 `/mission/:F`, jump to the worst moment · 4 `/verify/:F` timeline · 5 `/verify/:F` Hedera group · 6 `/research` claims.
+
+---
+
+### Task 1: model module (catalog, routes, context)
 
 **Files:**
-- Modify: `packages/hedera/src/suites.ts` (add `DEMO_SWARM`, `demoSuite`)
-- Modify: `packages/hedera/src/agent-console.ts` (`/api/demo-run`, `runJob`, `/api/stream` replay + `streamJob`, `runSummary`, `jobVideo`)
-- Test: `packages/hedera/test/suites.test.ts`
+- Create: `apps/faultline-studio/src/model.ts`
+- Test: `apps/faultline-studio/test/model.test.ts`
 
 **Interfaces:**
-- Produces: `export const DEMO_SWARM = 'swarm-v1-carla'`; `export function demoSuite(suite: unknown, mode: unknown, policy: unknown): { lane: 'carla' | 'kin', swarm: boolean } | { error: string }`.
-- Produces (stream): event `{ t: 'plan', plan: { name: string, summary: string, roles: Record<string,string>, phases?: unknown } , requestId: string | null }` sent once per stream when `<run>/plan.json` exists.
-- Produces (summary): `minTtc`/`minGap` fall back to `metrics.ground_truth.min_ttc_s` / `.min_gap_in_path_m`; `video` falls back to `runs/<name>/director.mp4`.
+- Produces: `FEATURED: string`; `SCENARIOS: Scenario[]`, where `Scenario = { id, title, what, live: boolean, run: string | null, clip: string, family: string }`; `scenarioById(id): Scenario | undefined`; `scenarioForRun(name: string, family?: string | null): Scenario | undefined`; `runPath(name): string` (encodes each `/` segment); `parseRoute(pathname): { page: 'home'|'scenario'|'lab'|'mission'|'results'|'research'|'verify'|'stack', id: string }` (unknown → home); `runLabel(name): string`; `contextRun(stored: string | null): string`; `navHrefs(run): { mission, results, verify }`.
 
-- [ ] **Step 1: Failing tests** in `suites.test.ts`: `demoSuite('swarm-v1-carla','free','pdm-lite')` → `{lane:'carla', swarm:true}`; `('swarm-v1-carla','paid','pdm-lite')` → error matching `/free/`; `('swarm-v1-carla','free','idm-cautious')` → error matching `/PDM-Lite/`; `('cut-in-v1-kinematic','free','idm-cautious')` → `{lane:'kin', swarm:false}`; `('nope','free','pdm-lite')` → error.
-- [ ] **Step 2:** `. ~/.nvm/nvm.sh && npx tsx --test packages/hedera/test/suites.test.ts` → FAIL (`demoSuite` not exported).
-- [ ] **Step 3:** Implement `demoSuite`; in `/api/demo-run` replace the suite check and lane line with it (policy check stays first). In `runJob` free branch: when `j.suite === DEMO_SWARM`, `out = runs/demo-free-swarm-<stamp>`, `spawnPy(j, ['-m','faultline.carla_swarm','--out',out,'--seed',String(j.seed),'--display',''])`. `estS` = 150 for swarm. Plan event in both stream paths; `runSummary` fallbacks; `jobVideo` falls back to `director.mp4`.
-- [ ] **Step 4:** tests PASS; `npx tsc --noEmit -p packages/hedera` (or the repo's typecheck) clean.
-- [ ] **Step 5:** commit `console: live coordinated four-car attack as a free demo suite (swarm-v1-carla), plan event in streams`.
+- [ ] Step 1: write the tests. `parseRoute('/scenario/swarm')` → `{page:'scenario', id:'swarm'}`. `parseRoute('/library').page === 'home'`. `parseRoute('/mission/demo-free-carla-x%2Fr7l')` round-trips with `runPath`. `scenarioForRun('swarm-carla-010').id === 'swarm'`. `scenarioForRun(FEATURED).id === 'cut-in'`. `scenarioForRun('demo-003').id === 'lead-brake'`. `scenarioForRun('abc', 'cut_in').id === 'cut-in'`. `SCENARIOS.filter(s => s.live).map(s => s.id)` deep-equals `['cut-in']`. `contextRun(null) === FEATURED`. `contextRun('') === FEATURED`. `navHrefs('a/b').mission === '/mission/a/b'`.
+- [ ] Step 2: `npx tsx --test apps/faultline-studio/test/model.test.ts` must FAIL (module missing).
+- [ ] Step 3: implement `model.ts`.
+- [ ] Step 4: run the tests again. Expected: all pass.
+- [ ] Step 5: commit.
 
-### Task 2: Thinking orbs
+### Task 2: markup (index.html)
 
-**Files:**
-- Create: `apps/faultline-studio/src/orbs/` (vendored `engine/*.ts`, `presets.ts`, `types.ts` reduced to the two type aliases, `LICENSE`, header comment naming repo + commit `de85557`)
-- Create: `apps/faultline-studio/src/orb.ts`
+**Files:** Modify `apps/faultline-studio/index.html`.
 
-**Interfaces:**
-- Produces: `orb(state: OrbState, size: 20 | 64, opts?: { dark?: boolean, label?: string }): string` → `<canvas class="orb" data-orb=… data-size=… data-dark=… role="img" aria-label=…>`; `startOrbs(): void` (one rAF loop; MutationObserver picks up new canvases; IntersectionObserver + visibilitychange pause; reduced motion draws `t=0.6` once).
+- [ ] Delete the `#oldlive`, `#oldres` and `#v-explore` sections and the swarm "example" and "consequence" cards on Discover.
+- [ ] Add `#v-scenario`, `#runbar` and `<dialog id="switcher">`.
+- [ ] Replace the families strip with a `#scenarios` grid, rendered from `SCENARIOS`.
+- [ ] Change the nav item 04 label target to results. Hero buttons get the labels from the IA table.
+- [ ] Remove the source line in the telemetry card head, the hero figcaption, and the "Explore" wording in the offline banner.
+- [ ] Lab: drop `.fam` from step 2. Add the line "Only the CARLA cut-in can run live today." Step 4 recorded button → `<a href="/scenario/cut-in">Watch the recorded cut-in</a>`.
 
-- [ ] **Step 1:** headless assertion (added in Task 6) that a visible `canvas.orb` has non-transparent pixels; for now build must pass: `npm run -s studio:build`.
-- [ ] **Step 2:** commit `studio: vendor thinking-orbs engine (MIT) and a vanilla canvas mount`.
+### Task 3: router, context, Discover, scenario page (main.ts)
 
-### Task 3: Route table, nav, header
+**Files:** Modify `apps/faultline-studio/src/main.ts`.
 
-**Files:**
-- Create: `apps/faultline-studio/src/routes.ts`
-- Modify: `apps/faultline-studio/index.html` (nav, header), `src/main.ts` (router, wallet button, delete dead code: `#oldlive`, `#oldres`, `startStream`, `openResults`, `drawScene`, `carShape`, `pillAt`, `drawResults`, `renderFeed`, `progress`, `logLine`, `gotoExplore`, `data-goto-explore`, replay mode, `v-results2`)
+**Interfaces:** consumes all of Task 1.
 
-**Interfaces:**
-- Produces: `FEATURED`, `SWARM = 'swarm-carla-010'`; `type Page = 'home'|'attacks'|'lab'|'run'|'runs'|'proof'|'research'|'stack'`; `parse(path: string): { page: Page, id: string | null, canonical: string | null }` (canonical set when the path is an alias); `href.run(id)`, `href.proof(id?)`, `href.lab(attack?: 'cut-in'|'swarm')`; `NAV: { page: Page, label: string, path: string }[]` = Overview `/`, Attacks `/attacks`, Runs `/runs`, Proof `/proof`, Research `/research`.
+- [ ] `route()` uses `parseRoute`. Opening a run page or a scenario page sets `ctxRun` and re-renders the nav hrefs and the run bar.
+- [ ] `/library` and unknown routes do `history.replaceState` to `/`.
+- [ ] Delete `drawScene`, `carShape`, `pillAt`, `startStream`, `openResults`, `drawResults`, `renderExplore`, `loadRuns`, `gotoExplore`, the families strip and the `frame` loop's scene drawing.
+- [ ] `openScenario(id)`:
+  - clip or run video
+  - badge
+  - stats from `/api/run?name=`
+  - decisions list from a replay stream
+  - swarm plan
+  - LiDAR dropout table: constants cited to `faultline-occlusion.md`
+  - the buttons from the IA table
+- [ ] Switch run dialog.
 
-- [ ] **Step 1:** `parse` self-check at module load in dev is not wanted; instead headless (Task 8) asserts aliases. Implement `routes.ts`; router calls `parse`, `replaceState(canonical)` when set, toggles `#v-<page>`.
-- [ ] **Step 2:** header: nav from `NAV`, "Run a test" button (`/lab`), wallet button connects in place (no navigation; with no wallet it shows "No wallet found" for 3 s with a tooltip).
-- [ ] **Step 3:** build passes; commit `studio: one route table, unnumbered nav, aliases for old paths, dead views removed`.
+### Task 4: Lab, Mission, Results, Proof, Research, Judge link fixes and copy
 
-### Task 4: Overview and Attacks
+**Files:** Modify `apps/faultline-studio/src/main.ts`.
 
-**Files:** `index.html` (`#v-home`, new `#v-attacks`), `src/main.ts` (`ATTACK_CATALOGUE`, render)
+- [ ] Step 2 attack list: one radio (cut-in). The other scenarios render as `<a href="/scenario/<id>">` cards with a "Recorded example" badge.
+- [ ] Remove `replay` mode.
+- [ ] `#byo` → `go('/stack')`.
+- [ ] Start and launch push the job id into `myRuns`.
+- [ ] Mission verdict buttons per the IA table. `RUN_VIDEO` notes move to the Results Evidence tab, and `mc-note` shows only state messages.
+- [ ] Results gets the "Research: where the agent lost" link. Research gets "Back to results" pointing to the context run.
+- [ ] Judge step 2 → `/scenario/swarm`.
+- [ ] Copy sweep: `grep -n "scripted\|—\|source:" index.html src/*.ts` returns nothing user-visible.
 
-**Interfaces:** `ATTACK_CATALOGUE: { id, title, line, status: 'live' | 'dev', clip: string, actions: { label, href }[] }[]` with the button map from the spec.
+### Task 5: headless IA test
 
-- [ ] **Step 1:** home CTAs per spec button map; families footnote and "scripted clip" captions removed; strip shows "Runs live" / "In development" chips and an "All attacks" button. 0G box in the diagram gets `orb('working', 20)`.
-- [ ] **Step 2:** `/attacks` page renders the catalogue; dev cards show a "Preview" clip and no run button.
-- [ ] **Step 3:** build; commit `studio: Overview button map and the Attacks catalogue`.
+**Files:** Modify `apps/faultline-studio/test/headless.mjs`.
 
-### Task 5: Lab
+- [ ] Add an `IA` table: `[route, selector, expectedPath]` for every link row of the page table above. Cover all 6 scenario cards on `/`, all 5 non-live cards in Lab step 2, the run bar tabs, and the nav items after visiting `/scenario/swarm`, which must point at `swarm-carla-010`.
+- [ ] For anchors, assert `href`. For router buttons, click and assert `location.pathname`.
+- [ ] Assert no `canvas#scene` or `#rscene`. Assert no visible text matching `/scripted|source:|—/`.
+- [ ] Keep the existing wallet-signed and guest flow assertions, updated to land on `/mission/<job>` then `/results/<job>`.
+- [ ] Run: `PLAYWRIGHT_MODULE=… CHROMIUM_PATH=… node apps/faultline-studio/test/headless.mjs`. Expected last line: `N passed, 0 failed`.
 
-**Files:** `index.html` (`#v-lab`), `src/main.ts` (Lab code)
+### Task 6: build, deploy, live verification, commit
 
-- [ ] **Step 1:** attacks = `cut-in-v1-carla` and `swarm-v1-carla` (copy from spec); swarm disabled with "Runs against PDM-Lite" when policy is `idm-cautious`; picking Cautious IDM with swarm selected switches attack back to cut-in. Run types: free live, paid (disabled unless cut-in + PDM-Lite + wallet, reason shown). `?attack=` preselects. Steps use `replaceState`. Step 1 "Connect your own stack" → `go('/stack')`. Start shows `orb('connecting', 20)` while signing/queuing, then `go(href.run(jobId))`.
-- [ ] **Step 2:** build; commit `studio: Lab runs cut-in or the live four-car attack; no step leaves the Lab`.
-
-### Task 6: Run page
-
-**Files:** `index.html` (`#v-run`), `src/main.ts` (merge `openMission`/`openResults2` into `openRun(id)`)
-
-- [ ] **Step 1:** `openRun` = Mission Control + verdict card with stats, `railHtml(trustFromRun(...))`, CTAs "Check the evidence" (`href.proof`), "Run your own test" (`/lab`), "All runs" (`/runs`). Plan card from the `plan` stream event (generic; `ROLES` set from it); swarm fallback text deleted. Live progress panel: orb 64 (`weaving` until plan or first tick for swarm, `searching` while waiting for 0G, `working` while driving, `breathing` while finishing). Timeline trailing chip `orb('searching',20)` "Asking 0G…" while live and waiting. Video note for `director.mp4`: "Director cut with decision cards inserted, not time-aligned". Peek hidden for swarm jobs (no live camera).
-- [ ] **Step 2:** build; commit `studio: one run page (live or recorded) with plan, timeline, verdict and evidence`.
-
-### Task 7: Runs, Proof, Research, Stack
-
-**Files:** `index.html`, `src/main.ts`
-
-- [ ] **Step 1:** `/runs`: featured cards (paid 002, swarm 010) → `/run/:id`, A/B arena section (copy: "the same recorded attack, replayed (no 0G calls)"), full table → `/run/:id`, loading row with `orb('breathing',20)`. `/proof` renamed from `/verify` (loading `orb('solving',64)`), run title links to `/run/:id`. Research counterfactual card gets `id="counterfactual"`. Stack page final CTA "Run a test with an example policy" → `/lab`.
-- [ ] **Step 2:** build; commit `studio: Runs, Proof, Research and Stack wired to the route table`.
-
-### Task 8: Judge mode, click-through test, copy sweep
-
-**Files:** `src/main.ts` (JUDGE paths), `apps/faultline-studio/test/headless.mjs`
-
-- [ ] **Step 1:** rewrite the test around the button map: for each `[selector, expectedPath, expectedView]` click and assert `location.pathname` and visible `#v-*`; aliases; `/lab?attack=swarm` posts `suite:'swarm-v1-carla'` (guest); disabled swarm with Cautious IDM; no element with text `/scripted/i` on any page; every `a[href^="/"]` resolves via `parse` to a known page; orb canvas has painted pixels; zero page errors; offline pass.
-- [ ] **Step 2:** `npm run -s studio:build && PLAYWRIGHT_MODULE=… node apps/faultline-studio/test/headless.mjs` → all PASS.
-- [ ] **Step 3:** commit `studio: judge mode on the new routes; click-through test of every button`.
+- [ ] `. ~/.nvm/nvm.sh && FAULTLINE_API_BASE= npm run studio:build`
+- [ ] Stage `dist/.` plus `vercel.proxy.json` (as `vercel.json`) into `scratchpad/vercel-site/`, keeping `.vercel/`.
+- [ ] Run `npx -y vercel@65.2.0 deploy --prod --yes --token "$(cat ~/.config/faultline/vercel_token)"`.
+- [ ] Run the audit script against live. It must report zero ✗ rows: every label goes to the destination in the IA table.
+- [ ] One real guest CARLA run on the live site, end to end, through `/mission/<job>` → `/results/<job>` → `/verify/<job>`.
+- [ ] Screenshots `docs/evidence/media/studio-v7-{discover,scenario-swarm,scenario-pedestrian,lab,mission-live,mission,results,verify}.png`, viewed before calling it done.
+- [ ] Commit the studio paths plus screenshots.

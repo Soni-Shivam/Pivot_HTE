@@ -15,8 +15,8 @@ const asset = process.env.HEDERA_PAYMENT_ASSET ?? '0.0.0'
 const url = `http://127.0.0.1:${process.env.HEDERA_DEMO_PORT ?? '8787'}/v1/paid-ping`
 if (!accountId || !privateKey || !merchant || !amount) throw new Error('Set Hedera payer, key, merchant, and amount')
 if (!/^[1-9][0-9]*$/.test(amount)) throw new Error('Invalid HEDERA_PAYMENT_AMOUNT')
-if (BigInt(amount) > 100_000n) throw new Error('Paid check is capped at 100000 tinybars (0.001 HBAR)')
-if (asset !== '0.0.0') throw new Error('The first paid check supports HBAR only')
+if (!/^0\.0\.[0-9]+$/.test(asset)) throw new Error('Invalid Hedera payment asset ID')
+if (asset === '0.0.0' && BigInt(amount) > 100_000n) throw new Error('HBAR paid check is capped at 100000 tinybars (0.001 HBAR)')
 
 const first = await fetch(url)
 if (first.status !== 402) throw new Error(`Expected HTTP 402, got ${first.status}`)
@@ -33,7 +33,7 @@ const supportedFeePayers = supported.kinds?.filter(k => k.scheme === 'exact' && 
   .map(k => k.extra?.feePayer).filter((x): x is string => Boolean(x)) ?? []
 authorizePayment(quote, {
   network: 'hedera:testnet', asset, merchantAccounts: [merchant], feePayerAccounts: supportedFeePayers,
-  maxPerJob: 100_000n, maxTotal: 100_000n, alreadySpent: 0n, maxTimeoutSeconds: 180,
+  maxPerJob: BigInt(amount), maxTotal: BigInt(amount), alreadySpent: 0n, maxTimeoutSeconds: 180,
 })
 
 const rawKey = privateKey.replace(/^0x/, '')
@@ -43,7 +43,7 @@ if (!/^[0-9a-fA-F]{64}$/.test(rawKey)) {
 const signer = createClientHederaSigner(accountId, PrivateKey.fromStringECDSA(rawKey), { network: 'hedera:testnet' })
 const client = x402Client.fromConfig({
   schemes: [{ network: 'hedera:testnet', client: new ExactHederaScheme(signer) }],
-  spendControls: { allowedAssets: [{ network: 'hedera:testnet', asset: '0.0.0', maxAmountPerPayment: '100000' }] },
+  spendControls: { allowedAssets: [{ network: 'hedera:testnet', asset, maxAmountPerPayment: amount }] },
 })
 const paidFetch = wrapFetchWithPayment(fetch, client)
 const response = await paidFetch(url)

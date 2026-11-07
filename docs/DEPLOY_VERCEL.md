@@ -8,7 +8,7 @@ table, judge guide) and labels it "Console offline".
 ```bash
 . ~/.nvm/nvm.sh && npm ci --ignore-scripts
 FAULTLINE_API_BASE=https://sedrica-w.tail1b988f.ts.net npm run studio:build   # → apps/faultline-studio/dist
-npm run studio:test    # headless check (needs Playwright; see the header of test/headless.mjs)
+npm run studio:test    # e2e journeys (PLAYWRIGHT_MODULE, CHROMIUM_PATH: see the header of test/e2e.mjs)
 ```
 `FAULTLINE_API_BASE` is compiled into `app.js` and its origin is added to the page CSP (`connect-src`, `media-src`).
 Empty = same origin (the console serving the page itself, `npm run studio`). No Python, CARLA or `.env` is needed to build.

@@ -1,5 +1,7 @@
 # Faultline: 3-minute video shot list
 
+**Archive of early shot ideas.** The current 2:54 edit, voiceover, asset cuts, and proof checklist are in [the submission video plan](submission/video-shots.md#final-3-minute-story-one-paid-test-then-the-platform-around-it). Use that plan for the final render.
+
 Footage on disk: `runs/demo-001/screen.mp4`, `runs/demo-002/screen.mp4`, `runs/halt-001/screen.mp4`,
 `runs/baseline-001/screen.mp4` (chase camera + HUD with the live 0G decision line). Re-record any of them with `--view`.
 

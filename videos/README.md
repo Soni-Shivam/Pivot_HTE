@@ -4,6 +4,9 @@ Recorded Faultline runs (CARLA 0.10 + 0G), re-encoded for GitHub. Newest first. 
 
 | video | length | recorded | what |
 |---|---|---|---|
+| [arena-live-20261107T023417__r7l-2s3__side_by_side.mp4](arena-live-20261107T023417__r7l-2s3__side_by_side.mp4) | 12 s | 11-07 08:05 | A/B arena: same scenario, two AV stacks side by side (scripted adversary replay) |
+| [arena-live-20261107T023417__r7l-2s3__idm_lidar.mp4](arena-live-20261107T023417__r7l-2s3__idm_lidar.mp4) | 12 s | 11-07 08:05 | A/B arena single-stack run |
+| [arena-live-20261107T023417__r7l-2s3__pdm_lite.mp4](arena-live-20261107T023417__r7l-2s3__pdm_lite.mp4) | 10 s | 11-07 08:04 | A/B arena single-stack run |
 | [arena-live0g-video-002__r4l2s24__side_by_side.mp4](arena-live0g-video-002__r4l2s24__side_by_side.mp4) | 12 s | 11-07 06:58 | A/B arena: same scenario, two AV stacks side by side (live 0G adversary, fresh decisions per stack) |
 | [arena-live0g-video-002__r4l2s24__idm_lidar.mp4](arena-live0g-video-002__r4l2s24__idm_lidar.mp4) | 12 s | 11-07 06:58 | A/B arena single-stack run |
 | [arena-live0g-video-002__r4l2s24__pdm_lite.mp4](arena-live0g-video-002__r4l2s24__pdm_lite.mp4) | 12 s | 11-07 06:57 | A/B arena single-stack run |

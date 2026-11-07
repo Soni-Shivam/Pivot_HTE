@@ -9,7 +9,23 @@
       "destination": "https://sedrica-w.tail1b988f.ts.net/media/:path*"
     },
     {
-      "source": "/((?!api/|media/|stills/|.*\\.).*)",
+      "source": "/verifier",
+      "destination": "/verifier/index.html"
+    },
+    {
+      "source": "/verifier/",
+      "destination": "/verifier/index.html"
+    },
+    {
+      "source": "/memory",
+      "destination": "/memory/index.html"
+    },
+    {
+      "source": "/memory/",
+      "destination": "/memory/index.html"
+    },
+    {
+      "source": "/((?!api/|media/|stills/|verifier/|memory/|lite/|clips/|.*\\.).*)",
       "destination": "/index.html"
     }
   ],

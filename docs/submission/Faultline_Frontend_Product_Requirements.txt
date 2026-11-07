@@ -1,0 +1,245 @@
+
+Faultline Frontend Product Requirements
+ETHGlobal hackathon product and UX specification | Repository audit at main commit d8845d9 | 7 November 2026
+Audience: product owner, frontend engineer, designer, demo presenter, and technical judge. This document translates the current public code into an implementable, testable web experience. It distinguishes code that exists from requirements proposed here, and separates payment evidence, AI decision evidence, storage integrity, and simulation limits.
+Executive decision
+Make Faultline Studio the single narrative front door. A judge should reach a real recorded attack in one click, understand the result in one minute, and independently check a public root without a wallet. A tester should choose a policy and attack, see whether CARLA is available, sign a readable request, and follow one run from payment through evidence. Keep the static verifier as the independent proof destination and Memory as a clearly labelled research surface. The product claim is an auditable adversarial test, never a safety certificate.
+Evidence status
+Meaning in this document
+Implemented
+Present in the inspected main branch at the audit commit; may still require a running local service or external network.
+Proposed
+Required UX or product behavior in this specification; not asserted to exist today.
+Conditional
+Code path exists, but needs CARLA, keys, Hedera testnet funds, stored runs, or a separate deployment.
+1 Product framing and boundaries
+Positioning: “Who tested the tester?” Faultline uses a 0G private compute adversary to challenge a driving policy; the run records decisions and metrics, then publishes a public evidence bundle and an encrypted sealed bundle. Galileo commitments bracket the episode. A company agent can buy a one-run test via Hedera x402 under a spending policy. The UI must show what each component proves, the network it uses, and what remains outside its proof.
+Audience
+First question
+Primary journey
+ETHGlobal judge
+Is the attack real and why Web3?
+Discover → Mission Control → Results → Proof Explorer → static verifier → research.
+AV engineer / OEM
+Can I test my policy and diagnose failure?
+Safety Lab → availability and signature → run → worst moment → decision and metrics → export evidence.
+Auditor
+Can I reproduce the claim without trusting the UI?
+Paste public root → browser checks → chain links → replay → inspect limitations.
+Agent operator
+Did one payment buy exactly one run?
+Quote / policy / Hedera settlement / permit / job / receipt; recover without paying twice.
+Network and guarantee copy rule: 0G mainnet runs private inference and holds the TEE service signer; 0G Galileo testnet holds episode commitments and 0G Storage roots; Hedera testnet settles x402 payment; Arkiv Rabdi hosts owner-filtered aggregate claim entities. These are separate trust statements. A 0G signature identifies the provider’s signed encrypted turn; it does not cryptographically bind the visible plaintext response. The nonce echo is parser enforced. The simulator and reference driving policies are local and are not attested.
+2 Audited frontend and service inventory
+Surface
+Implemented routes or entry
+Role and important limits
+Studio
+/, /lab, /mission/:id, /results/:id, /verify/:id, /research, /library, /stack
+Main SPA served with local agent console. Guided flow, live or recorded mission, summary proof, research, judge mode. /verify is a proof summary, not the independent browser verifier.
+Static verifier
+Standalone page, ?root=0x…
+Downloads by 0G root and recomputes Merkle proof, file hashes, metrics, signatures, pinned registry, reveal/config/nonce and replay. Optional sealed-key opening; pasted JSON has no download proof.
+Memory
+Standalone page
+Queries Arkiv claim entities owned by entered OEM wallet and Galileo memory anchors for agent 579; filters model, version, category. Claims view is not a live paid-job dashboard.
+Source of truth: Studio reads the local agent console on 127.0.0.1:8788. The console uses the Hedera service on 127.0.0.1:8787 for x402 and jobs. Hosted Studio can show recorded material without a local console; live test and purchase depend on the console, credentials and CARLA. Public repo evidence and test fixtures are evidence of implemented paths, not a guarantee that every external endpoint is currently healthy.
+3 End to end information architecture
+Level
+Route / destination
+Primary job
+Primary CTA
+Discover
+/
+Explain adversarial testing and show a real attack
+Explore real attack
+Safety Lab
+/lab
+Choose policy, attack, mode, authorize
+Sign and start test
+Mission Control
+/mission/:id
+Watch run and inspect each decision
+Jump to worst moment
+Results
+/results/:id
+Interpret outcome and compare
+Check the evidence
+Proof Explorer
+/verify/:id
+Read provenance, commitments and payment
+Verify independently
+Research
+/research
+Inspect boundary search and claim audit
+Open featured result
+Library
+/library
+Browse recorded runs and showcase
+Replay
+Your stack
+/stack
+Understand adapters and onboarding
+Copy onboarding request
+Independent verifier
+Static verifier ?root=
+Recompute evidence from a root
+Download and check
+Safety Memory
+Standalone memory page
+Compare anchored claims across versions
+Query Arkiv and Galileo
+Proposed navigation: Discover, Run a test, Explore runs, Research, Verify. Place “Your stack” under Run a test and “Safety Memory” under Research. Persistent status in the header must say “Recorded content available” or “Local runner online / CARLA online”. Do not use “connected” to imply a chain or wallet when only the console is reachable. On every run page, expose sibling links to Mission, Results, and Proof without forcing the user back home.
+4 Page requirements
+4.1 Discover
+Current implementation. The home page has “Who tested the tester?”, real attack and verifier CTAs, judge mode, trust problem, four-car showcase, consequence cards, scenario families, evidence trail, how it works, research findings, and stack entry.
+Required experience. Lead with one annotated real outcome: source label, policy, suite, collision, min TTC, peak CCS, run status. Below it show a four-step “request → 0G decision → local simulation → commit and storage” diagram with precise trust boundaries. Follow with scenario cards, paired “What is proven / What is not proven” copy, and a short judge path. Label all clips recorded, replayed, or live.
+Controls and actions. “Explore real attack” opens featured Mission; “Verify evidence” opens featured Proof; “Judge mode (3 min)” opens a dismissible six-step tour; “Run a test” opens Lab; “Connect your stack” opens Stack. No dead CTA.
+States and recovery. If local console is offline, preserve public narrative and recorded media; show a nonblocking status strip. Media failure gets poster plus “Open run details”.
+Data and integration. Featured run IDs and media currently live in Studio constants and /api/showcase; proposed: drive all featured content from a versioned public manifest with URL and root.
+Acceptance. From a fresh desktop or mobile session, a judge can identify the tested policy, the independent adversary, the result, and the proof route within 30 seconds.
+4.2 Safety Lab selection
+Current implementation. A four-panel guided form currently exposes policy choice (PDM-Lite, cautious IDM fallback), attack choice (CARLA cut-in plus recorded swarm and lead brake), execution mode (replay, free live, paid anchored), and authorization. State persists in localStorage. The stepper has five labels, but only four visible selection panels; Launch is the final action.
+Required experience. Use one coherent flow with progress “1 of 4” through “4 of 4”. Each option card states world, sensor/ego, estimated duration, cost, evidence level, and availability. A recorded-only attack should navigate to its run card with explicit confirmation, not appear as a selectable live suite. Keep suite and policy compatibility visible.
+Controls and actions. Policy card selects a policy; “Next: choose challenge” advances; Attack card selects a runnable suite; “Watch recorded swarm” and “Explore lead-brake research” open their destinations; Mode card selects “Replay”, “Free live demo”, or “Paid anchored test”; Back retains choices. “Connect your own stack” opens /stack.
+States and recovery. CARLA offline disables only CARLA live/paid choices and explains the cause and retry path. Console offline disables launch and offers Replay. Unknown health shows “Checking runner…” rather than silent disable. Invalid policy/suite combination prevents Next with a reason.
+Data and integration. GET /api/policies, /api/health, /api/showcase, /api/catalog. The current free live mode is not paid or anchored. Paid mode is conditional on PDM-Lite, CARLA, wallet signature and runner readiness.
+Acceptance. Keyboard and screen reader users can select options, hear selected/disabled state, and cannot reach a payment review with an incompatible suite.
+4.3 Authorization and launch
+Current implementation. Studio discovers injected EIP-6963 wallets, supports a guest free run, previews an EIP-191 message, signs through personal_sign, and POSTs /api/demo-run. It lists paid-but-unstarted jobs and offers Launch. A wallet signature authorizes the test request; the buyer agent pays from its own key.
+Required experience. Show a final review card: policy digest, suite/version, mode, estimated testnet charge, payer (“Faultline agent”), spending cap, request signer, data visibility, and exact signed message. Separate “Sign test request” from “Start free guest run”; never label signature as payment. Once submitted, use an idempotent job view and do not present another Pay button while the prior job may be pending.
+Controls and actions. “Connect wallet”; “Use a different wallet”; “Continue without a wallet” switches to free mode; “Show exact message”; “Sign and start test”; “Launch” for a paid pending job; “Watch a recorded test”; “Retry connection”.
+States and recovery. Handle extension absent, user rejects connection/signature, account changes, unsupported network if needed, nonce replay rejection, runner offline, and request timeout. Keep selected choices after rejection. Show “No charge was made” only when the console confirms no settlement; otherwise retrieve job state first.
+Data and integration. POST /api/demo-run uses policy, suite, mode, address, message and signature. POST /api/launch resumes an existing paid job. GET /api/catalog returns pending jobs and cap. The browser must never receive payer private key, one-run bearer permit or tenant key.
+Acceptance. One click produces at most one job. Reloading after a response loss resumes that job or offers safe lookup before a second purchase.
+4.4 Mission Control
+Current implementation. The implemented route renders a CARLA video or low-frame live MJPEG preview, run state, 0G plan for swarm, decision timeline and inspector, telemetry, worst-moment jump, and verdict. The separate older live/results panels remain in the HTML but the route-based Mission/Results path is the main flow.
+Required experience. Use a 12-column desktop layout: media and telemetry on eight columns, decision inspector on four; state rail above. Timeline aligns simulated time with request IDs and safe-halt events. Inspector displays action, human translation, source, provider, request ID, latency, nonce status when available, and exact provenance link. Distinguish simulated time from wall-clock waiting on 0G. For edited swarm video, state that it is not time aligned.
+Controls and actions. “Play/Pause”, media scrub, decision checkpoint buttons, “Jump to worst moment”, “Peek live”, “Hide live preview”, “Check evidence”, “See results”, “Run your own test”. A checkpoint changes selection, camera position where alignment exists, inspector, and telemetry cursor.
+States and recovery. Ready → Waiting for 0G → Executing → Completed or Safe halt/Interrupted. Stream reconnection must keep last received checkpoint and expose “Reconnect”; on interrupted, explain SAFE_HALT reason and why a fail-closed stop is a valid outcome. If no video, retain telemetry and decisions.
+Data and integration. POST /api/stream provides metadata, ticks, decisions, progress and done/error events; GET /api/live/:id streams low-frame preview; /media/:path serves recorded clips; GET /api/jobs/:id and /api/run support lookup.
+Acceptance. The selected decision, chart marker and aligned video frame agree within one checkpoint. A nonaligned clip never implies frame-level proof.
+4.5 Results
+Current implementation. The route shows collision verdict, closest gap, min TTC, peak CCS, count of 0G decisions, worst-moment video frame when aligned, and tabs Replay, Driving metrics, Reasoning, Compare, Evidence.
+Required experience. Open with status plus a plain outcome sentence: “Avoided collision in this test” or “Collision occurred in this test”; then report min TTC, closest gap, CCS, policy/suite and run completeness. Explain CCS is criticality, not crash probability. Use metric provenance labels: ground truth versus LiDAR measured. The compare tab must distinguish fixed-script comparison from separate fresh 0G attacks.
+Controls and actions. “Open in Mission Control”; “Check the evidence”; each results tab; within Replay “Replay with decision timeline”; Evidence “Open Proof Explorer”; proposed “Copy result link” and “Download public evidence JSON” if a root exists.
+States and recovery. For incomplete runs show Interrupted beside outcome, not a generic pass. For missing metrics use “Not measured”. Empty compare data gets sample-size context. A missing aligned recording gets “No time-aligned recording”.
+Data and integration. POST /api/stream for run detail, run summary metadata, media. Results may show recorded comparison from constants and clips; proposed: compare only runs with clear policy/suite and sample provenance.
+Acceptance. A user can identify the worst moment, the measured result, whether the run completed, and which comparison is controlled.
+4.6 Proof Explorer and independent verifier
+Current implementation. Studio /verify/:id groups proof under decision maker, evidence integrity, and requester/payment with five statuses: Verified, Failed, Unavailable, Not checked, Not applicable. It uses run summaries, replay decision records, and some runner-checked flags; its root row explicitly says Not checked. The standalone verifier independently downloads by root and checks Merkle, file hashes, metrics, TEE signer, Galileo commitments, nonce/config/reveal and replay.
+Required experience. Provide an evidence ladder with a per-check method label: “Checked in this browser”, “Checked by local runner”, “Metadata only”, or “Open external explorer”. The top-level call to action should open the standalone verifier with the public root. Never mark a storage root verified merely because metadata contains one. Keep all failure and unavailable statuses visible, including 0/N archived signatures on legacy runs. Explain content binding limitation beside signature success.
+Controls and actions. Studio: “Check” by run name or root, expand each proof row, “Check again”, chain explorer links, “Verify independently”. Verifier: “Download and check”, “Check pasted JSON”, “Open sealed bundle”, “Play/Pause”, external transaction and root links. Pasted JSON must display “No Merkle proof”.
+States and recovery. Bad root format, indexer outage, chain RPC outage, missing archive, old v1 episode, wrong sealed key, invalid GCM tag, no scenario reveal, replay mismatch, and partial checks each receive separate status and retry advice. A failed check may never collapse into green overall status.
+Data and integration. Studio GET /api/runs, /api/run, /api/jobs/:id, POST /api/stream. Static verifier directly contacts 0G Storage indexer, Galileo RPC and 0G mainnet service registry. Sealed key stays in the tab; do not persist it.
+Acceptance. A public root can be verified without wallet, account or local console; each green result names the exact bytes or chain read used. Pasted data is never described as storage verified.
+4.7 Research, Library, Your Stack, and Memory
+Current implementation. Research contains boundary hunt visualization, benchmark and claim audit, counterfactual example, and featured result. Library contains showcase cards and recorded run table with Replay. Stack contains five-step integration guidance, Python/Leaderboard/ROS2 tabs, copy buttons and a clipboard-only onboarding request. Memory filters Arkiv claims and reads Galileo anchors; its comparison and claim tables are static-page UI.
+Required experience. Research should separate measured experiment from model claim, show sample count and boundary method, and make contradicted claims prominent. Library needs filters by suite, world, policy, status and evidence level. Stack should make the sample adapter contract, sensor requirements, compatibility checker and privacy boundary scannable. Memory should show “owner filtered” and the actual owner address, anchor sequence and version; present aggregate differences without implying a statistically proven fix.
+Controls and actions. Research “Open featured result”, “All recorded tests”, disclosure accordions. Library “Replay” on every valid row. Stack “Copy” for each snippet, adapter tabs and “Copy onboarding request”. Memory filters Model, Version, Category, Owner, optional Arkiv key, and “Query Arkiv and Galileo”.
+States and recovery. Research fixture missing → explanatory placeholder. Library empty → “No recorded runs match” with reset. Copy denial → manual select instruction. Memory rate limit/RPC failure → show which source failed and retry; zero claims must not render an empty comparison as success.
+Data and integration. Research uses /hunt.json and recorded clips. Library uses /api/runs and /api/showcase. Stack is local static guidance. Memory directly queries Arkiv Rabdi and Galileo AgentMemoryRegistry/ ERC-8004 ownerOf; claim rows are restricted to the entered wallet.
+Acceptance. No dead tabs or blank tables. Each data-driven claim exposes owner, source, sample size, timestamp/block and evidence link.
+5 Hedera x402 purchase and job contract
+Implemented backend chain: discovery at /.well-known/faultline-service.json → POST /v1/stress-tests receives a 402 quote for a fixed 0.001 testnet HBAR suite → buyer checks merchant and spending cap → payment settles → POST /v1/stress-tests/activate confirms on Mirror Node and returns job ID plus private bearer permit → one start via /start → local run → /report → optional HCS delivery receipt and /receipt/reconcile. The local Studio console wraps this in /api/demo-run, /api/catalog and /api/launch; it owns the payer key and permit. Paid job handoff records a past publish hang followed by manual republish, so a complete automatic recovery flow must be treated as proposed.
+Stage
+User-facing copy
+Required behavior
+Quote
+“0.001 HBAR on Hedera testnet for one cut-in run.”
+Show suite/version, merchant, asset, max cap and network before signing/charging.
+Policy
+“Agent spending policy approved this purchase.”
+Show cap verdict and reason; UI cannot override refusal.
+Settlement
+“Payment confirmed on Hedera.”
+Link HashScan transaction; do not confuse testnet payment with 0G evidence.
+Permit
+“One-run permit issued for this suite.”
+Never render bearer token. Show job ID and suite binding.
+Run
+“Simulator running; 0G is choosing attacker moves.”
+Show progress and safe-halt reasons.
+Publish
+“Public and sealed bundles uploaded; final commitment pending.”
+Display each root only when available.
+Delivery
+“Evidence checked and delivered” or “Receipt uncertain.”
+If HCS is configured, show topic/sequence/digest and reconcile action. No duplicate payment.
+Recovery rules: quote expires → request a new quote before payment; policy refuses → stop; settlement uncertain → look up payment/job before retry; paid activation fails → read saved activation and resume without transfer; permit consumed → show 409 and link existing job; launch fails → preserve paid pending job; storage publish/finalize fails → mark “run complete, evidence incomplete” and offer operator resume, never silently label the episode verified; HCS timeout → reconcile receipt. The UI should maintain a stable job ID and event log across refreshes.
+6 Design system and responsive behavior
+Implemented visual direction is dark ink and high-contrast color blocks with yellow, cyan, pink, purple and lime accents, rounded pills and cards. Keep the bold hackathon energy while making dense proof and metrics calmer: black/near-black navigation, off-white reading surfaces, one accent per action priority, semantic status colors that do not rely on hue alone. The current Studio CSS is the starting implementation, not a complete shared system across the verifier and Memory.
+Token / pattern
+Requirement
+Type
+A display face for concise hero statements; highly legible body and monospaced IDs. Body at least 16 px in product UI, 1.45 line height.
+Grid
+Desktop 12 columns, max content width 1200–1280 px; tablet 8; phone 4 with 16 px gutters. Avoid horizontal page scroll.
+Action
+One primary button per section. Primary, secondary, text, destructive/retry variants; loading and disabled states with reason.
+Evidence status
+Verified, Failed, Unavailable, Not checked, Not applicable each needs icon, text and explanatory copy.
+Motion
+150–250 ms functional transitions. Reduced-motion preference removes auto scroll and nonessential animation.
+Data
+Units beside every value, fixed decimals, UTC/locale toggle or explicit timezone, full ID on copy/hover/focus.
+Phone: header collapses to a labelled menu, status remains visible, Lab cards stack, media uses full width, decision inspector becomes a sheet below selected checkpoint, telemetry is vertically scrollable or simplified with a data table, results tabs become horizontally scrollable with visible focus, evidence cards remain one column. The existing Studio has phone screenshots in repo evidence; proposed acceptance must verify 320, 375, 768, 1024 and 1440 px. On low bandwidth, lazy-load video and show poster plus transcript/decision list.
+7 Accessibility and content rules
+WCAG 2.2 AA target: text contrast at least 4.5:1, visible keyboard focus, 44×44 px touch targets where practical, semantic headings and landmarks, skip link, no keyboard traps.
+Option groups need correct radio keyboard behavior (Arrow keys, Home/End) or native inputs. Tabs need selected state, keyboard arrows and associated tabpanel. Judge dialog needs initial focus, focus containment, Escape, and focus restoration.
+Canvas charts and animation need a text table or summary with all metrics and checkpoints; video needs captions/transcript where speech or critical visual annotations are present. Live status must announce material changes without reading every tick.
+Use “safe halt” for an interrupted adversary decision, “collision” for observed sensor outcome, and “criticality score” for CCS. Never use “safe”, “certified”, “trustless” or “tamper-proof” as a verdict.
+Keep a small provenance line on every data card: Recorded / Live / Replay; CARLA / kinematic; ground truth / LiDAR; checked in browser / checked by runner / on-chain link.
+8 Demo path and delivery priorities
+Time
+Judge path
+Point to establish
+0:00–0:25
+Discover → one four-car clip
+The neutral referee problem and physical AI adversary.
+0:25–0:55
+Mission swarm plan and checkpoint
+0G decides specific maneuvers; show request ID and plan.
+0:55–1:25
+Featured paid CARLA result → worst moment
+Real measured outcome, no safety certification.
+1:25–2:15
+Proof Explorer → static verifier by root
+Commit before first call, archived signer, storage integrity, replay, limitations.
+2:15–2:40
+Hedera payment card / job timeline
+Agentic x402 quote → spend policy → settlement → one-run permit.
+2:40–3:00
+Research claim audit / Memory teaser
+Honest failures and versioned evidence.
+Priority
+Scope
+Acceptance gate
+P0 demo integrity
+Fix proof status semantics; independent verifier deep link; clear recorded/live labels; paid/incomplete status; responsive primary path.
+No unsupported green claim; demo route works offline with recorded run; verifier receives real root.
+P0 purchase safety
+Stable job ID, duplicate-click guard, pending paid recovery, precise payment labels.
+One payment per job; refresh and activation failure do not charge again.
+P1 engineer utility
+Checkpoint synchronized media and chart, data table, filters, meaningful compare and export.
+Every action has feedback; missing video retains usable evidence.
+P1 accessibility
+Semantic option groups/tabs, dialog focus, chart alternatives, contrast.
+Keyboard-only and screen reader run through Discover → Results → Verify.
+P2 scale
+Unified public manifest, persistent hosted jobs, multi-tenant isolation, richer Memory and adapter onboarding.
+Contracted APIs and real data replace constants; security review before multi-customer deployment.
+9 Acceptance checklist by journey
+Judge opens the public site with no wallet or console, watches a clearly labelled recorded run, sees result and proof links, and completes the six-step tour without a dead end.
+Guest selects a compatible free mode; no payment or anchoring claim appears. If CARLA is offline, the path offers replay and explains why launch is disabled.
+Wallet user sees the exact EIP-191 request; rejection leaves choices intact. Signing starts exactly one job and lands on the same job after refresh.
+Paid path displays merchant, suite, cap and 0.001 HBAR testnet charge, then a Hedera transaction link and one-run permit status without exposing any secret.
+For a SAFE_HALT episode, Mission and Results show Interrupted, the invalid-answer reason, and the measured outcome without implying completion.
+Proof Explorer never equates metadata with a browser check; static verifier recomputes root, file and metric checks and handles unavailable chain reads separately.
+A pasted public JSON is visibly labelled unproven by storage root. A wrong tenant key reveals no sealed plaintext.
+Memory limits claims to the selected owner, shows anchor continuity and warns when a claim root does not match the anchor.
+At phone width, navigation, Lab, Mission, result metrics and verifier remain readable and keyboard operable.
+10 Source register and audit notes
+Repository: https://github.com/Soni-Shivam/Pivot_HTE/tree/d8845d9af0009bd9977b62bd0e8354e995097cde . Files inspected through the GitHub connector at this commit: apps/faultline-studio/index.html and src/main.ts; apps/faultline-web/index.html and src/main.ts; apps/memory-web/index.html and src/main.ts; packages/hedera/src/agent-console.ts, paid-ping-server.ts, buyer.ts and README.md; root README.md; docs/STUDIO_HANDOFF.md; docs/submission/WEB3.md; docs/evidence/faultline-hedera-x402-testnet.md; docs/faultline-audit.md. The relevant source links are formed by appending these paths to the commit URL.
+Confidence note: this is a code and repository-evidence audit, not a fresh live purchase or CARLA execution. “Implemented” means the route/control/check exists in source; operational readiness depends on deployment and external services. The handoff note describes a manually recovered paid run and dated branch context, so present such details as historical evidence rather than a currently guaranteed pipeline. The current main-branch Studio code was treated as authoritative where it differs from older handoff wording.

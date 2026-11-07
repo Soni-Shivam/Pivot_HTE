@@ -5,9 +5,40 @@
   "buildCommand": "cd ../.. && npm run studio:build",
   "outputDirectory": "dist",
   "headers": [
-    { "source": "/(.*)", "headers": [
-      { "key": "X-Content-Type-Options", "value": "nosniff" },
-      { "key": "Referrer-Policy", "value": "no-referrer" }
-    ] }
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/verifier",
+      "destination": "/verifier/index.html"
+    },
+    {
+      "source": "/verifier/",
+      "destination": "/verifier/index.html"
+    },
+    {
+      "source": "/memory",
+      "destination": "/memory/index.html"
+    },
+    {
+      "source": "/memory/",
+      "destination": "/memory/index.html"
+    },
+    {
+      "source": "/((?!api/|media/|verifier/|memory/|lite/|clips/|.*\\.).*)",
+      "destination": "/index.html"
+    }
   ]
 }

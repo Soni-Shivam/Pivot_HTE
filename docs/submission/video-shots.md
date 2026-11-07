@@ -1,5 +1,7 @@
 # Faultline demo video: shot list
 
+For the current Studio v6 route/capture map and Remotion build contract, see [DEMO_VIDEO_REMOTION.md](../DEMO_VIDEO_REMOTION.md). The 2:54 running order below is the authoritative voice and cut list.
+
 Owner: content-agent. Phase 1 = ideas (below); Phase 3 = produced clips + running order (further down).
 All CARLA runs share the server on 127.0.0.1:2000 behind the flock `/tmp/faultline-carla.lock`; 0G calls are real
 private-tier Router calls unless a shot says "scripted".

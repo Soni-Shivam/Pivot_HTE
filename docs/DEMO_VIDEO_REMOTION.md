@@ -1,150 +1,64 @@
-# Faultline Mumbai film: **The Road Test Nobody Wrote**
+# Faultline Mumbai film: Remotion production contract
 
-Production storyboard for a **single 2:59.5 submission film**, edited in Remotion with ElevenLabs narration. This is a film, not a screen recording with a voice-over. The camera follows one paid scenario from the engineer's request into CARLA, through 0G decisions, and out as replayable evidence and a Hedera delivery receipt.
+Use [the locked 2:54 shot list](submission/video-shots.md#final-3-minute-story-one-paid-test-then-the-platform-around-it) for exact narration, footage cuts, proof fields, and sound direction. This file tells the editor how to build that film from the **current** repo. It replaces the earlier 2:59.5 plan, which assumed an HCS delivery message that has not been demonstrated.
 
-**Core sentence:** Faultline generates bounded physical-AI stress scenarios; 0G chooses the adversary's actions and preserves the evidence; Hedera lets a CI client buy one run and records what was delivered.
+## Story and render contract
 
-**Visual idea:** Begin at the most tense CARLA frame. Time fractures into three transparent car positions, then rewinds along the adversary's path. The path becomes a luminous road ribbon that carries us through the real purchase, 0G's decision loop, the replay, and the HCS receipt. This one ribbon keeps the film coherent while the environments change. It is an explanatory visual, not a claim that many scenarios were executed.
+One proven paid CARLA job carries the story: engineer requests a bounded test → CI buyer pays 0.001 HBAR through Hedera x402 → job 002 runs in CARLA with seven accepted 0G decisions → evidence lands on 0G Storage and Galileo → the same episode replays. A separately labelled four-car run shows scenario breadth. A separately labelled outage run shows the required safe stop. The film ends at **2:54**, leaving six seconds under the 0G three-minute limit.
 
-## Edit contract
+Composition ID `FaultlineMumbai174`; **1920×1080, 30 fps, 5,220 frames** (0–5,219). All transitions live inside scene ranges. Render H.264 MP4 with a captioned submission master and a clean master.
 
-- Composition ID `FaultlineMumbai180`; **1920×1080, 30 fps, 5,385 frames**. Last frame is 5,384. Render to H.264 MP4, 16:9, with subtitles burned in and a clean subtitle-free master.
-- Each scene owns the exact frames in the table. Place transitions **inside** those ranges; do not add transition frames between scenes. Final runtime is **179.5 seconds**, strictly under the 0G limit.
-- Narration: one ElevenLabs voice, conversational and confident, about 140 words/minute. Generate one WAV per scene so timing changes do not ripple through the film. Never time-stretch speech. Allow CARLA sound and music to carry the pauses.
-- Music: 120 BPM instrumental pulse, restrained under speech; engine, tire, UI click, packet pulse and receipt-stamp effects are separate tracks. Beat drops at **1:07** when we enter 0G. Cut music to near silence for the safe-stop beat.
-- Palette for this film: asphalt `#080B10`, 0G decision lime `#C9FF54`, Hedera transaction violet `#A783FF`, risk orange `#FF6547`, evidence white `#EAF0F4`. These colors identify roles in *our* film; use the official sponsor marks as supplied assets, not retyped substitutes.
-- Type: large editorial headings (Space Grotesk or another licensed geometric sans), technical IDs in IBM Plex Mono. Maximum two lines of copy at once. Safe area 96 px. No full-screen terminal text and no stock blockchain hex rain.
-- 0G's real product labels appear as three distinct stages: **PRIVATE COMPUTER / STORAGE / CHAIN**, reflecting its official [product page](https://0g.ai/product). CARLA owns physics; 0G makes decisions at checkpoints. Hedera's x402 purchase precedes the run, and HCS delivery follows it.
+| Scene | Seconds | Frames | Core image |
+|---|---:|---:|---|
+| `S01_Hook` | 0–11 | 0–329 | Four-car squeeze; clearly labelled separate 0G scenario |
+| `S02_Problem` | 11–25 | 330–749 | Road ribbon becomes Faultline's real `/lab` interface |
+| `S03_Payment` | 25–47 | 750–1,409 | Studio choice, x402 402/cap, paid job 002 HashScan, one-run permit |
+| `S04_DecisionLoop` | 47–75 | 1,410–2,249 | Paid job 002 CARLA footage plus recorded 0G request IDs/actions |
+| `S05_Coverage` | 75–96 | 2,250–2,879 | Separate live-0G four-car run and A/B arena |
+| `S06_Evidence` | 96–120 | 2,880–3,599 | Decision log → 0G Storage root; Galileo commit/finalize; verifier |
+| `S07_Replay` | 120–138 | 3,600–4,139 | Job 002 original and exact CARLA replay, 194/194 ticks |
+| `S08_SafeStop` | 138–153 | 4,140–4,589 | Separate 0G-unreachable run, source none, SAFE_HALT |
+| `S09_Outcome` | 153–165 | 4,590–4,949 | Studio result/A/B view, engineer-facing takeaway |
+| `S10_Close` | 165–174 | 4,950–5,219 | Road motif, Faultline, working demo/repo links |
 
-## Locked timeline and voice
+## Current repo capture map
 
-| Scene | Time / frames | Beat | Exact ElevenLabs voice line |
-| --- | --- | --- | --- |
-| `S01_ColdOpen` | 0:00–0:12 / 0–359 | Tense CARLA cut-in, freeze at the closest approach | “Your policy passed the tests you wrote. What about the road test you never thought to write?” |
-| `S02_Rewind` | 0:12–0:28 / 360–839 | Rewind to the problem and reveal Faultline | “Scripted suites replay situations people anticipated. Faultline generates bounded adversarial scenarios to expose the situations they missed.” |
-| `S03_Engineer` | 0:28–0:46 / 840–1379 | Real product use: policy commitment, suite, limits, budget | “A safety engineer chooses the policy build, the cut-in suite, and a strict one-run budget. The driving policy stays local.” |
-| `S04_HederaPay` | 0:46–1:07 / 1380–2009 | CI client buys the bounded run through x402 | “Faultline's x402 endpoint returns a price. The CI client checks its merchant and spending limits, pays on Hedera without human approval, and receives one job permit.” |
-| `S05_0GInside` | 1:07–1:31 / 2010–2729 | Hero animation: enter 0G Private Computer | “Now the scenario is being written. At a checkpoint, 0G Private Computer sees the current state and chooses a legal adversary move. The answer carries a request ID.” |
-| `S06_CarlaRun` | 1:31–1:57 / 2730–3509 | Real CARLA, two or three recorded 0G decisions, ego reaction | “CARLA advances the cars. The adversary cuts in; the ego brakes. A new observation goes back to 0G. The model chooses the next move while local code handles every physics tick.” |
-| `S07_SafeStop` | 1:57–2:11 / 3510–3929 | Separate resilience capture: Router unavailable, safe halt | “When 0G cannot answer, the adversary safe-stops. Faultline never invents a replacement decision.” |
-| `S08_ReplayEvidence` | 2:11–2:33 / 3930–4589 | Outcome, replay, 0G Storage and Galileo verification | “The engineer can replay the scenario. Every 0G decision has a request ID in the episode log on 0G Storage, and its root matches the 0G Chain record.” |
-| `S09_HCSReceipt` | 2:33–2:53 / 4590–5189 | Payment and evidence converge in a real HCS receipt | “Hedera's delivery receipt links the payment, policy commitment, suite version, job result, and exact 0G evidence root. HashScan shows what was purchased and delivered.” |
-| `S10_EndCard` | 2:53–2:59.5 / 5190–5384 | Return to road, Faultline mark and live demo URL | “Faultline. Generate the road test you didn't know to write.” |
+The latest Studio has real routes and a six-step **Judge mode**. Capture the actual UI; Remotion adds motion around it. The featured paid job's run name in `apps/faultline-studio/src/main.ts` is `paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051`.
 
-## Scene direction: what the editor actually builds
+| Film beat | Capture or source |
+|---|---|
+| Engineer intent and paid choice | Studio `/lab`, with policy, suite and payment choice visible. The buyer/merchant quote fields come from `packages/hedera/src/buyer.ts` and the paid job evidence. |
+| Paid CARLA decisions | Studio `/mission/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051`, which shows the recorded CARLA video, decision timeline, inspector and telemetry. Original chase file: `videos/paid-job-002-view__chase.mp4`. |
+| Result and replay | Studio `/results/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051`, then its Replay tab or Mission Control. Exact replay file: `videos/paid-job-002-replay-view__chase.mp4`. |
+| Storage and chain proof | Studio `/verify/paid-de2d56fd2f3cd49fb30c1a7633f9d8c1-1794006602051`; [paid job 002 evidence](evidence/faultline-paid-job-002-carla.md). Capture real request IDs, public root, commit/finalize, and verification state. |
+| Swarm breadth | `videos/smart-carla-004__stitched.mp4` for the hook; `videos/video-swarm-fog-001__stitched.mp4` for the planner/motion. Label these as separate runs. |
+| A/B breadth | `videos/arena-live0g-video-001__r7l-2s3__side_by_side.mp4` and Studio `/research` or its A/B view. The two stacks ran at the same site with their own live 0G calls. |
+| Unreachable fallback | `videos/video-swarm-halt-001__stitched.mp4`, a separate refused-connection run. Keep its `source: none` and `SAFE_HALT` labels. |
+| App stills if browser capture is unavailable | `docs/evidence/media/studio-v6-*.png`. Animate a still as a still; never pretend it is a live UI interaction. |
 
-### S01 — Stop the scroll
+`apps/faultline-studio/public/clips/` contains five **scripted, illustrative CARLA** clips. They are not 0G-driven. Do not use them to prove an in-loop 0G call, a paid run, or a replay. The current Studio's Judge mode can guide a screen-capture pass, but the final film follows the scene order above.
 
-Use the **real paid CARLA run's** most legible near-miss, cropped so the ego and adversary fill the center 70% of frame. Play at normal speed for 2 seconds; ramp to 40% speed as the gap closes. Freeze before contact or at minimum TTC. Temporal-slice the adversary into three translucent positions from the preceding second. A single orange distance bracket snaps between the cars; display the **measured** gap/TTC only if it is legible and comes from this run. Title enters on the last beat: `WHO WROTE THIS TEST?`. Sound: engine → low-frequency hit → suspended silence. No crash sound if the run did not collide.
+## Visual system
 
-### S02 — The road folds backward
+The hero is real CARLA motion. Use a road ribbon that becomes a payment packet, a pulsing square for each recorded 0G checkpoint, and a compact evidence strip that resolves into the actual Storage root. Show the 0G call at a **checkpoint**, never as continuous steering. Bring the same packet back when the paid run's evidence appears; this makes the two networks feel connected without implying a shared chain.
 
-The orange bracket extends into a road ribbon; camera flies backward along it. Behind the live scene, fade in a dark schematic road with a few *unlabelled possible paths* as ghost lines. They are metaphor, not “candidates tested.” Snap the camera to an empty scenario card. Faultline wordmark lands as a small signature, then the line `GENERATE THE HARD CASE`. Reveal three product verbs, not a feature grid: `SPECIFY → CHALLENGE → REPLAY`. Cut into the real app on the final beat.
+Match the Studio's Space Grotesk / JetBrains Mono and palette (`#0a0a0a`, `#fbfbf6`, `#f3f56c`, `#7cecf5`, `#f5a3ef`). Keep proof values legible at 1080p and captions within a 90 px safe area. Use official sponsor marks as image assets only if supplied; text labels are sufficient. No terminal walls, invented dashboard, stock blockchain animation, fabricated car trajectory, or misleading token icon.
 
-### S03 — Human intent is visible
+Use one ElevenLabs voice. Export one WAV per scene from the exact lines in the shot list, so edits stay local. ElevenLabs generates the voice outside the renderer; Remotion composes the WAV files. If a timed ElevenLabs transcript is available, use the matching Remotion caption utilities; otherwise create manually timed captions and check them against the audio. A preview without licensed voice can use marked placeholder audio, but the final gate requires the real narration or an explicitly approved replacement. Do not commit API keys.
 
-Start with the CI client reading the real service discovery manifest (`/.well-known/faultline-service.json`) for two seconds, then show an actual screen capture of the engineer selecting the policy commitment/build, suite/version, run limit and budget. Use Remotion callout masks to enlarge each chosen field; keep the real UI in the background. The orange road ribbon becomes a progress line below the fields. End on the exact submitted job request. Do not show raw policy code, wallet keys, API keys, tenant key, or bearer permit. If the UI is unfinished, use the real CLI and build a Remotion shell around **its genuine fields and output**, without representing it as a shipped dashboard.
+## Evidence data contract
 
-### S04 — Hedera is a transaction, not a logo break
+Put public, non-secret values in `video/assets/evidence.json`. It should include `jobId`, `suiteId`, `simulator`, `policyCommitment`, `paymentAsset`, `paymentAmount`, `paymentTxId`, `paymentHashScanUrl`, `publicRoot`, `commitTx`, `finalizeTx`, `episodeId`, `episodeStatus`, `reportStatus`, `minTtcSeconds`, `collision`, `accepted0gCount`, `replayTicks`, and recorded `{checkpoint, requestId, action, source, videoTimeSeconds}` entries. Validate each against [job 002 evidence](evidence/faultline-paid-job-002-carla.md) and the published log. The data for the separate swarm, A/B, and outage clips must be separately named.
 
-Animate the request as a rectangular packet hitting a vertical violet gate marked `HTTP 402`. Show the real protected route `POST /v1/stress-tests`, quote, Hedera network/asset, merchant and one-run bound. A visible `merchant ✓ / cap ✓ / amount ✓` checklist flashes in sequence; put the actual facilitator name in a small label. The buyer signs and retries automatically, with **no mouse approval or checkout cut**. The gate opens and the same packet becomes `JOB ACCEPTED`. Match-cut the transaction ID into a **real HashScan recording** for 3–4 seconds, with a large inset showing `SUCCESS`, payer, merchant and amount. The returned permit can be represented as a sealed card, but never show its secret value.
+Do **not** put payer private keys, wallet signatures, bearer permits, tenant keys, or raw policy code in the capture package. Shorten an ID for motion graphics only; show the full payment ID and Storage root in proof holds and the video description. The paid report was delivered while the episode itself was **interrupted** on `bad_nonce`; preserve both statuses.
 
-### S05 — The 0G hero shot
+HCS delivery receipt code exists, but no real topic message for paid job 002 is documented. Do not show an HCS receipt, topic sequence, or spending audit as fact. A2A negotiation, FLTTEST HTS settlement, bounded repeat purchases, and Agent Kit have [separate evidence](evidence/faultline-hts-campaign.md); they stay out of this three-minute film. If a distinct Hedera video is allowed, use the optional appendix in the shot list.
 
-This is the most designed sequence. The accepted packet dives into the CARLA road, which dissolves into a LiDAR-like point cloud. Points rise into a dark three-dimensional *decision chamber*: one large editorial title `01 / PRIVATE COMPUTER` and an official 0G mark. A narrow stream of the actual observation fields enters from the left; one **recorded** action exits on the right as a bright lime arc. Under the abstract chamber, keep a narrow, genuine capture strip visible: `checkpoint 03 → 0G request → response`, with the real `request_id` and action. Shorten the ID in the hero graphic; resolve its full value in the log shown later. The arc lands on the adversary car's roof, and the real CARLA frame resolves around it. Never imply 0G directly controls steering at every frame; the motion graphic depicts a discrete checkpoint decision.
+## Build and quality gate
 
-Technical treatment: use a 2.5D SVG lane map and car silhouettes for the transition, with z-depth, parallax and motion blur in Remotion. A short transparent 3D car pass may be pre-rendered and composited, but the real CARLA image must take over before the action occurs. One moving lime arc is the visual signature of every 0G call throughout the film.
+1. Create an isolated `video/` Remotion workspace; preserve the Studio and backend build. Install compatible pinned versions of `remotion`, `@remotion/cli`, and any matching `@remotion/*` packages. Check [current Remotion render and media guidance](https://www.remotion.dev/docs/cli/render) before coding. Use tracked footage through `staticFile()` or a reproducible asset-copy step. No external URL should be required for a deterministic render.
+2. Implement the ten named scenes as frame-driven components. Build reusable `RoadRibbon`, `DecisionPulse`, `EvidenceStrip`, `TransactionGate`, `ProofHold`, `SafeStopStamp`, and `SubtitleLine` layers. Read values from the validated evidence object, not from display strings. Make the preview render even when optional captures are pending, with visible `CAPTURE REQUIRED` placeholders; fail the **final** render when a required factual asset is absent.
+3. Provide `video:preview`, `video:render`, and `video:check` scripts and a `video/README.md` that tells the operator exactly where to place UI captures and ElevenLabs WAVs. The final command must render a local MP4 under three minutes. Keep a contact sheet or stills for the ten scene boundaries.
+4. Watch the render once muted and once with sound. Check every source label, subtitle, root/transaction, scene transition, and the 2:54 runtime. The muted cut should still read as **engineer request → Hedera settlement → 0G decision in CARLA → Storage/replay → separate safe-stop proof**. Include direct HashScan, verifier, Galileo, repo and live-demo links in the upload description.
 
-### S06 — The product proves the hero shot
-
-Let actual CARLA footage breathe. First decision card at the top edge: `0G → CUT_IN`, shortened request ID, checkpoint number. The lime arc draws the car's **recorded** lane movement over the footage, then vanishes. Show the ego's actual reaction and a small TTC/gap strip. At the next checkpoint, speed-ramp into a second **real 0G call and response**; keep its action and request ID accurate to the log. For two seconds, split CARLA chase view with LiDAR or bird's-eye view so the judge sees what the ego perceived. Avoid filling the frame with a terminal. End by pulling the camera up to reveal the full scenario route.
-
-### S07 — A quick trust test
-
-Use a **separate real failure capture**, clearly captioned `RESILIENCE TEST · SEPARATE RUN`. The lime packet stops midair; sound drops out; actual `unreachable` or timeout status appears. The adversary car decelerates under local safe-halt control. A concise red/white stamp reads `NO 0G DECISION → SAFE_HALT`. Cut back to the paid job's route after this beat. Never splice this failure into the paid run as if it happened there.
-
-### S08 — Evidence becomes an artifact
-
-Open the real result screen on the critical tick. Use a three-panel choreography: **original run and actual replay** side by side on left, one chart on right (TTC or gap), one result card centered (`status`, `min TTC`, `collision`). Show a replay command or button being used, followed by matched adversary actions; a repeated clip with a `REPLAY` caption does not count. Then each recorded decision card folds into a narrow evidence strip. Under `02 / STORAGE`, show the real episode log in a readable crop: `N decisions / N request IDs`, briefly expanding two full IDs and the public root. Under `03 / CHAIN`, show the commit/finalize check and matching root. Finish on the actual verifier result. The full root and deployment address belong in the README and video description.
-
-### S09 — Two networks, one purchased result
-
-Bring back the violet payment packet from S04 and the lime 0G evidence strip from S08. They meet at a small HCS receipt, **not** a giant blockchain animation. Fields appear in this order: payment transaction → job ID → policy commitment → suite/version → `completed` → 0G public root. Keep all values data-driven from this one paid job. Slide the receipt into a real HashScan topic-message recording; briefly show its topic and sequence number. Add a one-line spend ledger below it: `agent payment → amount → job`, derived from the real transaction. This shows the HCS audit idea without claiming that the receipt itself proves the simulator's physical accuracy. Match-cut back to the same 0G root.
-
-### S10 — Leave a memorable image
-
-Return to the frozen road from S01. This time the lime adversary path, replay marker and tiny violet receipt marker are visible on it. Pull up until the road ribbon draws the `F` of Faultline. End card: `FAULTLINE` / `Adversarial road scenarios, paid and replayable` / short demo URL. Hold the URL and logo for at least 3 seconds. End music on a resolved note, not a logo sting.
-
-## Data and capture handoff to the CARLA operator
-
-The editor should receive **one folder for one paid CARLA job**. Do not manufacture a single-job timeline from an unrelated CARLA run and the earlier kinematic Hedera transaction.
-
-```text
-video/assets/job-<jobId>/
-  carla-master.mp4          # full paid run, clean 1080p or higher
-  carla-replay.mp4          # replay of that same run
-  app-request.mp4           # actual suite/policy/budget request
-  x402-payment.mp4          # quote, automated paid request, accepted job
-  hashscan-payment.mp4      # successful payment transaction
-  result-verifier.mp4       # metrics, 0G root and verification
-  hashscan-hcs.mp4          # HCS message for that job
-  evidence.json             # IDs, actions, timings and metrics below; no secrets
-video/assets/resilience/
-  safe-stop.mp4             # separate failure run; labelled as such
-video/vo/S01.wav ... S10.wav
-video/audio/music.wav
-```
-
-`evidence.json` must contain real values for `jobId`, `suiteId`, `suiteVersion`, `policyCommitment`, `endpoint`, `facilitatorName`, `paymentAsset`, `paymentAmount`, `spendCap`, `payerAccount`, `merchantAccount`, `paymentTxId`, `paymentHashScanUrl`, `hcsTopicId`, `hcsSequence`, `hcsHashScanUrl`, `publicRoot`, `episodeId`, `resultStatus`, `minTtcSeconds`, `collision`, `decisionCount`, and an array of `{checkpoint, requestId, action, source, videoTimeSeconds}`. The editor shortens IDs **only for display**. The decision count must equal the number of logged request IDs for 0G decisions. The same `jobId` and root must agree across the app, payment, result and HCS shot. The safe-stop folder has its own ID and is never merged into the paid job's evidence.
-
-Ask the operator for 5 seconds of clean footage before and after each action; record CARLA output and the UI at native resolution; export the result data separately. Capture the HashScan pages after settlement, not a recreated transaction animation. Keep the original recordings as proof even after cropping and compositing.
-
-## Qualification proof map
-
-Every required technical claim has a **visible proof shot**, not just narration. The editor should tick these against the final export:
-
-| Requirement | Visible proof and scene | Evidence to retain outside the edit |
-| --- | --- | --- |
-| 0G call **inside** the decision loop | S05 genuine checkpoint request/response strip; S06 another call paired with CARLA motion | Decision log checkpoint, request ID and recorded action |
-| Episode log on **0G Storage**, request ID for **each** decision | S08 `N decisions / N request IDs`, real log crop, public root and verifier | Full log, root and Storage/verification link |
-| Replayable simulation | S08 replay command/button and actual replay beside the original | Replay output and original episode ID |
-| 0G unreachable → safe stop, no fake decision | S07 separate failure capture with the actual unreachable/timeout state | Failure log showing `source: none` and safe halt |
-| x402-protected endpoint on Hedera | S04 actual `POST /v1/stress-tests` HTTP 402 quote, network, asset and facilitator label | Endpoint URL, facilitator used and server setup |
-| Client discovers and pays with **no human approval** | S03 discovery/budget setup → S04 automated request, signed payment and accepted job, without an approval cut | Client transcript and payer-signed paid request |
-| Payment settles and opens on HashScan | S04 actual SUCCESS page and transaction ID; video description links it | Full transaction ID and HashScan URL |
-| Spending controls (extra) | S03 cap/merchant selected; S04 quote checked against both before signing | Client policy configuration and rejected-quote test if available |
-| HCS spending/delivery audit (extra) | S09 real topic message, topic/sequence and matching payment transaction; one-line spend ledger | Topic ID, message sequence, payment lookup and amount |
-
-The HCS topic should receive a record for each paid job. One filmed receipt demonstrates the link; a topic with multiple receipts makes the spending-audit story stronger. Do not call HCS a proof that CARLA executed the customer's policy. Other Hedera extras (agent identity, negotiation, HTS settlement, recurring payments) should stay out of the film unless actually implemented.
-
-### Submission packet, outside the 2:59.5 film
-
-The end card must show a working **live demo URL** and a short repo URL or QR code. Put the following in the ETHGlobal submission fields and video description so the film does not spend seconds scrolling through metadata:
-
-- Project name and one-sentence description; public GitHub repo with README **setup, architecture and payment flow**.
-- The settled Hedera transaction ID and direct HashScan link; actual facilitator, network and asset used.
-- Live demo link that a judge can open; a short note on how to trigger or inspect a run.
-- 0G Storage root, 0G/Galileo deployment addresses for contracts used, and HCS topic/sequence or HashScan link. Use real addresses from the final run; do not copy an address from an unrelated historical job.
-- Team members' names and contact details (Telegram and X) in submission metadata. No private contact data needs to appear in the film.
-
-The film is 2:59.5 because the [0G Physical AI track](https://ethglobal.com/events/mumbai/prizes) asks for under three minutes; it also shows the paid settlement and HashScan link required by Hedera's five-minute ceiling.
-
-## Remotion build instructions
-
-1. Create `video/src/FaultlineMumbai180.tsx` with a parent `Composition` of 5,385 frames. Make ten named `<Sequence>` components using the frame ranges above. Use `interpolate()`/`spring()` for camera, text and packet motion; use `<Video>` from `@remotion/media` for recorded CARLA and browser footage ([Remotion guidance](https://www.remotion.dev/docs/offthreadvideo)). Keep animation state deterministic from `evidence.json` and the frame number.
-2. Build reusable layers: `RoadRibbon`, `CarSilhouette`, `DecisionArc`, `EvidenceStrip`, `ReceiptCard`, `IDChip`, `SponsorModuleTitle`, `SafeStopStamp`, `SubtitleLine`. The `DecisionArc` props come from real checkpoint actions. Set a hard guard that rejects missing `requestId`, payment transaction, HCS sequence or root in the **final proof** render.
-3. Render abstract backgrounds and overlays in Remotion; composite any optional 3D alpha pass as an asset. Use a real CARLA video for every depicted vehicle maneuver and genuine app/explorer captures for every factual UI state.
-4. Import ten ElevenLabs WAVs, one per scene. Put captions in a separate track driven by the exact voice lines above. Mix to roughly −16 LUFS speech and music low enough for every ID and line to be understood; check the final mix on laptop speakers.
-5. Review the rendered film at 1× speed with no sound. A judge must still understand **engineer request → Hedera payment → 0G decision → CARLA outcome → replay/evidence → HCS receipt**. Then review with sound, checking that every claim appears on screen when spoken.
-
-After the Remotion project is implemented and `evidence.json` is supplied as composition props, the target render command is:
-
-```bash
-npx remotion render video/src/index.ts FaultlineMumbai180 video/out/faultline-mumbai.mp4 --props=video/assets/job-<jobId>/evidence.json
-```
-
-The source project and final capture package are inputs to create; this document is the frame-accurate production contract, not a claim that the render command already runs in the repository. Remotion's [CLI](https://www.remotion.dev/docs/cli/render) supports an entry point, composition ID, output path and props file.
-
-**Final render gate:** runtime under 3 minutes; no fabricated transactions, actions, metrics or roots; a real 0G request ID shown during the decision loop; actual 0G Storage root and replay; a real HashScan payment; a real HCS receipt if S09 remains; safe-stop visibly labelled as a separate run. If the paid CARLA and HCS link is not finished, replace S09 with an honestly labelled payment/evidence split and remove the “one purchased result” narration. Do not hide this by editing separate jobs into one visual chain.
-
-The [Mumbai prize page](https://ethglobal.com/events/mumbai/prizes) calls for an under-three-minute 0G video showing an in-loop 0G call, request IDs, replay and safe stop; Hedera asks for the paid request and a HashScan link. This storyboard satisfies both within one film when the capture package is complete.
+The source plan is a production contract. The Remotion project and final voice/capture assets are work to build; this file does not claim they already exist.

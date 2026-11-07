@@ -4,6 +4,9 @@ Recorded Faultline runs (CARLA 0.10 + 0G), re-encoded for GitHub. Newest first. 
 
 | video | length | recorded | what |
 |---|---|---|---|
+| [arena-live0g-video-002__r4l2s24__side_by_side.mp4](arena-live0g-video-002__r4l2s24__side_by_side.mp4) | 12 s | 11-07 06:58 | A/B arena: same scenario, two AV stacks side by side (live 0G adversary, fresh decisions per stack) |
+| [arena-live0g-video-002__r4l2s24__idm_lidar.mp4](arena-live0g-video-002__r4l2s24__idm_lidar.mp4) | 12 s | 11-07 06:58 | A/B arena single-stack run |
+| [arena-live0g-video-002__r4l2s24__pdm_lite.mp4](arena-live0g-video-002__r4l2s24__pdm_lite.mp4) | 12 s | 11-07 06:57 | A/B arena single-stack run |
 | [video-swarm-halt-001__stitched.mp4](video-swarm-halt-001__stitched.mp4) | 15 s | 11-07 06:48 | swarm · interrupted · 0 0G decisions (halt) · collision False · CCS 0.90 (ground truth) · not anchored |
 | [video-swarm-halt-001__director.mp4](video-swarm-halt-001__director.mp4) | 15 s | 11-07 06:48 | swarm · interrupted · 0 0G decisions (halt) · collision False · CCS 0.90 (ground truth) · not anchored |
 | [video-swarm-fog-001__stitched.mp4](video-swarm-fog-001__stitched.mp4) | 32 s | 11-07 06:48 | swarm · completed · 10 0G decisions (0G) · collision False · CCS 0.59 (ground truth) · not anchored |

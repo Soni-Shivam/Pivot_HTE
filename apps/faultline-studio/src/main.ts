@@ -745,7 +745,7 @@ async function openMission(id: string) {
   if (rv) {
     vid.src = api('/media/' + rv.path); vid.preload = 'auto'; vid.classList.remove('hidden'); img.classList.add('hidden'); prog.classList.add('hidden'); me.aligned = rv.aligned
     $('mc-peek').classList.add('hidden'); $('mc-worst').classList.remove('hidden'); $('mc-note').textContent = rv.note ?? ''
-    if (me.live) { vid.currentTime = 0; vid.play().catch(() => { /* autoplay blocked: controls stay */ }) }
+    if (me.live) { vid.load(); vid.play().catch(() => { /* autoplay blocked: controls stay */ }) }
   } else if (me.live) { prog.classList.add('hidden'); vid.classList.remove('hidden'); $('mc-note').textContent = 'The run finished but its recording is not available.' }
   else if (!me.live) $('mc-note').textContent = 'No camera recording exists for this run; the timeline and telemetry come from its recorded data.'
   mcTimeline(); mcTele(); mcVerdict()
@@ -836,12 +836,14 @@ async function openVerify(id: string) {
   $('vf-groups').innerHTML = '<div class="card">Loading…</div>'; $('vf-timeline').innerHTML = ''
   let runs: Run[] = []
   try { runs = await getJson('/api/runs') } catch { /* offline */ }
-  const r = runs.find((x) => x.name === id || x.storage?.publicRoot === id) ?? (mc?.run?.name === id ? mc.run : null)
+  let r: Run | null = runs.find((x) => x.name === id || x.storage?.publicRoot === id) ?? (mc?.run?.name === id ? mc.run : null)
+  if (!r) try { r = /^[0-9a-f]{16}$/.test(id) ? (await getJson(`/api/jobs/${id}`)).result : await getJson(`/api/run?name=${encodeURIComponent(id)}`) } catch { /* not found */ }
   if (!r) { $('vf-groups').innerHTML = `<div class="card">No run matches <code>${esc(id)}</code>${online ? '' : ' (the console is offline)'}. Try <a href="/verify/${FEATURED}">paid test 002</a>.</div>`; return }
   let ds: Decision[] = []
   try { await post('/api/stream', { run: r.name, mode: 'replay', speed: 8 }, (e) => { if (e.t === 'decision') ds.push(e.d) }) } catch { /* summary only */ }
   const zg = ds.filter((d) => d.source === '0g'), first = zg[0], last = zg.at(-1), ch = r.chain, st = r.storage, p = r.payment
   const cbf = ch?.committedBeforeFirstCall ?? (ch?.commitBlockTimestamp && first?.wall_clock_utc ? ch.commitBlockTimestamp * 1000 < Date.parse(first.wall_clock_utc) : null)
+  const runName = r.name
   const ts = (n?: number | null) => (n ? new Date(n * 1000).toISOString().replace('.000', '') : '-')
   $('vf-timeline').innerHTML = `<h2 class="sec">Timeline: ${esc(r.name === FEATURED ? 'paid test 002' : r.name)}</h2><ol class="vtl">
     <li class="${ch ? 'ok' : 'na'}"><b>Scenario committed</b><span>${ch ? `0G Galileo block time ${ts(ch.commitBlockTimestamp)}` : 'not anchored (free run)'}</span></li>
@@ -856,7 +858,7 @@ async function openVerify(id: string) {
     proof('notchecked', 'Attacker identity (ERC-8004 #579)', 'The attacker is registered as agent #579 in the ERC-8004 registry on 0G Galileo.', link(galileoAddr(ERC8004), 'ERC-8004 registry'), 'Not read from the chain by this page; open the registry to check.'),
   ]
   const g2 = [
-    proof(st?.publicRoot ? 'notchecked' : 'na', '0G Storage roots', 'The public log and the sealed bundle are stored on 0G Storage; downloading by root and re-hashing proves they are unchanged.', st ? `public <code>${esc(st.publicRoot)}</code><br>sealed <code>${esc(st.sealedRoot)}</code>` : 'free runs are not stored', 'Download and re-hash with the verifier CLI (scripts in packages/episode).'),
+    proof(st?.publicRoot ? 'notchecked' : 'na', '0G Storage roots', 'The public log and the sealed bundle are stored on 0G Storage; downloading by root and re-hashing proves they are unchanged.', st ? `public <code>${esc(st.publicRoot)}</code><br>sealed <code>${esc(st.sealedRoot)}</code>` : 'Not applicable: free demo runs aren’t anchored or stored', 'Download and re-hash with the verifier CLI (scripts in packages/episode).'),
     proof(cbf === true ? 'verified' : cbf === false ? 'failed' : ch ? 'unavailable' : 'na', 'Committed before the first decision', 'The scenario was locked on-chain before the attacker’s first call, so it could not be picked after seeing results.', ch ? `${link(galileoTx(ch.commitTx), short(ch.commitTx, 10, 6))} at ${ts(ch.commitBlockTimestamp)} vs first decision ${esc(first?.wall_clock_utc ?? '-')}` : 'not anchored', 'Checked here: commit block time compared with the first 0G call.'),
     proof(ch?.onchainMatches === true ? 'verified' : ch?.onchainMatches === false ? 'failed' : ch ? 'unavailable' : 'na', 'Result finalized after the last decision', 'The roots and result hash were written on-chain after the run and match the stored record.', ch?.finalizeTx ? link(galileoTx(ch.finalizeTx), short(ch.finalizeTx, 10, 6)) : 'not finalized', 'Checked by the runner when it finalized: the on-chain record matches the published roots.'),
   ]
@@ -866,7 +868,7 @@ async function openVerify(id: string) {
   ]
   const grp = (t: string, sub: string, items: string[]) => `<div class="card"><h2 class="sec" style="margin-bottom:4px">${t}</h2><p class="muted" style="margin:0 0 6px">${sub}</p>${items.join('')}</div>`
   $('vf-groups').innerHTML = grp('Who made the decisions?', '0G Router (inference)', g1) + grp('Can the evidence be altered?', '0G Storage and 0G Galileo (storage and chain)', g2) + grp('Who requested and paid?', 'Hedera', g3)
-  $('vf-groups').querySelectorAll('[data-recheck]').forEach((b) => b.addEventListener('click', () => openVerify(r.name)))
+  $('vf-groups').querySelectorAll('[data-recheck]').forEach((b) => b.addEventListener('click', () => openVerify(runName)))
 }
 $('vf-go').addEventListener('click', () => go(`/verify/${encodeURIComponent($<HTMLInputElement>('vf-in').value.trim() || FEATURED)}`))
 boot()

@@ -207,12 +207,17 @@ function runSummary(name: string) {
     payment: job ? { transaction: job.transaction, payer: job.payer, suite: job.suite, hashscan: hashscanTx(job.transaction) } : null,
   }
 }
-const isRunName = (n: unknown): n is string => typeof n === 'string' && /^[A-Za-z0-9._-]+$/.test(n) && existsSync(join(RUNS, n, 'decisions.jsonl'))
+// one optional sub-folder (CARLA demo runs: demo-free-carla-<stamp>/<site>__<stack>); no segment may start with '.'
+const isRunName = (n: unknown): n is string => typeof n === 'string' && /^[A-Za-z0-9_-][A-Za-z0-9._-]*(\/[A-Za-z0-9_-][A-Za-z0-9._-]*)?$/.test(n) && existsSync(join(RUNS, n, 'decisions.jsonl'))
 
 app.get('/api/runs', (_req, res) => {
-  const names = existsSync(RUNS) ? readdirSync(RUNS).filter((n) => isRunName(n) && !n.includes('-replay-')) : []
+  const top = existsSync(RUNS) ? readdirSync(RUNS) : []
+  // CARLA demo runs live one level down (demo-free-carla-<stamp>/<site>__<stack>)
+  const nested = top.filter((n) => n.startsWith('demo-free-carla-')).flatMap((n) => { try { return readdirSync(join(RUNS, n)).map((c) => `${n}/${c}`) } catch { return [] } })
+  const names = [...top, ...nested].filter((n) => isRunName(n) && !n.includes('-replay-'))
   res.json(names.map(runSummary).sort((a, b) => b.mtime - a.mtime))
 })
+app.get('/api/run', (req, res) => { const n = req.query.name; if (!isRunName(n)) { res.status(404).json({ error: 'unknown run' }); return } res.json(runSummary(n)) })
 app.get('/api/runs/:name', (req, res) => {
   if (!isRunName(req.params.name)) { res.status(404).end(); return }
   res.json(runSummary(req.params.name))

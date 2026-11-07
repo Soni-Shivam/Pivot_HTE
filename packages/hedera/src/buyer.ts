@@ -5,18 +5,22 @@ import { randomBytes } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { privateKeyToAccount } from 'viem/accounts'
-import { PrivateKey } from '@hiero-ledger/sdk'
+import { LedgerId, PrivateKey } from '@hiero-ledger/sdk'
+import { HederaMirrornodeServiceDefaultImpl } from '@hashgraph/hedera-agent-kit'
 import { x402Client } from '@x402/core/client'
 import { createClientHederaSigner } from '@x402/hedera'
 import { ExactHederaScheme } from '@x402/hedera/exact/client'
 import { wrapFetchWithPayment } from '@x402/fetch'
 import { authorizePayment, type HederaExactRequirements } from './spending-policy.ts'
 import { requestHash as hashRequest, suiteOf } from './suites.ts'
+import { negotiate } from './a2a.ts'
+import { tokenPreflight } from './token-preflight.ts'
+import { paidTransfer } from './settlement.ts'
 
-export type StepId = 'discover' | 'quote' | 'facilitator' | 'policy' | 'settle' | 'mirror' | 'bind' | 'activate'
+export type StepId = 'discover' | 'negotiate' | 'quote' | 'facilitator' | 'policy' | 'settle' | 'mirror' | 'bind' | 'activate'
 export type Step = { id: StepId; status: 'run' | 'ok' | 'fail'; title: string; detail?: string; data?: Record<string, unknown>; ms?: number }
 export type Activation = { jobId: string; status: string; suite: string; simulator: string; permit: string; expiresAt: string; transaction: string }
-export type BuyerConfig = { base: string; payer: string; key: string; merchant: string; cap: string; facilitator: string; stateDir: string }
+export type BuyerConfig = { base: string; payer: string; key: string; merchant: string; cap: string; asset: string; facilitator: string; stateDir: string }
 
 export const MIRROR = 'https://testnet.mirrornode.hedera.com'
 export const hashscanTx = (tx: string) => `https://hashscan.io/testnet/transaction/${tx}`
@@ -26,11 +30,13 @@ export function buyerConfigFromEnv(env = process.env): BuyerConfig {
   const key = env.HEDERA_PAYER_PRIVATE_KEY?.replace(/^0x/, '')
   const merchant = env.HEDERA_MERCHANT_ACCOUNT_ID
   const cap = env.HEDERA_PAYMENT_AMOUNT
+  const asset = env.HEDERA_PAYMENT_ASSET ?? '0.0.0'
   if (!payer || !key || !/^[0-9a-fA-F]{64}$/.test(key) || !merchant || !cap || !/^[1-9][0-9]*$/.test(cap)) {
     throw new Error('Valid Hedera payer, ECDSA key, merchant, and payment cap are required')
   }
-  if (BigInt(cap) > 100_000n) throw new Error('Demo buyer cap is 0.001 HBAR')
-  return { base: `http://127.0.0.1:${env.HEDERA_DEMO_PORT ?? '8787'}`, payer, key, merchant, cap,
+  if (!/^0\.0\.[0-9]+$/.test(asset)) throw new Error('Invalid Hedera payment asset ID')
+  if (asset === '0.0.0' && BigInt(cap) > 100_000n) throw new Error('Demo HBAR buyer cap is 0.001 HBAR')
+  return { base: `http://127.0.0.1:${env.HEDERA_DEMO_PORT ?? '8787'}`, payer, key, merchant, cap, asset,
     facilitator: env.HEDERA_FACILITATOR_URL ?? 'https://x402.org/facilitator',
     stateDir: env.HEDERA_JOB_STATE_DIR ?? join(process.cwd(), '.faultline-hedera-state') }
 }
@@ -50,12 +56,17 @@ export async function buy(cfg: BuyerConfig, opts: { suite: string; policyCommitm
     if (!manifestResponse.ok) throw new Error('Service discovery failed')
     const manifest = await manifestResponse.json() as { network: string, asset: string, merchant: string, price: string, suites: Array<{ id: string, simulator: string }> }
     const { suite, simulator } = suiteOf(opts.suite)
-    if (manifest.network !== 'hedera:testnet' || manifest.asset !== '0.0.0' ||
+    if (manifest.network !== 'hedera:testnet' || manifest.asset !== cfg.asset ||
         manifest.merchant !== cfg.merchant || BigInt(manifest.price) > BigInt(cfg.cap) ||
         !manifest.suites.some(x => x.id === suite && x.simulator === simulator)) throw new Error('Service manifest outside buyer policy')
     if (!/^0x[0-9a-fA-F]{64}$/.test(opts.policyCommitment)) throw new Error('Pass a 0x-prefixed 32-byte policy commitment')
     if (opts.recoveryTx && !/^0\.0\.[0-9]+@[0-9]+\.[0-9]+$/.test(opts.recoveryTx)) throw new Error('Invalid recovery transaction')
     ok(`${suite} on ${simulator}`, { merchant: manifest.merchant, price: manifest.price, network: manifest.network, suite, simulator })
+
+    run('negotiate', 'A2A test terms', 'Propose scope and budget; accept provider offer')
+    const negotiated = await negotiate(cfg.base, [suite], cfg.cap, cfg.asset)
+    if (negotiated !== suite) throw new Error('A2A provider changed the requested suite')
+    ok(`${suite} accepted at ${manifest.price} base units of ${cfg.asset}`, { suite, amount: manifest.price, asset: cfg.asset })
 
     const request = { suite, maxRuns: 1, policyCommitment: opts.policyCommitment, idempotencyKey: randomBytes(16).toString('hex') }
     const url = `${cfg.base}/v1/stress-tests`
@@ -73,7 +84,8 @@ export async function buy(cfg: BuyerConfig, opts: { suite: string; policyCommitm
       const quote = (JSON.parse(Buffer.from(header, 'base64').toString('utf8')) as { accepts: HederaExactRequirements[] })
         .accepts.find(x => x.network === 'hedera:testnet' && x.scheme === 'exact')
       if (!quote) throw new Error('No Hedera exact quote')
-      ok(`${quote.amount} tinybar to ${quote.payTo}`, { ...quote })
+      if (quote.amount !== manifest.price || quote.asset !== manifest.asset) throw new Error('x402 quote differs from negotiated service terms')
+      ok(`${quote.amount} base units of ${quote.asset} to ${quote.payTo}`, { ...quote })
 
       run('facilitator', 'Facilitator capabilities', cfg.facilitator)
       const supportedResponse = await fetch(`${cfg.facilitator}/supported`)
@@ -84,25 +96,27 @@ export async function buy(cfg: BuyerConfig, opts: { suite: string; policyCommitm
       ok(`fee payer ${feePayers.join(', ') || 'none'}`, { feePayers })
 
       run('policy', 'Agent spending policy')
-      const policy = { network: 'hedera:testnet' as const, asset: '0.0.0', merchantAccounts: [cfg.merchant], feePayerAccounts: feePayers,
+      const policy = { network: 'hedera:testnet' as const, asset: cfg.asset, merchantAccounts: [cfg.merchant], feePayerAccounts: feePayers,
         maxPerJob: BigInt(cfg.cap), maxTotal: BigInt(cfg.cap), alreadySpent: 0n, maxTimeoutSeconds: 180 }
       // Display rows only; authorizePayment below is the authority and throws on any violation.
       const checks = [
         ['scheme exact on hedera:testnet', quote.scheme === 'exact' && quote.network === policy.network],
-        ['asset is HBAR (0.0.0)', quote.asset === policy.asset],
+        [`asset ${cfg.asset} allowlisted`, quote.asset === policy.asset],
         [`merchant ${quote.payTo} allowlisted`, policy.merchantAccounts.includes(quote.payTo)],
         [`fee payer ${quote.extra?.feePayer ?? '—'} allowlisted`, !!quote.extra?.feePayer && feePayers.includes(quote.extra.feePayer)],
-        [`${quote.amount} ≤ cap ${cfg.cap} tinybar`, /^[0-9]+$/.test(quote.amount) && BigInt(quote.amount) <= BigInt(cfg.cap)],
+        [`${quote.amount} ≤ cap ${cfg.cap} base units`, /^[0-9]+$/.test(quote.amount) && BigInt(quote.amount) <= BigInt(cfg.cap)],
         [`timeout ${quote.maxTimeoutSeconds}s ≤ 180s`, quote.maxTimeoutSeconds <= 180],
       ] as const
       authorizePayment(quote, policy)
+      const token = await tokenPreflight(cfg.asset, cfg.payer, cfg.merchant, BigInt(quote.amount), process.env.HEDERA_EXPECTED_TOKEN_SYMBOL)
       ok('all checks passed', { checks: checks.map(([label, pass]) => ({ label, pass })) })
+      if (token) emit({ id: cur, status: 'ok', title: 'Hedera Agent Kit token preflight', data: token, ms: Date.now() - t0 })
       if (opts.quoteOnly) return { quoteOnly: true, quote }
 
       run('settle', 'Sign and settle on Hedera', 'x402 exact scheme')
       const signer = createClientHederaSigner(cfg.payer, PrivateKey.fromStringECDSA(cfg.key), { network: 'hedera:testnet' })
       const client = x402Client.fromConfig({ schemes: [{ network: 'hedera:testnet', client: new ExactHederaScheme(signer) }],
-        spendControls: { allowedAssets: [{ network: 'hedera:testnet', asset: '0.0.0', maxAmountPerPayment: cfg.cap }] } })
+        spendControls: { allowedAssets: [{ network: 'hedera:testnet', asset: cfg.asset, maxAmountPerPayment: cfg.cap }] } })
       const paid = await wrapFetchWithPayment(fetch, client)(url, init)
       if (!paid.ok) throw new Error(`Paid request failed: HTTP ${paid.status}`)
       intent = await paid.json() as { intentToken: string, requestHash: string }
@@ -114,14 +128,14 @@ export async function buy(cfg: BuyerConfig, opts: { suite: string; policyCommitm
 
     run('mirror', 'Mirror Node consensus', mirrorTxId(receipt.transaction))
     let transfers: Array<{ account: string, amount: number }> = [], consensus: string | undefined
+    const mirror = new HederaMirrornodeServiceDefaultImpl(LedgerId.TESTNET)
     for (let i = 0; i < 6 && !transfers.length; i++) {
-      const r = await fetch(`${MIRROR}/api/v1/transactions/${mirrorTxId(receipt.transaction)}`).catch(() => null)
-      const j = r?.ok ? await r.json() as { transactions?: Array<{ result: string, consensus_timestamp: string, transfers?: Array<{ account: string, amount: number }> }> } : null
-      const t = j?.transactions?.find(x => x.result === 'SUCCESS')
-      if (t) { transfers = (t.transfers ?? []).filter(x => x.account === cfg.merchant || x.account === cfg.payer); consensus = t.consensus_timestamp }
+      const j = await mirror.getTransactionRecord(mirrorTxId(receipt.transaction)).catch(() => null)
+      const t = j?.transactions?.find(x => paidTransfer(x, cfg.asset, cfg.payer, cfg.merchant, BigInt(manifest.price)))
+      if (t) { transfers = (cfg.asset === '0.0.0' ? t.transfers ?? [] : (t.token_transfers ?? []).filter(x => x.token_id === cfg.asset)).filter(x => x.account === cfg.merchant || x.account === cfg.payer); consensus = t.consensus_timestamp }
       else await new Promise(r => setTimeout(r, 1500))
     }
-    ok(transfers.length ? `SUCCESS at ${consensus}` : 'not visible yet; the service re-checks at activation', { transfers, consensus })
+    ok(transfers.length ? `SUCCESS at ${consensus}` : 'not visible yet; the service re-checks at activation', { transfers, consensus, via: 'Hedera Agent Kit' })
 
     run('bind', 'Bind payment to this request', 'payer signs tx id + request hash')
     const requestHash = hashRequest(suite, opts.policyCommitment, request.idempotencyKey)

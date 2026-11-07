@@ -1,6 +1,6 @@
 # Faultline
 
-> **Judges, start here:** [submission checklist](docs/submission/CHECKLIST.md) · [Web3 pieces and why](docs/submission/WEB3.md) · [how the AI decides](docs/submission/INTELLIGENCE.md) · [plug in your AV stack](docs/INTEGRATE_YOUR_STACK.md) · [videos](videos/README.md)
+> **Judges, start here:** [submission checklist](docs/submission/CHECKLIST.md) · [Web3 pieces and why](docs/submission/WEB3.md) · [Hedera payment extensions and testnet evidence](docs/HEDERA_EXTRAS.md) · [how the AI decides](docs/submission/INTELLIGENCE.md) · [plug in your AV stack](docs/INTEGRATE_YOUR_STACK.md) · [videos](videos/README.md)
 
 **An adversarial lead vehicle for autonomous-driving tests, whose every maneuver is decided by a model running on
 0G's private compute, logged on 0G Storage with a request ID and a provider signature per decision, and committed on

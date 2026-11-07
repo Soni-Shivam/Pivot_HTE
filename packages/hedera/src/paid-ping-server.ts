@@ -7,6 +7,8 @@ import { ExactHederaScheme } from '@x402/hedera/exact/server'
 import { acceptJob, authorizedJob, intentToken, updateJob, validIntent } from './job-store.ts'
 import { SUITES, requestHash as hashRequest, startAllowed, suiteOf } from './suites.ts'
 import { makeDeliveryReceipt, publishReceipt, receiptDigest, verifyDelivery } from './delivery-receipt.ts'
+import { paidTransfer } from './settlement.ts'
+import { registerNegotiator } from './a2a.ts'
 
 const merchant = process.env.HEDERA_MERCHANT_ACCOUNT_ID
 const amount = process.env.HEDERA_PAYMENT_AMOUNT
@@ -15,8 +17,8 @@ const facilitatorUrl = process.env.HEDERA_FACILITATOR_URL ?? 'https://x402.org/f
 const network = process.env.HEDERA_NETWORK ?? 'hedera:testnet'
 if (!merchant || !/^0\.0\.[1-9][0-9]*$/.test(merchant)) throw new Error('Set HEDERA_MERCHANT_ACCOUNT_ID')
 if (!amount || !/^[1-9][0-9]*$/.test(amount)) throw new Error('Set positive HEDERA_PAYMENT_AMOUNT')
-if (network !== 'hedera:testnet' || asset !== '0.0.0') {
-  throw new Error('The first paid check supports testnet HBAR only')
+if (network !== 'hedera:testnet' || !/^0\.0\.[0-9]+$/.test(asset)) {
+  throw new Error('Set a Hedera testnet asset ID (0.0.0 for HBAR or an HTS token ID)')
 }
 
 const facilitator = new HTTPFacilitatorClient({ url: facilitatorUrl })
@@ -24,6 +26,7 @@ const resourceServer = new x402ResourceServer(facilitator)
   .register('hedera:testnet', new ExactHederaScheme())
 const app = express()
 app.use(express.json({ limit: '4kb' }))
+registerNegotiator(app, { amount, asset, suites: Object.keys(SUITES), port: Number(process.env.HEDERA_DEMO_PORT ?? 8787) })
 app.get('/.well-known/faultline-service.json', (_req, res) => res.json({
   service: 'faultline', version: 1, network, asset, merchant, price: amount,
   suites: Object.entries(SUITES).map(([id, s]) => ({ id, simulator: s.simulator, maxRuns: 1 })), endpoint: '/v1/stress-tests',
@@ -74,10 +77,8 @@ app.post('/v1/stress-tests/activate', async (req, res) => {
     const mirrorId = `${account}-${time.replace('.', '-')}`
     const mirror = await fetch(`https://testnet.mirrornode.hedera.com/api/v1/transactions/${mirrorId}`)
     if (!mirror.ok) { res.status(503).json({ error: 'settlement_unavailable' }); return }
-    const data = await mirror.json() as { transactions?: Array<{ result: string, transfers?: Array<{ account: string, amount: number }> }> }
-    const settled = data.transactions?.find(t => t.result === 'SUCCESS' &&
-      t.transfers?.some(x => x.account === merchant && x.amount === Number(amount)) &&
-      t.transfers?.some(x => x.account === receipt.payer && x.amount === -Number(amount)))
+    const data = await mirror.json() as { transactions?: Array<{ result: string, transfers?: Array<{ account: string, amount: number }>, token_transfers?: Array<{ account: string, token_id: string, amount: number }> }> }
+    const settled = data.transactions?.find(t => paidTransfer(t, asset, receipt.payer as string, merchant, BigInt(amount)))
     if (!settled) { res.status(402).json({ error: 'settlement_not_confirmed' }); return }
     const policyCommitment = b.policyCommitment.toLowerCase()
     const { suite, simulator } = suiteOf(b.suite)

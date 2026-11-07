@@ -4,6 +4,10 @@ Recorded Faultline runs (CARLA 0.10 + 0G), re-encoded for GitHub. Newest first. 
 
 | video | length | recorded | what |
 |---|---|---|---|
+| [video-swarm-halt-001__stitched.mp4](video-swarm-halt-001__stitched.mp4) | 15 s | 11-07 06:48 | swarm · interrupted · 0 0G decisions (halt) · collision False · CCS 0.90 (ground truth) · not anchored |
+| [video-swarm-halt-001__director.mp4](video-swarm-halt-001__director.mp4) | 15 s | 11-07 06:48 | swarm · interrupted · 0 0G decisions (halt) · collision False · CCS 0.90 (ground truth) · not anchored |
+| [video-swarm-fog-001__stitched.mp4](video-swarm-fog-001__stitched.mp4) | 32 s | 11-07 06:48 | swarm · completed · 10 0G decisions (0G) · collision False · CCS 0.59 (ground truth) · not anchored |
+| [video-swarm-fog-001__director.mp4](video-swarm-fog-001__director.mp4) | 32 s | 11-07 06:48 | swarm · completed · 10 0G decisions (0G) · collision False · CCS 0.59 (ground truth) · not anchored |
 | [video-swarm-rainnight-001__stitched.mp4](video-swarm-rainnight-001__stitched.mp4) | 32 s | 11-07 06:38 | swarm · completed · 10 0G decisions (0G) · collision False · CCS 0.01 (ground truth) · not anchored |
 | [video-swarm-rainnight-001__director.mp4](video-swarm-rainnight-001__director.mp4) | 32 s | 11-07 06:38 | swarm · completed · 10 0G decisions (0G) · collision False · CCS 0.01 (ground truth) · not anchored |
 | [paid-job-002-replay-view__chase.mp4](paid-job-002-replay-view__chase.mp4) | 15 s | 11-07 06:08 | REPLAY of recorded decisions (no new 0G calls) · interrupted · collision False |

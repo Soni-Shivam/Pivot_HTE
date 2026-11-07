@@ -29,10 +29,10 @@ stack pdm-lite-lidar (adapter python)
 
 | id | road / lane (left) | width | straight, junction-free | obstacles in either lane |
 |---|---|---|---|---|
-| r7l-2s3 | 7 / -2 (-1) | 3.5 m | 88 m | none |
-| r10l-2s64 | 10 / -2 (-1) | 3.5 m | 86 m | none |
-| r1l2s42 | 1 / 2 (1) | 3.5 m | 84 m | none |
-| r4l2s24 | 4 / 2 (1) | 3.5 m | 86 m | none |
+| r7l-2s3 | 7 / -2 (-1) | 3.5 m | 92 m | none |
+| r10l-2s64 | 10 / -2 (-1) | 3.5 m | 90 m | none |
+| r1l2s42 | 1 / 2 (1) | 3.5 m | 88 m | none |
+| r4l2s24 | 4 / 2 (1) | 3.5 m | 90 m | none |
 
 ## A/B arena, identical adversary script: `runs/arena-script-001/compare.md`
 

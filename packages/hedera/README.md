@@ -1,6 +1,6 @@
-# Faultline paid stress tests on Hedera
+# Faultline paid scenario runs on Hedera
 
-Run `npm run hedera:serve` from the repository root. The service publishes its fixed-price `cut-in-v1` suite at `/.well-known/faultline-service.json` and quotes an x402 payment for `POST /v1/stress-tests`.
+Run `npm run hedera:serve` from the repository root. The service publishes its fixed-price `cut-in-v1` scenario suite at `/.well-known/faultline-service.json` and quotes an x402 payment for `POST /v1/stress-tests`. The route name remains `stress-tests` for API compatibility.
 
 The buyer uses `npm run hedera:policy` to print the commitment for the current **kinematic IDM demo ego**, then `npm run hedera:buy -- 0x<that-commitment>`. It reads discovery, enforces the configured merchant and 0.001 HBAR cap, pays once, and activates a job after the server confirms the settlement transfer through Hedera Mirror Node. The response includes a job ID and bearer permit. Keep the permit private. This suite does not execute an uploaded company policy or CARLA; those need a separately versioned suite and runner.
 
